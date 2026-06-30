@@ -1,0 +1,15 @@
+name: tech_hub_mobile
+publish_to: 'none'
+description: Tech Hub Flutter mobile app starter.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.2
+
+flutter:
+  uses-material-design: true

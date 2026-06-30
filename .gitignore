@@ -1,0 +1,29 @@
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Node / React
+node_modules/
+dist/
+build/
+
+# Laravel
+apps/api-laravel/vendor/
+apps/api-laravel/.env
+apps/api-laravel/storage/*.key
+apps/api-laravel/storage/logs/*.log
+
+# Flutter
+apps/mobile-flutter/.dart_tool/
+apps/mobile-flutter/build/
+apps/mobile-flutter/.flutter-plugins
+apps/mobile-flutter/.flutter-plugins-dependencies
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

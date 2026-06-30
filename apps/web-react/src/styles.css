@@ -1,0 +1,197 @@
+:root {
+  color: #111827;
+  background: #f3f4f6;
+  font-family: Inter, system-ui, Arial, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background: #111827;
+  color: white;
+  padding: 24px;
+}
+
+.brand {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.brand h1 {
+  font-size: 22px;
+  margin: 0;
+}
+
+.brand p {
+  color: #9ca3af;
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.nav-button {
+  width: 100%;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 0;
+  padding: 12px;
+  margin-bottom: 8px;
+  border-radius: 10px;
+  color: white;
+  background: #1f2937;
+  cursor: pointer;
+}
+
+.nav-button:hover {
+  background: #374151;
+}
+
+.main-content {
+  flex: 1;
+  padding: 32px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-header h2,
+.auth-card h2 {
+  margin: 0 0 6px;
+  font-size: 28px;
+}
+
+.page-header p,
+.auth-card p {
+  margin: 0;
+  color: #6b7280;
+}
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.product-card,
+.auth-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.product-image {
+  height: 150px;
+  display: grid;
+  place-items: center;
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.product-body {
+  padding: 16px;
+}
+
+.product-body h3 {
+  margin: 0 0 8px;
+}
+
+.product-body p {
+  color: #6b7280;
+  min-height: 44px;
+}
+
+.product-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.auth-card {
+  max-width: 420px;
+  padding: 24px;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.form label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+
+.form input {
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.form button {
+  border: 0;
+  background: #111827;
+  color: white;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.message {
+  color: #6b7280;
+}
+
+.error {
+  color: #b91c1c;
+  margin-top: 12px;
+}
+
+.success {
+  color: #047857;
+  margin-top: 12px;
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+  }
+
+  .main-content {
+    padding: 18px;
+  }
+}
