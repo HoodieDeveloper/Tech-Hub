@@ -3,6 +3,16 @@
 .env.*
 !.env.example
 
+# React env
+apps/web-react/.env
+apps/web-react/.env.*
+!apps/web-react/.env.example
+
+# Laravel env
+apps/api-laravel/.env
+apps/api-laravel/.env.*
+!apps/api-laravel/.env.example
+
 # Node / React
 node_modules/
 dist/
@@ -10,7 +20,6 @@ build/
 
 # Laravel
 apps/api-laravel/vendor/
-apps/api-laravel/.env
 apps/api-laravel/storage/*.key
 apps/api-laravel/storage/logs/*.log
 
