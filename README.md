@@ -1,21 +1,20 @@
-# Tech Hub Monorepo Starter
+# Tech Hub Project Setup Guide
 
-Clean starter structure for:
+Tech Hub is a monorepo project with React, Laravel, Flutter, and Supabase.
 
 ```text
-React Web App  -> Laravel API -> Supabase PostgreSQL
-Flutter App    -> Laravel API -> Supabase PostgreSQL
+React Web App      → Laravel API → Supabase PostgreSQL Database
+Flutter Mobile App → Laravel API → Supabase PostgreSQL Database
 ```
 
-## Folder structure
+## Project Structure
 
 ```text
 tech-hub/
 ├── apps/
-│   ├── web-react/        # React + Vite frontend starter
-│   ├── mobile-flutter/   # Flutter mobile starter
-│   └── api-laravel/      # Laravel API custom code layer
-├── docs/
+│   ├── web-react/
+│   ├── mobile-flutter/
+│   └── api-laravel/
 ├── supabase/
 │   └── migrations/
 ├── .github/
@@ -24,138 +23,441 @@ tech-hub/
 └── README.md
 ```
 
-## Important first step
+---
 
-This zip contains a clean starter structure and custom code files. It does **not** include heavy generated folders like:
+## 1. Requirements
 
-- `node_modules/`
-- Laravel `vendor/`
-- Flutter `android/`, `ios/`, `build/`
+Before running the project, install these tools:
 
-You generate/install those on your computer.
+```text
+Git
+Node.js
+PHP
+Composer
+Flutter SDK
+Android Studio
+VS Code
+```
+
+Check installation:
+
+```powershell
+node -v
+npm -v
+php -v
+composer -V
+flutter doctor
+```
 
 ---
 
-## 1. Supabase database
+## 2. Clone the Project
 
-Create a Supabase project, then get the Session Pooler connection values:
-
-```env
-DB_CONNECTION=pgsql
-DB_HOST=your-supabase-pooler-host
-DB_PORT=5432
-DB_DATABASE=postgres
-DB_USERNAME=postgres.your-project-ref
-DB_PASSWORD=your-database-password
+```powershell
+git clone YOUR_REPOSITORY_LINK_HERE
+cd tech-hub
 ```
 
-Put these values in:
+---
+
+## 3. Setup Laravel API
+
+Go to Laravel folder:
+
+```powershell
+cd apps/api-laravel
+```
+
+Install Laravel dependencies:
+
+```powershell
+composer install
+```
+
+Create `.env` file:
+
+```powershell
+copy .env.example .env
+```
+
+Generate Laravel app key:
+
+```powershell
+php artisan key:generate
+```
+
+Open this file:
 
 ```text
 apps/api-laravel/.env
 ```
 
-Never push `.env` to GitHub.
+Set the Supabase database connection:
 
----
+```env
+DB_CONNECTION=pgsql
+DB_HOST=your_supabase_host
+DB_PORT=5432
+DB_DATABASE=postgres
+DB_USERNAME=your_supabase_username
+DB_PASSWORD="your_supabase_password"
+```
 
-## 2. Laravel API setup
+Example format:
 
-Because this starter does not include Laravel framework files, create the Laravel app first:
+```env
+DB_CONNECTION=pgsql
+DB_HOST=aws-xxx.pooler.supabase.com
+DB_PORT=5432
+DB_DATABASE=postgres
+DB_USERNAME=postgres.xxxxxxxxxxxxx
+DB_PASSWORD="your_password_here"
+```
+
+Clear Laravel cache:
 
 ```powershell
-cd apps
-composer create-project laravel/laravel api-laravel-real
+php artisan optimize:clear
 ```
 
-Then copy the files from this starter folder:
-
-```text
-apps/api-laravel/
-```
-
-into your real Laravel folder:
-
-```text
-apps/api-laravel-real/
-```
-
-After copying, rename `api-laravel-real` to `api-laravel`.
-
-Then run:
+Run database migrations:
 
 ```powershell
-cd apps/api-laravel
-composer require laravel/sanctum
-php artisan sanctum:install
 php artisan migrate
+```
+
+Start Laravel API server:
+
+```powershell
 php artisan serve
 ```
 
-Your API will run at:
+Laravel API should run here:
 
 ```text
-http://127.0.0.1:8000/api
+http://127.0.0.1:8000
 ```
+
+Test the API in browser:
+
+```text
+http://127.0.0.1:8000/api/products
+```
+
+If it shows `[]` or product data, Laravel API is working.
 
 ---
 
-## 3. React setup
+## 4. Setup React Web App
+
+Open a new terminal.
+
+Go to React folder:
 
 ```powershell
 cd apps/web-react
-npm install
-npm run dev
 ```
 
-Create `.env` from `.env.example`:
+Install dependencies:
+
+```powershell
+npm install
+```
+
+Create `.env` file:
+
+```powershell
+copy .env.example .env
+```
+
+Open this file:
+
+```text
+apps/web-react/.env
+```
+
+Make sure it has:
 
 ```env
 VITE_API_URL=http://127.0.0.1:8000/api
 ```
 
----
-
-## 4. Flutter setup
-
-If you want Android/iOS generated folders, run this inside `apps/`:
+Start React:
 
 ```powershell
-flutter create mobile-flutter
+npm run dev
 ```
 
-Then keep/copy the `lib/` folder from this starter.
+React should run here:
 
-Run:
+```text
+http://localhost:5173
+```
+
+Now React can connect to Laravel API.
+
+---
+
+## 5. Setup Flutter Mobile App
+
+Open a new terminal.
+
+Go to Flutter folder:
 
 ```powershell
 cd apps/mobile-flutter
+```
+
+Install Flutter dependencies:
+
+```powershell
 flutter pub get
+```
+
+Check devices:
+
+```powershell
+flutter devices
+```
+
+Run an Android emulator from Android Studio or run:
+
+```powershell
+flutter emulators
+flutter emulators --launch YOUR_EMULATOR_ID
+```
+
+Then run Flutter:
+
+```powershell
 flutter run
 ```
 
-For Android emulator, use this API base URL:
+For Android emulator, the API URL should use:
 
-```dart
-static const String baseUrl = 'http://10.0.2.2:8000/api';
+```text
+http://10.0.2.2:8000/api
 ```
 
-For real Android phone on same Wi-Fi, use your laptop IP:
+Do not use this inside Android emulator:
 
-```dart
-static const String baseUrl = 'http://YOUR_LAPTOP_IP:8000/api';
+```text
+http://127.0.0.1:8000/api
+```
+
+Inside Android emulator, `127.0.0.1` means the emulator itself, not your computer.
+
+---
+
+## 6. How to Run the Full Project
+
+You need 3 terminals.
+
+### Terminal 1: Laravel API
+
+```powershell
+cd apps/api-laravel
+php artisan serve
+```
+
+### Terminal 2: React Web
+
+```powershell
+cd apps/web-react
+npm run dev
+```
+
+### Terminal 3: Flutter Mobile
+
+```powershell
+cd apps/mobile-flutter
+flutter run
 ```
 
 ---
 
-## 5. API idea
+## 7. Test Add Product
+
+Open React website:
 
 ```text
-React Web App       Flutter Android App
-      |                    |
-      +------ Laravel API -+
-                  |
-           Supabase Database
+http://localhost:5173
 ```
 
-Both web and mobile update the same data because both use the same Laravel API.
+Add a product from the form:
+
+```text
+Product name: Keyboard
+Description: Tri mode keyboard
+Price: 45
+Stock: 10
+Image URL: https://placehold.co/600x400?text=Keyboard
+```
+
+Click:
+
+```text
+Add Product
+```
+
+Then check Supabase:
+
+```text
+Supabase → Table Editor → products
+```
+
+The new product should appear there.
+
+Flutter app should also show the same product.
+
+---
+
+## 8. Important GitHub Rules
+
+Do not push these files or folders:
+
+```text
+.env
+node_modules/
+vendor/
+build/
+```
+
+Push these files:
+
+```text
+.env.example
+package.json
+composer.json
+pubspec.yaml
+```
+
+Each team member must create their own `.env` file.
+
+Never upload the real Supabase password to GitHub.
+
+---
+
+## 9. Common Problems
+
+### Problem: React says `Failed to fetch`
+
+Make sure Laravel is running:
+
+```powershell
+cd apps/api-laravel
+php artisan serve
+```
+
+Then test:
+
+```text
+http://127.0.0.1:8000/api/products
+```
+
+---
+
+### Problem: `products table does not exist`
+
+Run migration:
+
+```powershell
+cd apps/api-laravel
+php artisan migrate
+```
+
+Then check Supabase Table Editor.
+
+---
+
+### Problem: Flutter cannot connect to API
+
+For Android emulator, use:
+
+```text
+http://10.0.2.2:8000/api
+```
+
+For a real Android phone, use your computer Wi-Fi IP:
+
+```text
+http://YOUR_COMPUTER_IP:8000/api
+```
+
+Example:
+
+```text
+http://192.168.1.10:8000/api
+```
+
+Also make sure Laravel is running with:
+
+```powershell
+php artisan serve --host=0.0.0.0 --port=8000
+```
+
+---
+
+### Problem: React environment not working
+
+After editing `.env`, restart React:
+
+```powershell
+Ctrl + C
+npm run dev
+```
+
+Vite reads `.env` only when the dev server starts.
+
+---
+
+## 10. Local URLs
+
+```text
+Laravel API: http://127.0.0.1:8000
+React Web: http://localhost:5173
+Flutter Android Emulator API: http://10.0.2.2:8000/api
+Supabase: Online PostgreSQL database
+```
+
+---
+
+## 11. Development Flow
+
+When adding a new feature:
+
+```text
+1. Create or update Laravel API route
+2. Create or update Laravel controller/model/migration
+3. Test API in browser or Postman
+4. Connect React to the API
+5. Connect Flutter to the API
+6. Push code to GitHub
+```
+
+---
+
+## 12. Current API Example
+
+Products API:
+
+```text
+GET    /api/products
+POST   /api/products
+GET    /api/products/{id}
+PUT    /api/products/{id}
+DELETE /api/products/{id}
+```
+
+Example product JSON:
+
+```json
+{
+  "name": "Keyboard",
+  "description": "Tri mode keyboard",
+  "price": 45,
+  "stock": 10,
+  "image_url": "https://placehold.co/600x400?text=Keyboard",
+  "is_active": true
+}
+```
