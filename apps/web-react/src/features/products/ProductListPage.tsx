@@ -154,7 +154,7 @@ export function ProductListPage() {
           </label>
 
           <button type="submit" disabled={saving}>
-            {saving ? 'Adding...' : 'Add Product'}
+            {saving ? 'Adding product to app...' : 'Add Product'}
           </button>
         </form>
 
