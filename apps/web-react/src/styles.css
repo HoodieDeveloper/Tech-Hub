@@ -14,7 +14,7 @@ body {
 
 button,
 input {
-  font: inherit;
+  font: poppins;
 }
 
 .app-shell {
