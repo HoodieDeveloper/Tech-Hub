@@ -1,10 +1,26 @@
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
-  // Android emulator uses 10.0.2.2 to reach your computer localhost.
-  // For real phone, replace with your laptop IP, example: http://192.168.1.8:8000/api
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  static const String _configuredBaseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: '',
+  );
+
+  static String get baseUrl {
+    if (_configuredBaseUrl.isNotEmpty) {
+      return _configuredBaseUrl;
+    }
+
+    if (kIsWeb) {
+      return 'http://localhost:8000/api';
+    }
+
+    // Android emulator uses 10.0.2.2 to reach your computer localhost.
+    // For a physical device, pass API_BASE_URL with your machine's LAN IP.
+    return 'http://10.0.2.2:8000/api';
+  }
 
   static String? token;
 
