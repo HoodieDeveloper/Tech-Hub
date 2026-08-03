@@ -78,3 +78,19 @@ GET /reports/sales
 GET /reports/best-selling-products
 GET /reports/monthly-revenue
 ```
+
+### Create product with image
+
+`POST /products` uses `multipart/form-data`:
+
+```text
+name        required string
+price       required number
+stock       required integer
+description optional string
+is_active   optional boolean
+image       required JPG, PNG, or WEBP; maximum 5 MB
+```
+
+Laravel uploads `image` to Supabase Storage and returns the generated public
+`image_url` in the product JSON.
