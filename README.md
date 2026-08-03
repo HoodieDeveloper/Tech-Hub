@@ -276,39 +276,39 @@ flutter run
 
 ---
 
-## 7. Test Add Product
+## 7. Test One Image on Web and Mobile
 
-Open React website:
+Create a public Supabase Storage bucket named:
+
+```text
+product-images
+```
+
+Open React:
 
 ```text
 http://localhost:5173
 ```
 
-Add a product from the form:
+Complete the product form, click **Choose Image**, select a JPG, PNG, or WEBP file, and click **Create Product**.
+
+The complete flow is automatic:
 
 ```text
-Product name: Keyboard
-Description: Tri mode keyboard
-Price: 45
-Stock: 10
-Image URL: https://placehold.co/600x400?text=Keyboard
+React file input
+    → Laravel multipart API
+    → Supabase Storage
+    → products.image_url
+    → React and Flutter
 ```
 
-Click:
+React displays the new image immediately. Flutter loads the same product and displays the same URL. Pull down on the Flutter Products page to refresh.
+
+Complete instructions, including a real Android phone test, are in:
 
 ```text
-Add Product
+docs/PRODUCT_IMAGE_UPLOAD.md
 ```
-
-Then check Supabase:
-
-```text
-Supabase → Table Editor → products
-```
-
-The new product should appear there.
-
-Flutter app should also show the same product.
 
 ---
 
@@ -449,15 +449,23 @@ PUT    /api/products/{id}
 DELETE /api/products/{id}
 ```
 
-Example product JSON:
+Create products using `multipart/form-data`:
 
-```json
-{
-  "name": "Keyboard",
-  "description": "Tri mode keyboard",
-  "price": 45,
-  "stock": 10,
-  "image_url": "https://placehold.co/600x400?text=Keyboard",
-  "is_active": true
-}
+```text
+name        Keyboard
+description Tri mode keyboard
+price       45
+stock       10
+is_active   1
+image       keyboard.png
 ```
+
+Laravel uploads the image and returns JSON containing the generated `image_url`.
+
+## Automatic product image upload
+
+The React admin form now accepts a JPG, PNG, or WEBP file. Laravel validates it,
+uploads it to the public Supabase `product-images` bucket, stores the generated
+URL in PostgreSQL, and returns that URL to both React and Flutter.
+
+Setup and testing: `docs/PRODUCT_IMAGE_UPLOAD.md`

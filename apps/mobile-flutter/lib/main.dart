@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'features/auth/login_page.dart';
 import 'features/products/product_list_page.dart';
 
@@ -15,7 +16,7 @@ class TechHubApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Tech Hub',
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF0074DF)),
         useMaterial3: true,
       ),
       home: const HomePage(),
@@ -33,28 +34,33 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int currentIndex = 0;
 
-  final pages = const [
-    ProductListPage(),
-    LoginPage(),
-  ];
+  final pages = const [ProductListPage(), LoginPage()];
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Tech Hub'),
-        
         centerTitle: true,
-
-        backgroundColor: Colors.blue,
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
       ),
-      body: pages[currentIndex],
+      body: IndexedStack(index: currentIndex, children: pages),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,
-        onDestinationSelected: (index) => setState(() => currentIndex = index),
+        onDestinationSelected: (index) {
+          setState(() => currentIndex = index);
+        },
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.shopping_bag_outlined), label: 'Products'),
-          NavigationDestination(icon: Icon(Icons.person_outline), label: 'Login'),
+          NavigationDestination(
+            icon: Icon(Icons.shopping_bag_outlined),
+            selectedIcon: Icon(Icons.shopping_bag),
+            label: 'Products',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline),
+            selectedIcon: Icon(Icons.person),
+            label: 'Login',
+          ),
         ],
       ),
     );

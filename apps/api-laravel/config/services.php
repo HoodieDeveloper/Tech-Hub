@@ -35,4 +35,12 @@ return [
         ],
     ],
 
+
+    'supabase' => [
+        'url' => env('SUPABASE_URL'),
+        // Prefer the new sb_secret_ key. The legacy service_role key also works.
+        'key' => env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY')),
+        'bucket' => env('SUPABASE_STORAGE_BUCKET', 'product-images'),
+    ],
+
 ];

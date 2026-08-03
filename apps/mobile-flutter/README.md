@@ -1,17 +1,48 @@
-# tech_hub_mobile
+# Tech Hub Flutter App
 
-A new Flutter project.
+The mobile app reads products from the same Laravel API used by the React web app. Product pictures are loaded from the `image_url` returned by Laravel.
 
-## Getting Started
+## Android emulator
 
-This project is a starting point for a Flutter application.
+```powershell
+flutter pub get
+flutter run
+```
 
-A few resources to get you started if this is your first Flutter project:
+The default API URL is:
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
+```text
+http://10.0.2.2:8000/api
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Physical Android phone
+
+Run Laravel so other devices on your Wi-Fi can reach it:
+
+```powershell
+cd ..\api-laravel
+php artisan serve --host=0.0.0.0 --port=8000
+```
+
+Find your computer IPv4 address:
+
+```powershell
+ipconfig
+```
+
+Then run Flutter with that address:
+
+```powershell
+cd ..\mobile-flutter
+flutter run --dart-define=API_BASE_URL=http://192.168.1.10:8000/api
+```
+
+Replace `192.168.1.10` with your actual computer IPv4 address.
+
+The Android app includes Internet permission. Local cleartext HTTP is enabled for development testing; use an HTTPS Laravel URL for production.
+
+See the complete test guide:
+
+```text
+docs/PRODUCT_IMAGE_TEST.md
+```

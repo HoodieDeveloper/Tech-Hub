@@ -1,7 +1,9 @@
 :root {
   color: #111827;
   background: #f3f4f6;
-  font-family: Inter, system-ui, Arial, sans-serif;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
 }
 
 * {
@@ -13,8 +15,18 @@ body {
 }
 
 button,
-input {
-  font: poppins;
+input,
+textarea {
+  font: inherit;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+code {
+  overflow-wrap: anywhere;
 }
 
 .app-shell {
@@ -67,14 +79,16 @@ input {
 
 .main-content {
   flex: 1;
+  min-width: 0;
   padding: 32px;
 }
 
 .page-header {
   display: flex;
   justify-content: space-between;
+  gap: 20px;
   align-items: center;
-  margin-bottom: 24px;
+  margin-bottom: 16px;
 }
 
 .page-header h2,
@@ -87,6 +101,145 @@ input {
 .auth-card p {
   margin: 0;
   color: #6b7280;
+}
+
+.secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #d1d5db;
+  background: white;
+  color: #111827;
+  padding: 10px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.connection-note {
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  border: 1px solid #bfdbfe;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  font-size: 14px;
+}
+
+.product-form-card {
+  max-width: 860px;
+  margin-bottom: 28px;
+  padding: 24px;
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+}
+
+.product-form-card h3 {
+  margin: 0 0 6px;
+}
+
+.helper-text {
+  margin: 0;
+  color: #6b7280;
+  line-height: 1.55;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.form label {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  font-weight: 600;
+}
+
+.full-width-field {
+  grid-column: 1 / -1;
+}
+
+.form input,
+.form textarea {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 11px 12px;
+  background: white;
+  color: #111827;
+}
+
+.form textarea {
+  resize: vertical;
+}
+
+.form input:focus,
+.form textarea:focus {
+  border-color: #2563eb;
+  outline: 3px solid rgba(37, 99, 235, 0.12);
+}
+
+.form > button {
+  justify-self: start;
+  border: 0;
+  background: #111827;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.preview-section {
+  display: grid;
+  gap: 8px;
+  max-width: 300px;
+  color: #374151;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.image-preview,
+.product-image {
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
+.image-preview {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+}
+
+.product-image {
+  height: 170px;
+}
+
+.image-preview img,
+.product-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.image-fallback {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  padding: 16px;
+  text-align: center;
+  font-size: 13px;
 }
 
 .product-grid {
@@ -103,20 +256,6 @@ input {
   overflow: hidden;
 }
 
-.product-image {
-  height: 150px;
-  display: grid;
-  place-items: center;
-  background: #e5e7eb;
-  color: #6b7280;
-}
-
-.product-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
 .product-body {
   padding: 16px;
 }
@@ -128,11 +267,13 @@ input {
 .product-body p {
   color: #6b7280;
   min-height: 44px;
+  line-height: 1.45;
 }
 
 .product-meta {
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   align-items: center;
 }
 
@@ -141,45 +282,27 @@ input {
   padding: 24px;
 }
 
-.form {
-  display: grid;
-  gap: 14px;
-  margin-top: 20px;
-}
-
-.form label {
-  display: grid;
-  gap: 6px;
-  font-weight: 600;
-}
-
-.form input {
-  border: 1px solid #d1d5db;
-  border-radius: 10px;
-  padding: 10px 12px;
-}
-
-.form button {
-  border: 0;
-  background: #111827;
-  color: white;
-  padding: 12px;
-  border-radius: 10px;
-  cursor: pointer;
-}
-
-.message {
+.message,
+.empty-state {
   color: #6b7280;
+}
+
+.empty-state {
+  padding: 28px;
+  border: 1px dashed #cbd5e1;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.65);
+  text-align: center;
 }
 
 .error {
   color: #b91c1c;
-  margin-top: 12px;
+  margin: 12px 0 0;
 }
 
 .success {
   color: #047857;
-  margin-top: 12px;
+  margin: 12px 0 0;
 }
 
 @media (max-width: 760px) {
@@ -194,4 +317,68 @@ input {
   .main-content {
     padding: 18px;
   }
+
+  .page-header {
+    align-items: flex-start;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .full-width-field {
+    grid-column: auto;
+  }
+}
+
+@media (max-width: 520px) {
+  .page-header {
+    flex-direction: column;
+  }
+
+  .secondary-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+.image-file-field input[type="file"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.file-input-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 82px;
+  padding: 16px;
+  border: 2px dashed #93c5fd;
+  border-radius: 12px;
+  background: #eff6ff;
+  color: #1e3a8a;
+  cursor: pointer;
+}
+
+.file-input-box:hover {
+  border-color: #2563eb;
+  background: #dbeafe;
+}
+
+.file-input-box span {
+  display: grid;
+  gap: 4px;
+}
+
+.file-input-box small {
+  color: #64748b;
+  font-weight: 500;
 }

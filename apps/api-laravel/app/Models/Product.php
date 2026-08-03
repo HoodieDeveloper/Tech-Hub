@@ -11,7 +11,21 @@ class Product extends Model
         'description',
         'price',
         'stock',
+        'image_path',
         'image_url',
         'is_active',
     ];
+
+    protected $hidden = [
+        'image_path',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'price' => 'decimal:2',
+            'stock' => 'integer',
+            'is_active' => 'boolean',
+        ];
+    }
 }
