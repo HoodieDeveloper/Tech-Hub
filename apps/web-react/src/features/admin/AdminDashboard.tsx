@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import {
   BarChart3,
-  Boxes,
+  ChevronRight,
   LayoutDashboard,
   LogOut,
   Package,
@@ -11,14 +11,23 @@ import {
   Store,
   Users,
 } from 'lucide-react';
+
 import { apiGet, type AuthUser } from '../../core/api/client';
 import { ProductListPage } from '../products/ProductListPage';
+
+import { AdminOrdersPage } from './orders/AdminOrdersPage';
+import { AdminRatingsPage } from './ratings/AdminRatingsPage';
+import { AdminReportsPage } from './reports/AdminReportsPage';
+import { AdminSettingsPage } from './settings/AdminSettingsPage';
 import { AdminUsersPage } from './users/AdminUsersPage';
+import { AdminVendorsPage } from './vendors/AdminVendorsPage';
+
+import './AdminDashboard.css';
+
 type AdminSection =
   | 'dashboard'
   | 'products'
   | 'orders'
-  | 'stock'
   | 'vendors'
   | 'users'
   | 'reports'
@@ -44,108 +53,273 @@ const navigation: Array<{
   label: string;
   icon: typeof LayoutDashboard;
 }> = [
-  { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { key: 'products', label: 'Products', icon: Package },
-  { key: 'orders', label: 'Orders', icon: ShoppingBag },
-  { key: 'stock', label: 'Stock', icon: Boxes },
-  { key: 'vendors', label: 'Vendors', icon: Store },
-  { key: 'users', label: 'Users', icon: Users },
-  { key: 'reports', label: 'Reports', icon: BarChart3 },
-  { key: 'ratings', label: 'Ratings', icon: Star },
-  { key: 'settings', label: 'Settings', icon: Settings },
+  {
+    key: 'dashboard',
+    label: 'Dashboard',
+    icon: LayoutDashboard,
+  },
+  {
+    key: 'products',
+    label: 'Products',
+    icon: Package,
+  },
+  {
+    key: 'orders',
+    label: 'Orders',
+    icon: ShoppingBag,
+  },
+  {
+    key: 'vendors',
+    label: 'Vendors',
+    icon: Store,
+  },
+  {
+    key: 'users',
+    label: 'Users',
+    icon: Users,
+  },
+  {
+    key: 'reports',
+    label: 'Reports',
+    icon: BarChart3,
+  },
+  {
+    key: 'ratings',
+    label: 'Ratings',
+    icon: Star,
+  },
+  {
+    key: 'settings',
+    label: 'Settings',
+    icon: Settings,
+  },
 ];
 
-export function AdminDashboard({ user, onStorefront, onLogout }: Props) {
-  const [section, setSection] = useState<AdminSection>('dashboard');
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+export function AdminDashboard({
+  user,
+  onStorefront,
+  onLogout,
+}: Props) {
+  const [section, setSection] =
+    useState<AdminSection>('dashboard');
+
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const [stats, setStats] =
+    useState<DashboardStats | null>(null);
+
   const [error, setError] = useState('');
 
   useEffect(() => {
     apiGet<DashboardStats>('/admin/dashboard')
       .then(setStats)
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Unable to load dashboard.');
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Unable to load dashboard.',
+        );
       });
   }, []);
 
+  const currentSection = navigation.find(
+    (item) => item.key === section,
+  );
+
   return (
-    <div className="admin-shell">
+    <div
+      className={`admin-shell ${
+        sidebarOpen ? 'sidebar-open' : 'sidebar-closed'
+      }`}
+    >
       <aside className="admin-sidebar">
         <div className="admin-brand">
           <Package size={27} />
-          <span><strong>TechHub</strong><small>Admin Console</small></span>
+
+          <span className="admin-brand-text">
+            <strong>TechHub</strong>
+            <small>Admin Console</small>
+          </span>
         </div>
 
         <nav>
           {navigation.map((item) => {
             const Icon = item.icon;
+
             return (
               <button
                 type="button"
                 key={item.key}
-                className={section === item.key ? 'active' : ''}
+                title={
+                  sidebarOpen ? undefined : item.label
+                }
+                className={
+                  section === item.key ? 'active' : ''
+                }
                 onClick={() => setSection(item.key)}
               >
-                <Icon size={18} /> {item.label}
+                <Icon size={19} />
+
+                <span className="admin-nav-label">
+                  {item.label}
+                </span>
               </button>
             );
           })}
         </nav>
 
         <div className="admin-sidebar-footer">
-          <button type="button" onClick={onStorefront}>View customer store</button>
-          <button type="button" onClick={onLogout}><LogOut size={17} /> Logout</button>
+          <button
+            type="button"
+            title={
+              sidebarOpen
+                ? undefined
+                : 'View customer store'
+            }
+            onClick={onStorefront}
+          >
+            <Store size={18} />
+
+            <span className="admin-nav-label">
+              View customer store
+            </span>
+          </button>
+
+          <button
+            type="button"
+            title={sidebarOpen ? undefined : 'Logout'}
+            onClick={onLogout}
+          >
+            <LogOut size={18} />
+
+            <span className="admin-nav-label">
+              Logout
+            </span>
+          </button>
+
+          <button
+            type="button"
+            className="admin-sidebar-toggle"
+            title={
+              sidebarOpen
+                ? 'Collapse sidebar'
+                : 'Expand sidebar'
+            }
+            onClick={() =>
+              setSidebarOpen((current) => !current)
+            }
+          >
+            <ChevronRight size={20} />
+
+            <span className="admin-nav-label">
+              {sidebarOpen ? 'Collapse' : 'Expand'}
+            </span>
+          </button>
         </div>
       </aside>
 
       <main className="admin-main">
         <header className="admin-topbar">
           <div>
-            <h1>{navigation.find((item) => item.key === section)?.label}</h1>
-            <p>Signed in as {user.name} · administrator</p>
+            <h1>{currentSection?.label}</h1>
+
+            <p>
+              Signed in as {user.name} · administrator
+            </p>
           </div>
         </header>
 
-        {error && <div className="alert error">{error}</div>}
-
-        {section === 'dashboard' && (
-          <section>
-            <div className="stat-grid">
-              <StatCard label="All products" value={stats?.products} />
-              <StatCard label="Active products" value={stats?.active_products} />
-              <StatCard label="Out of stock" value={stats?.out_of_stock_products} />
-              <StatCard label="Customers" value={stats?.customers} />
-            </div>
-            <div className="admin-info-card">
-              <h2>Production control</h2>
-              <p>
-                Product changes made here use the authenticated Railway Laravel API and
-                are saved in the connected Supabase database and Storage bucket.
-              </p>
-            </div>
-          </section>
+        {error && (
+          <div className="alert error">
+            {error}
+          </div>
         )}
 
-        {section === 'products' && <ProductListPage />}
-        {section === 'users' && <AdminUsersPage />}
+        {section === 'dashboard' && (
+          <DashboardHome stats={stats} />
+        )}
 
-        {section !== 'dashboard' &&
-            section !== 'products' &&
-            section !== 'users' && (
-          <section className="placeholder-page">
-            <h2>{navigation.find((item) => item.key === section)?.label}</h2>
-            <p>
-              The role protection and page location are ready. Your team can build this
-              feature inside <code>src/features/admin/{section}/</code>.
-            </p>
-          </section>
+        {section === 'products' && (
+          <ProductListPage />
+        )}
+
+        {section === 'orders' && (
+          <AdminOrdersPage />
+        )}
+
+        {section === 'vendors' && (
+          <AdminVendorsPage />
+        )}
+
+        {section === 'users' && (
+          <AdminUsersPage />
+        )}
+
+        {section === 'reports' && (
+          <AdminReportsPage />
+        )}
+
+        {section === 'ratings' && (
+          <AdminRatingsPage />
+        )}
+
+        {section === 'settings' && (
+          <AdminSettingsPage />
         )}
       </main>
     </div>
   );
 }
 
-function StatCard({ label, value }: { label: string; value?: number }) {
+function DashboardHome({
+  stats,
+}: {
+  stats: DashboardStats | null;
+}) {
+  return (
+    <section className="admin-dashboard-home">
+      <div className="stat-grid">
+        <StatCard
+          label="All products"
+          value={stats?.products}
+        />
+
+        <StatCard
+          label="Active products"
+          value={stats?.active_products}
+        />
+
+        <StatCard
+          label="Out of stock"
+          value={stats?.out_of_stock_products}
+        />
+
+        <StatCard
+          label="Customers"
+          value={stats?.customers}
+        />
+      </div>
+
+      <div className="admin-info-card">
+        <h2>Production control</h2>
+
+        <p>
+          Product changes use the authenticated Laravel
+          API and are saved in the connected Supabase
+          database and Storage bucket.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+}: {
+  label: string;
+  value?: number;
+}) {
   return (
     <article className="stat-card">
       <span>{label}</span>
