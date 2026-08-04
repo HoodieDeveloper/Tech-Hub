@@ -5,16 +5,44 @@ export const API_URL = (configuredApiUrl || 'http://127.0.0.1:8000/api').replace
   ''
 );
 
+const TOKEN_KEY = 'tech_hub_token';
+const USER_KEY = 'tech_hub_user';
+
+export type AuthUser = {
+  id: number;
+  name: string;
+  email: string;
+  role: 'admin' | 'customer';
+};
+
 export function getToken() {
-  return localStorage.getItem('tech_hub_token');
+  return localStorage.getItem(TOKEN_KEY);
 }
 
 export function setToken(token: string) {
-  localStorage.setItem('tech_hub_token', token);
+  localStorage.setItem(TOKEN_KEY, token);
 }
 
-export function clearToken() {
-  localStorage.removeItem('tech_hub_token');
+export function getStoredUser(): AuthUser | null {
+  const value = localStorage.getItem(USER_KEY);
+  if (!value) return null;
+
+  try {
+    return JSON.parse(value) as AuthUser;
+  } catch {
+    localStorage.removeItem(USER_KEY);
+    return null;
+  }
+}
+
+export function setAuthSession(token: string, user: AuthUser) {
+  localStorage.setItem(TOKEN_KEY, token);
+  localStorage.setItem(USER_KEY, JSON.stringify(user));
+}
+
+export function clearAuthSession() {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(USER_KEY);
 }
 
 type ApiOptions = RequestInit & {
@@ -62,21 +90,25 @@ export async function apiRequest<T>(
     });
   } catch {
     throw new Error(
-      `Cannot reach Laravel at ${API_URL}. Make sure php artisan serve is running.`
+      `Cannot reach Laravel at ${API_URL}. Check the selected API URL and server.`
     );
   }
 
   const data = (await response.json().catch(() => null)) as ApiErrorBody | null;
 
   if (!response.ok) {
+    if (response.status === 401 && options.auth !== false) {
+      clearAuthSession();
+    }
+
     throw new Error(getErrorMessage(data));
   }
 
   return data as T;
 }
 
-export function apiGet<T>(path: string) {
-  return apiRequest<T>(path, { method: 'GET' });
+export function apiGet<T>(path: string, auth = true) {
+  return apiRequest<T>(path, { method: 'GET', auth });
 }
 
 export function apiPost<T>(path: string, body: unknown, auth = true) {
@@ -92,13 +124,6 @@ export function apiPostForm<T>(path: string, body: FormData, auth = true) {
     method: 'POST',
     body,
     auth,
-  });
-}
-
-export function apiPut<T>(path: string, body: unknown) {
-  return apiRequest<T>(path, {
-    method: 'PUT',
-    body: JSON.stringify(body),
   });
 }
 

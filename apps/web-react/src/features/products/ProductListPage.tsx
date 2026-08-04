@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { ImagePlus, RefreshCw } from 'lucide-react';
-import { API_URL, apiGet, apiPostForm } from '../../core/api/client';
+import { API_URL, apiDelete, apiGet, apiPostForm } from '../../core/api/client';
 import { ProductImage } from './ProductImage';
 import type { Product } from './types';
 
@@ -38,7 +38,7 @@ export function ProductListPage() {
     setError('');
 
     try {
-      const data = await apiGet<Product[]>('/products');
+      const data = await apiGet<Product[]>('/admin/products');
       setProducts(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load products');
@@ -98,6 +98,25 @@ export function ProductListPage() {
     setPreviewUrl(URL.createObjectURL(selectedImage));
   }
 
+
+  async function handleDelete(product: Product) {
+    const confirmed = window.confirm(`Delete ${product.name}? This also removes its Supabase image.`);
+    if (!confirmed) return;
+
+    setError('');
+    setSuccess('');
+
+    try {
+      await apiDelete<{ message: string }>(`/admin/products/${product.id}`);
+      setProducts((currentProducts) =>
+        currentProducts.filter((item) => item.id !== product.id)
+      );
+      setSuccess(`${product.name} was deleted.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete product');
+    }
+  }
+
   function resetForm() {
     setForm(emptyForm);
     setImage(null);
@@ -129,11 +148,11 @@ export function ProductListPage() {
     data.append('image', image);
 
     try {
-      const newProduct = await apiPostForm<Product>('/products', data);
+      const newProduct = await apiPostForm<Product>('/admin/products', data);
       setProducts((currentProducts) => [newProduct, ...currentProducts]);
       resetForm();
       setSuccess(
-        'Product and image saved. Laravel uploaded the image to Supabase, and the same URL is ready for React and Flutter.'
+        'Product and image saved. Laravel uploaded the image to Supabase Storage.'
       );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add product');
@@ -147,7 +166,7 @@ export function ProductListPage() {
       <div className="page-header">
         <div>
           <h2>Products</h2>
-          <p>Upload once from the web; display the same image on web and mobile.</p>
+          <p>Manage the production catalog and upload images to Supabase.</p>
         </div>
 
         <button
@@ -162,7 +181,7 @@ export function ProductListPage() {
       </div>
 
       <div className="connection-note">
-        <strong>Connected API:</strong> <code>{API_URL}/products</code>
+        <strong>Admin API:</strong> <code>{API_URL}/admin/products</code>
       </div>
 
       <div className="product-form-card">
@@ -282,6 +301,19 @@ export function ProductListPage() {
               <div className="product-meta">
                 <strong>${Number(product.price).toFixed(2)}</strong>
                 <span>Stock: {product.stock}</span>
+              </div>
+
+              <div className="admin-product-actions">
+                <span className={product.is_active === false ? 'status-off' : 'status-on'}>
+                  {product.is_active === false ? 'Inactive' : 'Active'}
+                </span>
+                <button
+                  type="button"
+                  className="danger-button"
+                  onClick={() => void handleDelete(product)}
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </article>

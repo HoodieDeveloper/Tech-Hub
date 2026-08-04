@@ -1,56 +1,146 @@
 import { FormEvent, useState } from 'react';
-import { apiPost, setToken } from '../../core/api/client';
+import { ArrowLeft, LockKeyhole, UserPlus } from 'lucide-react';
+import {
+  apiPost,
+  setAuthSession,
+  type AuthUser,
+} from '../../core/api/client';
 
-type LoginResponse = {
+type AuthResponse = {
   token: string;
-  user: {
-    id: number;
-    name: string;
-    email: string;
-  };
+  user: AuthUser;
 };
 
-export function LoginPage() {
-  const [email, setEmail] = useState('admin@example.com');
-  const [password, setPassword] = useState('password');
-  const [message, setMessage] = useState('');
+type Props = {
+  onSuccess: (user: AuthUser) => void;
+  onBack: () => void;
+};
+
+export function LoginPage({ onSuccess, onBack }: Props) {
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirmation, setPasswordConfirmation] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  async function handleSubmit(event: FormEvent) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setMessage('');
+    setLoading(true);
     setError('');
 
     try {
-      const data = await apiPost<LoginResponse>('/login', { email, password }, false);
-      setToken(data.token);
-      setMessage(`Logged in as ${data.user.name}`);
+      const data = mode === 'login'
+        ? await apiPost<AuthResponse>('/login', { email, password }, false)
+        : await apiPost<AuthResponse>(
+            '/register',
+            {
+              name,
+              email,
+              password,
+              password_confirmation: passwordConfirmation,
+            },
+            false
+          );
+
+      setAuthSession(data.token, data.user);
+      onSuccess(data.user);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : 'Authentication failed.');
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <section className="auth-card">
-      <h2>Login</h2>
-      <p>Use Laravel Sanctum token login.</p>
+    <div className="auth-page">
+      <button className="back-button" type="button" onClick={onBack}>
+        <ArrowLeft size={18} /> Back to products
+      </button>
 
-      <form onSubmit={handleSubmit} className="form">
-        <label>
-          Email
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
-        </label>
+      <section className="auth-panel">
+        <div className="auth-intro">
+          <span className="auth-icon">
+            {mode === 'login' ? <LockKeyhole size={28} /> : <UserPlus size={28} />}
+          </span>
+          <h1>{mode === 'login' ? 'Login to TechHub' : 'Create customer account'}</h1>
+          <p>
+            Admins and customers use this same login. After login, Laravel reads the
+            role from Supabase PostgreSQL and sends each user to the correct page.
+          </p>
+        </div>
 
-        <label>
-          Password
-          <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" />
-        </label>
+        <div className="auth-tabs">
+          <button
+            type="button"
+            className={mode === 'login' ? 'active' : ''}
+            onClick={() => setMode('login')}
+          >
+            Login
+          </button>
+          <button
+            type="button"
+            className={mode === 'register' ? 'active' : ''}
+            onClick={() => setMode('register')}
+          >
+            Register
+          </button>
+        </div>
 
-        <button type="submit">Login</button>
-      </form>
+        <form className="auth-form" onSubmit={handleSubmit}>
+          {mode === 'register' && (
+            <label>
+              Full name
+              <input value={name} onChange={(event) => setName(event.target.value)} required />
+            </label>
+          )}
 
-      {message && <p className="success">{message}</p>}
-      {error && <p className="error">{error}</p>}
-    </section>
+          <label>
+            Email
+            <input
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </label>
+
+          <label>
+            Password
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              minLength={8}
+              required
+            />
+          </label>
+
+          {mode === 'register' && (
+            <label>
+              Confirm password
+              <input
+                type="password"
+                value={passwordConfirmation}
+                onChange={(event) => setPasswordConfirmation(event.target.value)}
+                minLength={8}
+                required
+              />
+            </label>
+          )}
+
+          <button type="submit" disabled={loading}>
+            {loading
+              ? 'Please wait…'
+              : mode === 'login'
+                ? 'Login'
+                : 'Create customer account'}
+          </button>
+        </form>
+
+        {error && <div className="alert error">{error}</div>}
+      </section>
+    </div>
   );
 }

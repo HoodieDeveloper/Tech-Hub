@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Services\SupabaseStorageService;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +21,7 @@ class ProductController extends Controller
     }
 
     /**
-     * Return active products to React and Flutter.
+     * Return active products to the web client.
      */
     public function index(): JsonResponse
     {
@@ -32,6 +33,13 @@ class ProductController extends Controller
         return response()->json($products);
     }
 
+    public function adminIndex(): JsonResponse
+    {
+        return response()->json(
+            Product::query()->latest()->get()
+        );
+    }
+
     public function show(Product $product): JsonResponse
     {
         return response()->json($product);
@@ -39,14 +47,36 @@ class ProductController extends Controller
 
     /**
      * Receive multipart/form-data from React, upload the image to Supabase,
-     * save its public URL, and return the product to both clients.
+     * save its public URL, and return the product to the web client.
      *
      * @throws ValidationException
      */
     public function store(Request $request): JsonResponse
     {
         $validated = $this->validateProduct($request, imageRequired: true);
-        $uploadedImage = $this->storage->uploadProductImage($request->file('image'));
+
+        try {
+            $uploadedImage = $this->storage->uploadProductImage($request->file('image'));
+        } catch (RequestException $exception) {
+            Log::error('Supabase product image upload failed.', [
+                'status' => $exception->response?->status(),
+                'response' => $exception->response?->json() ?? $exception->response?->body(),
+            ]);
+
+            return response()->json([
+                'message' => $this->storageErrorMessage($exception),
+            ], 502);
+        } catch (Throwable $exception) {
+            Log::error('Product image upload failed before Supabase accepted the request.', [
+                'error' => $exception->getMessage(),
+            ]);
+
+            return response()->json([
+                'message' => (bool) config('app.debug')
+                    ? $exception->getMessage()
+                    : 'Laravel could not prepare the image upload.',
+            ], 500);
+        }
 
         try {
             $product = Product::create([
@@ -84,7 +114,18 @@ class ProductController extends Controller
         $newImage = null;
 
         if ($request->hasFile('image')) {
-            $newImage = $this->storage->uploadProductImage($request->file('image'));
+            try {
+                $newImage = $this->storage->uploadProductImage($request->file('image'));
+            } catch (RequestException $exception) {
+                Log::error('Supabase replacement product image upload failed.', [
+                    'status' => $exception->response?->status(),
+                    'response' => $exception->response?->json() ?? $exception->response?->body(),
+                ]);
+
+                return response()->json([
+                    'message' => $this->storageErrorMessage($exception),
+                ], 502);
+            }
             $validated['image_path'] = $newImage['path'];
             $validated['image_url'] = $newImage['url'];
         }
@@ -143,6 +184,18 @@ class ProductController extends Controller
         return response()->json([
             'message' => 'Product deleted successfully',
         ]);
+    }
+
+    private function storageErrorMessage(RequestException $exception): string
+    {
+        $response = $exception->response;
+        $supabaseMessage = $response?->json('message');
+
+        if (is_string($supabaseMessage) && $supabaseMessage !== '') {
+            return 'Supabase Storage rejected the image upload: '.$supabaseMessage;
+        }
+
+        return 'Supabase Storage rejected the image upload. Check the Laravel Storage keys and bucket settings.';
     }
 
     /**

@@ -36,3 +36,4 @@ apps/mobile-flutter/.flutter-plugins-dependencies
 # OS
 .DS_Store
 Thumbs.db
+*.tsbuildinfo

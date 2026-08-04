@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/api/api_client.dart';
+import '../auth/login_page.dart';
 import 'product.dart';
 import 'product_api.dart';
+import 'product_details_page.dart';
 import 'product_image.dart';
 
 class ProductListPage extends StatefulWidget {
@@ -23,83 +25,142 @@ class _ProductListPageState extends State<ProductListPage> {
 
   Future<void> _refreshProducts() async {
     final future = ProductApi.getProducts();
-    setState(() {
-      _productsFuture = future;
-    });
+    setState(() => _productsFuture = future);
     await future;
+  }
+
+  Future<void> _openProduct(Product product) async {
+    if (!ApiClient.isLoggedIn) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => LoginPage(
+            onLoginSuccess: (user) {
+              Navigator.of(context).pop();
+
+              if (user['role'] == 'admin') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Admin account recognized. Use the web admin dashboard for management.'),
+                  ),
+                );
+                return;
+              }
+
+              _showDetails(product.id);
+            },
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (ApiClient.currentRole == 'admin') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Admin controls are available in the TechHub web dashboard.'),
+        ),
+      );
+      return;
+    }
+
+    _showDetails(product.id);
+  }
+
+  void _showDetails(int productId) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (context) => ProductDetailsPage(productId: productId),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          color: Theme.of(context).colorScheme.primaryContainer,
-          child: Text(
-            'Laravel API: ${ApiClient.baseUrl}/products',
-            style: Theme.of(context).textTheme.bodySmall,
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('TechHub Products'),
+        actions: [
+          if (ApiClient.isLoggedIn)
+            IconButton(
+              tooltip: 'Logout',
+              onPressed: () {
+                ApiClient.clearSession();
+                setState(() {});
+              },
+              icon: const Icon(Icons.logout),
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+            color: Theme.of(context).colorScheme.primaryContainer,
+            child: Text(
+              'Public catalog · ${ApiClient.baseUrl}/products',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
           ),
-        ),
-        Expanded(
-          child: FutureBuilder<List<Product>>(
-            future: _productsFuture,
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
+          Expanded(
+            child: FutureBuilder<List<Product>>(
+              future: _productsFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
 
-              if (snapshot.hasError) {
-                return _ErrorState(
-                  message: snapshot.error.toString(),
-                  onRetry: _refreshProducts,
-                );
-              }
+                if (snapshot.hasError) {
+                  return _ErrorState(
+                    message: snapshot.error.toString(),
+                    onRetry: _refreshProducts,
+                  );
+                }
 
-              final products = snapshot.data ?? const <Product>[];
+                final products = snapshot.data ?? const <Product>[];
 
-              if (products.isEmpty) {
+                if (products.isEmpty) {
+                  return RefreshIndicator(
+                    onRefresh: _refreshProducts,
+                    child: ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: const [
+                        SizedBox(height: 180),
+                        Icon(Icons.inventory_2_outlined, size: 56),
+                        SizedBox(height: 12),
+                        Center(child: Text('No active products yet.')),
+                      ],
+                    ),
+                  );
+                }
+
                 return RefreshIndicator(
                   onRefresh: _refreshProducts,
-                  child: ListView(
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(16),
                     physics: const AlwaysScrollableScrollPhysics(),
-                    children: const [
-                      SizedBox(height: 180),
-                      Icon(Icons.inventory_2_outlined, size: 56),
-                      SizedBox(height: 12),
-                      Center(
-                        child: Text(
-                          'No products yet.\nAdd one from the React web app.',
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
+                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: 420,
+                      mainAxisExtent: 345,
+                      crossAxisSpacing: 14,
+                      mainAxisSpacing: 14,
+                    ),
+                    itemCount: products.length,
+                    itemBuilder: (context, index) {
+                      final product = products[index];
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () => _openProduct(product),
+                        child: _ProductCard(product: product),
+                      );
+                    },
                   ),
                 );
-              }
-
-              return RefreshIndicator(
-                onRefresh: _refreshProducts,
-                child: GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 420,
-                    mainAxisExtent: 330,
-                    crossAxisSpacing: 14,
-                    mainAxisSpacing: 14,
-                  ),
-                  itemCount: products.length,
-                  itemBuilder: (context, index) {
-                    return _ProductCard(product: products[index]);
-                  },
-                ),
-              );
-            },
+              },
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -116,10 +177,7 @@ class _ProductCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ProductImage(
-            imageUrl: product.imageUrl,
-            productName: product.name,
-          ),
+          ProductImage(imageUrl: product.imageUrl, productName: product.name),
           Expanded(
             child: Padding(
               padding: const EdgeInsets.all(14),
@@ -131,8 +189,8 @@ class _ProductCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -148,13 +206,15 @@ class _ProductCard extends StatelessWidget {
                       Text(
                         '\$${product.price.toStringAsFixed(2)}',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
+                              fontWeight: FontWeight.w800,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                       ),
                       Text('Stock: ${product.stock}'),
                     ],
                   ),
+                  const SizedBox(height: 8),
+                  const Text('Tap to login and view details'),
                 ],
               ),
             ),
@@ -181,11 +241,7 @@ class _ErrorState extends StatelessWidget {
           children: [
             const Icon(Icons.cloud_off_outlined, size: 56),
             const SizedBox(height: 14),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            Text(message, textAlign: TextAlign.center),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: onRetry,

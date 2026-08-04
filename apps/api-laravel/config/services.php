@@ -6,12 +6,6 @@ return [
     |--------------------------------------------------------------------------
     | Third Party Services
     |--------------------------------------------------------------------------
-    |
-    | This file is for storing the credentials for third party services such
-    | as Mailgun, Postmark, AWS and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
-    |
     */
 
     'postmark' => [
@@ -35,12 +29,11 @@ return [
         ],
     ],
 
-
     'supabase' => [
         'url' => env('SUPABASE_URL'),
-        // Prefer the new sb_secret_ key. The legacy service_role key also works.
-        'key' => env('SUPABASE_SECRET_KEY', env('SUPABASE_SERVICE_ROLE_KEY')),
-        'bucket' => env('SUPABASE_STORAGE_BUCKET', 'product-images'),
+        'secret_key' => env('SUPABASE_SECRET_KEY'),
+        'service_role_key' => env('SUPABASE_SERVICE_ROLE_KEY'),
+        'storage_bucket' => env('SUPABASE_STORAGE_BUCKET', 'product-images'),
     ],
 
 ];

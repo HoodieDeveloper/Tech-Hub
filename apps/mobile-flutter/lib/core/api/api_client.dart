@@ -11,7 +11,7 @@ class ApiClient {
     defaultValue: '',
   );
 
-  static const Duration _timeout = Duration(seconds: 15);
+  static const Duration _timeout = Duration(seconds: 20);
 
   static String get baseUrl {
     final configuredUrl = _configuredBaseUrl.trim();
@@ -19,16 +19,26 @@ class ApiClient {
       return _withoutTrailingSlash(configuredUrl);
     }
 
+    // Railway is the safe default for the mobile app. Pass a different URL
+    // with --dart-define when a developer wants to test another API.
     if (kIsWeb) {
-      return 'http://localhost:8000/api';
+      return 'https://tech-hub-production-dd8a.up.railway.app/api';
     }
 
-    // Android Emulator reaches the host computer through 10.0.2.2.
-    // For a physical phone, pass your computer's LAN IP with --dart-define.
-    return 'http://10.0.2.2:8000/api';
+    return 'https://tech-hub-production-dd8a.up.railway.app/api';
   }
 
   static String? token;
+  static Map<String, dynamic>? currentUser;
+
+  static bool get isLoggedIn => token != null && token!.isNotEmpty;
+
+  static String? get currentRole => currentUser?['role']?.toString();
+
+  static void clearSession() {
+    token = null;
+    currentUser = null;
+  }
 
   static Map<String, String> get _headers {
     final headers = <String, String>{
@@ -44,15 +54,18 @@ class ApiClient {
     return headers;
   }
 
-  static Future<dynamic> get(String path) async {
+  static Future<dynamic> get(String path, {bool auth = true}) async {
     try {
+      final headers = Map<String, String>.from(_headers);
+      if (!auth) headers.remove('Authorization');
+
       final response = await http
-          .get(_buildUri(path), headers: _headers)
+          .get(_buildUri(path), headers: headers)
           .timeout(_timeout);
       return _handleResponse(response);
     } on http.ClientException {
       throw ApiException(
-        'Cannot connect to Laravel at $baseUrl. Check that the API is running.',
+        'Cannot connect to Laravel at $baseUrl. Check the selected API URL.',
       );
     } on FormatException {
       throw const ApiException('The API returned invalid JSON data.');
@@ -64,20 +77,24 @@ class ApiClient {
 
   static Future<dynamic> post(
     String path,
-    Map<String, dynamic> body,
-  ) async {
+    Map<String, dynamic> body, {
+    bool auth = true,
+  }) async {
     try {
+      final headers = Map<String, String>.from(_headers);
+      if (!auth) headers.remove('Authorization');
+
       final response = await http
           .post(
             _buildUri(path),
-            headers: _headers,
+            headers: headers,
             body: jsonEncode(body),
           )
           .timeout(_timeout);
       return _handleResponse(response);
     } on http.ClientException {
       throw ApiException(
-        'Cannot connect to Laravel at $baseUrl. Check that the API is running.',
+        'Cannot connect to Laravel at $baseUrl. Check the selected API URL.',
       );
     } on FormatException {
       throw const ApiException('The API returned invalid JSON data.');
@@ -99,6 +116,10 @@ class ApiClient {
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return decoded;
+    }
+
+    if (response.statusCode == 401) {
+      clearSession();
     }
 
     if (decoded is Map<String, dynamic>) {
