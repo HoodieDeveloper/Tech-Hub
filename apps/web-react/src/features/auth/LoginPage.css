@@ -1,0 +1,633 @@
+/* =========================================================
+   TECHHUB SHOP LOGIN / REGISTER PAGE
+   ========================================================= */
+
+.shop-auth-page {
+  min-height: 100vh;
+  background: #ffffff;
+  color: #13213a;
+}
+
+/* ---------- Header ---------- */
+
+.shop-auth-header {
+  width: 100%;
+  background: #ffffff;
+}
+
+.shop-auth-topbar {
+  min-height: 40px;
+  padding: 8px clamp(24px, 5vw, 80px);
+  background: #82aef3;
+  color: #0c2448;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  font-size: 12px;
+}
+
+.shop-auth-topbar > span,
+.shop-auth-topbar > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.shop-auth-topbar > div {
+  gap: 35px;
+}
+
+.shop-auth-mainbar {
+  min-height: 86px;
+  padding: 14px clamp(24px, 4vw, 48px);
+  background: #1f4db8;
+  display: grid;
+  grid-template-columns: 205px minmax(350px, 720px) auto;
+  align-items: center;
+  gap: 28px;
+}
+
+.shop-auth-brand {
+  border: 0 !important;
+  background: transparent !important;
+  color: #ffffff !important;
+  padding: 0 !important;
+  justify-content: flex-start !important;
+  font-size: 17px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.shop-auth-search {
+  height: 44px;
+  display: grid;
+  grid-template-columns: 130px 1fr;
+}
+
+.shop-auth-search .category-button {
+  border: 0 !important;
+  border-radius: 5px 0 0 5px !important;
+  background: #f4f4f4 !important;
+  color: #333333 !important;
+  padding: 0 13px !important;
+  display: flex;
+  justify-content: space-between !important;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.shop-auth-search label {
+  position: relative;
+  min-width: 0;
+}
+
+.shop-auth-search input {
+  width: 100%;
+  height: 44px;
+  border: 1px solid #9eb9f4;
+  border-radius: 0 5px 5px 0;
+  background: transparent;
+  color: #ffffff;
+  padding: 0 50px 0 16px;
+  outline: none;
+}
+
+.shop-auth-search input::placeholder {
+  color: #9eb9e8;
+}
+
+.shop-auth-search label svg {
+  position: absolute;
+  right: 15px;
+  top: 11px;
+  color: #ffffff;
+}
+
+.shop-auth-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 20px;
+}
+
+.shop-auth-actions button {
+  position: relative;
+  border: 0 !important;
+  background: transparent !important;
+  color: #ffffff !important;
+  padding: 7px 3px !important;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 400 !important;
+  white-space: nowrap;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -2px;
+  left: 18px;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  padding: 0 5px;
+  background: #ff4a43;
+  color: #ffffff;
+  font-size: 11px;
+  display: grid;
+  place-items: center;
+}
+
+.shop-auth-nav {
+  min-height: 50px;
+  padding: 0 clamp(24px, 5vw, 80px);
+  border-bottom: 1px solid #e2e5ea;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: clamp(28px, 5vw, 74px);
+}
+
+.shop-auth-nav button {
+  border: 0 !important;
+  background: transparent !important;
+  color: #151515 !important;
+  padding: 15px 0 !important;
+  font-size: 13px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+}
+
+/* ---------- Main layout ---------- */
+
+.shop-auth-content {
+  min-height: calc(100vh - 176px);
+  display: grid;
+  grid-template-columns: minmax(360px, 32%) 1fr;
+  background: #ffffff;
+}
+
+/* ---------- Left image panel ---------- */
+
+.shop-auth-visual {
+  position: relative;
+  min-height: 760px;
+  overflow: hidden;
+  background: #173d8f;
+}
+
+.shop-auth-visual > img {
+  width: 100%;
+  height: 100%;
+  min-height: 760px;
+  display: block;
+  object-fit: cover;
+  object-position: center;
+}
+
+.shop-auth-visual::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(27, 71, 155, 0.12),
+    rgba(12, 47, 125, 0.28)
+  );
+  pointer-events: none;
+}
+
+.shop-auth-visual-overlay {
+  position: absolute;
+  z-index: 2;
+  top: 30%;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+.shop-auth-visual-overlay button {
+  width: 168px;
+  min-height: 78px;
+  border: 0 !important;
+  border-radius: 40px 0 0 40px !important;
+  background: transparent !important;
+  color: #ffffff !important;
+  padding: 0 25px !important;
+  justify-content: flex-start !important;
+  font-size: 25px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.shop-auth-visual-overlay button.active {
+  background: #ffffff !important;
+  color: #82aaf5 !important;
+}
+
+.shop-auth-visual-overlay button + button {
+  margin-top: 10px;
+}
+
+/* ---------- Right form panel ---------- */
+
+.shop-auth-form-section {
+  position: relative;
+  min-width: 0;
+  padding: 54px clamp(35px, 8vw, 155px) 42px;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
+.shop-auth-back {
+  position: absolute;
+  top: 20px;
+  left: 30px;
+  border: 0 !important;
+  background: transparent !important;
+  color: #234879 !important;
+  padding: 8px !important;
+  font-size: 13px;
+}
+
+.shop-auth-form-container {
+  width: min(570px, 100%);
+  margin-top: 18px;
+  text-align: center;
+}
+
+.shop-auth-user-icon {
+  width: 82px;
+  height: 82px;
+  margin: 0 auto 25px;
+  border: 5px solid #82aaf5;
+  border-radius: 50%;
+  color: #82aaf5;
+  display: grid;
+  place-items: center;
+}
+
+.shop-auth-form-container h1 {
+  margin: 0 0 30px;
+  color: #2154f3;
+  font-size: clamp(25px, 2.2vw, 31px);
+  font-weight: 800;
+}
+
+.shop-auth-form {
+  width: 100%;
+  display: grid;
+  gap: 20px;
+}
+
+.shop-auth-input {
+  min-height: 61px;
+  border: 1.5px solid #79a0f2;
+  border-radius: 10px;
+  padding: 0 18px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  color: #154cb9;
+  background: #ffffff;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+
+.shop-auth-input:focus-within {
+  border-color: #2459f5;
+  box-shadow: 0 0 0 4px rgba(36, 89, 245, 0.1);
+}
+
+.shop-auth-input input {
+  width: 100%;
+  height: 57px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #1a3158;
+  font-size: 16px;
+}
+
+.shop-auth-input input::placeholder {
+  color: #9aafe5;
+}
+
+.shop-auth-options {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 25px;
+}
+
+.remember-option {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  color: #1f4db8;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.remember-option input {
+  width: 21px;
+  height: 21px;
+  accent-color: #2558ef;
+}
+
+.forgot-password-button {
+  border: 0 !important;
+  background: transparent !important;
+  color: #ff3c35 !important;
+  padding: 6px 0 !important;
+  font-size: 15px;
+  font-weight: 500 !important;
+}
+
+.shop-auth-submit {
+  width: 151px;
+  min-height: 45px;
+  margin: 3px auto 0;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: #2455f5 !important;
+  color: #ffffff !important;
+  padding: 0 18px !important;
+  display: flex;
+  align-items: center;
+  justify-content: space-between !important;
+  font-size: 16px;
+  font-weight: 500 !important;
+  box-shadow: 0 8px 20px rgba(36, 85, 245, 0.18);
+}
+
+.shop-auth-submit:hover:not(:disabled) {
+  background: #1648e8 !important;
+  transform: translateY(-1px);
+}
+
+.shop-auth-social-section {
+  margin-top: 37px;
+}
+
+.social-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 25px;
+}
+
+.social-divider span {
+  height: 1px;
+  background: #303030;
+}
+
+.social-divider p {
+  margin: 0;
+  color: #161616;
+  font-size: 14px;
+}
+
+.social-login-grid {
+  margin-top: 28px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 44px;
+}
+
+.social-login-grid button {
+  min-height: 81px;
+  border: 1px solid #d8d8d8 !important;
+  border-radius: 9px !important;
+  background: #ffffff !important;
+  color: #242424 !important;
+  padding: 9px !important;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 400 !important;
+}
+
+.social-login-grid button:hover {
+  border-color: #7fa4f3 !important;
+  box-shadow: 0 8px 20px rgba(31, 77, 184, 0.08);
+}
+
+.google-logo,
+.apple-logo,
+.facebook-logo {
+  display: grid;
+  place-items: center;
+  font-size: 35px;
+  line-height: 1;
+}
+
+.google-logo {
+  color: #4285f4;
+}
+
+.apple-logo {
+  color: #000000;
+  font-size: 40px;
+}
+
+.facebook-logo {
+  width: 43px;
+  height: 43px;
+  margin: 0 auto;
+  border-radius: 50%;
+  background: #1877f2;
+  color: #ffffff;
+  font-family: Arial, sans-serif;
+  font-size: 34px;
+  font-weight: 800;
+}
+
+.shop-auth-help {
+  margin-top: 25px;
+  color: #7a8798;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+/* ---------- Responsive ---------- */
+
+@media (max-width: 1100px) {
+  .shop-auth-mainbar {
+    grid-template-columns: 180px 1fr;
+  }
+
+  .shop-auth-actions {
+    grid-column: 1 / -1;
+    justify-content: center;
+  }
+
+  .shop-auth-nav {
+    overflow-x: auto;
+    gap: 35px;
+  }
+
+  .shop-auth-topbar > div {
+    gap: 15px;
+  }
+
+  .shop-auth-form-section {
+    padding-left: 45px;
+    padding-right: 45px;
+  }
+
+  .social-login-grid {
+    gap: 18px;
+  }
+}
+
+@media (max-width: 800px) {
+  .shop-auth-topbar {
+    display: none;
+  }
+
+  .shop-auth-mainbar {
+    min-height: auto;
+    grid-template-columns: 1fr;
+    padding: 18px;
+    gap: 15px;
+  }
+
+  .shop-auth-brand {
+    justify-content: center !important;
+  }
+
+  .shop-auth-search {
+    width: 100%;
+    grid-template-columns: 115px 1fr;
+  }
+
+  .shop-auth-actions {
+    display: none;
+  }
+
+  .shop-auth-nav {
+    min-height: 45px;
+    padding: 0 18px;
+  }
+
+  .shop-auth-content {
+    min-height: auto;
+    grid-template-columns: 1fr;
+  }
+
+  .shop-auth-visual {
+    min-height: 260px;
+    height: 260px;
+  }
+
+  .shop-auth-visual > img {
+    min-height: 260px;
+    height: 260px;
+  }
+
+  .shop-auth-visual-overlay {
+    top: auto;
+    left: 50%;
+    right: auto;
+    bottom: 0;
+    transform: translateX(-50%);
+    flex-direction: row;
+  }
+
+  .shop-auth-visual-overlay button {
+    width: 140px;
+    min-height: 58px;
+    border-radius: 30px 30px 0 0 !important;
+    justify-content: center !important;
+    font-size: 18px;
+  }
+
+  .shop-auth-visual-overlay button + button {
+    margin-top: 0;
+    margin-left: 8px;
+  }
+
+  .shop-auth-form-section {
+    padding: 55px 22px 45px;
+  }
+
+  .shop-auth-back {
+    left: 15px;
+  }
+}
+
+@media (max-width: 520px) {
+  .shop-auth-search {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .shop-auth-search .category-button {
+    display: none;
+  }
+
+  .shop-auth-search input {
+    border-radius: 7px;
+  }
+
+  .shop-auth-nav {
+    display: none;
+  }
+
+  .shop-auth-visual {
+    min-height: 220px;
+    height: 220px;
+  }
+
+  .shop-auth-visual > img {
+    min-height: 220px;
+    height: 220px;
+  }
+
+  .shop-auth-form-section {
+    padding: 50px 16px 35px;
+  }
+
+  .shop-auth-user-icon {
+    width: 68px;
+    height: 68px;
+  }
+
+  .shop-auth-form-container h1 {
+    font-size: 24px;
+  }
+
+  .shop-auth-input {
+    padding: 0 14px;
+    gap: 13px;
+  }
+
+  .shop-auth-options {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .social-login-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .social-login-grid button {
+    min-height: 65px;
+    flex-direction: row;
+  }
+}

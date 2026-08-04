@@ -1,5 +1,18 @@
 import { FormEvent, useState } from 'react';
-import { ArrowLeft, LockKeyhole, UserPlus } from 'lucide-react';
+import './LoginPage.css';
+import {
+  ArrowLeft,
+  ArrowRight,
+  ChevronDown,
+  Headphones,
+  Heart,
+  LockKeyhole,
+  Mail,
+  Search,
+  ShoppingCart,
+  Truck,
+  UserRound,
+} from 'lucide-react';
 import {
   apiPost,
   setAuthSession,
@@ -22,6 +35,7 @@ export function LoginPage({ onSuccess, onBack }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirmation, setPasswordConfirmation] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -31,116 +45,307 @@ export function LoginPage({ onSuccess, onBack }: Props) {
     setError('');
 
     try {
-      const data = mode === 'login'
-        ? await apiPost<AuthResponse>('/login', { email, password }, false)
-        : await apiPost<AuthResponse>(
-            '/register',
-            {
-              name,
-              email,
-              password,
-              password_confirmation: passwordConfirmation,
-            },
-            false
-          );
+      const data =
+        mode === 'login'
+          ? await apiPost<AuthResponse>(
+              '/login',
+              {
+                email,
+                password,
+              },
+              false,
+            )
+          : await apiPost<AuthResponse>(
+              '/register',
+              {
+                name,
+                email,
+                password,
+                password_confirmation: passwordConfirmation,
+              },
+              false,
+            );
 
       setAuthSession(data.token, data.user);
       onSuccess(data.user);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Authentication failed.');
+      setError(
+        err instanceof Error ? err.message : 'Authentication failed.',
+      );
     } finally {
       setLoading(false);
     }
   }
 
+  function changeMode(nextMode: 'login' | 'register') {
+    setMode(nextMode);
+    setError('');
+    setPassword('');
+    setPasswordConfirmation('');
+  }
+
   return (
-    <div className="auth-page">
-      <button className="back-button" type="button" onClick={onBack}>
-        <ArrowLeft size={18} /> Back to products
-      </button>
-
-      <section className="auth-panel">
-        <div className="auth-intro">
-          <span className="auth-icon">
-            {mode === 'login' ? <LockKeyhole size={28} /> : <UserPlus size={28} />}
+    <div className="shop-auth-page">
+      <header className="shop-auth-header">
+        <div className="shop-auth-topbar">
+          <span>
+            <Truck size={13} />
+            Free shipping on orders over $49
           </span>
-          <h1>{mode === 'login' ? 'Login to TechHub' : 'Create customer account'}</h1>
-          <p>
-            Admins and customers use this same login. After login, Laravel reads the
-            role from Supabase PostgreSQL and sends each user to the correct page.
-          </p>
+
+          <div>
+            <span>Need help?</span>
+            <span>+855 12 23 23 56</span>
+            <span>Support</span>
+            <span>Track Order</span>
+            <span>English | USD</span>
+          </div>
         </div>
 
-        <div className="auth-tabs">
+        <div className="shop-auth-mainbar">
           <button
             type="button"
-            className={mode === 'login' ? 'active' : ''}
-            onClick={() => setMode('login')}
+            className="shop-auth-brand"
+            onClick={onBack}
           >
-            Login
+            DCS Computer Shop
           </button>
-          <button
-            type="button"
-            className={mode === 'register' ? 'active' : ''}
-            onClick={() => setMode('register')}
-          >
-            Register
-          </button>
-        </div>
 
-        <form className="auth-form" onSubmit={handleSubmit}>
-          {mode === 'register' && (
+          <div className="shop-auth-search">
+            <button type="button" className="category-button">
+              All Categories
+              <ChevronDown size={17} />
+            </button>
+
             <label>
-              Full name
-              <input value={name} onChange={(event) => setName(event.target.value)} required />
-            </label>
-          )}
-
-          <label>
-            Email
-            <input
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              required
-            />
-          </label>
-
-          <label>
-            Password
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              minLength={8}
-              required
-            />
-          </label>
-
-          {mode === 'register' && (
-            <label>
-              Confirm password
               <input
-                type="password"
-                value={passwordConfirmation}
-                onChange={(event) => setPasswordConfirmation(event.target.value)}
-                minLength={8}
-                required
+                type="search"
+                placeholder="Search for products, brands or categories..."
               />
+              <Search size={22} />
             </label>
-          )}
+          </div>
 
-          <button type="submit" disabled={loading}>
-            {loading
-              ? 'Please wait…'
-              : mode === 'login'
-                ? 'Login'
-                : 'Create customer account'}
+          <div className="shop-auth-actions">
+            <button type="button">
+              <Heart size={22} />
+              <span>Wishlist</span>
+            </button>
+
+            <button type="button">
+              <UserRound size={22} />
+              <span>Account</span>
+            </button>
+
+            <button type="button" className="cart-button">
+              <ShoppingCart size={23} />
+              <span className="cart-badge">0</span>
+              <span>Cart</span>
+            </button>
+          </div>
+        </div>
+
+        <nav className="shop-auth-nav">
+          <button type="button" onClick={onBack}>
+            Home
           </button>
-        </form>
 
-        {error && <div className="alert error">{error}</div>}
-      </section>
+          <button type="button">
+            Shop by Category
+            <ChevronDown size={16} />
+          </button>
+
+          <button type="button">Deals</button>
+          <button type="button">New Arrivals</button>
+          <button type="button">Best Sellers</button>
+          <button type="button">Brands</button>
+          <button type="button">TechHub Rewards</button>
+        </nav>
+      </header>
+
+      <main className="shop-auth-content">
+        <section className="shop-auth-visual">
+          <img
+            src="/images/sci_fi_laptop.png"
+            alt="Futuristic gaming laptop"
+          />
+
+          <div className="shop-auth-visual-overlay">
+            <button
+              type="button"
+              className={mode === 'login' ? 'active' : ''}
+              onClick={() => changeMode('login')}
+            >
+              Login
+            </button>
+
+            <button
+              type="button"
+              className={mode === 'register' ? 'active' : ''}
+              onClick={() => changeMode('register')}
+            >
+              Sign Up
+            </button>
+          </div>
+        </section>
+
+        <section className="shop-auth-form-section">
+          <button
+            type="button"
+            className="shop-auth-back"
+            onClick={onBack}
+          >
+            <ArrowLeft size={17} />
+            Back to products
+          </button>
+
+          <div className="shop-auth-form-container">
+            <div className="shop-auth-user-icon">
+              <UserRound size={54} strokeWidth={1.8} />
+            </div>
+
+            <h1>
+              {mode === 'login'
+                ? 'Login to your account'
+                : 'Create New Account'}
+            </h1>
+
+            <form className="shop-auth-form" onSubmit={handleSubmit}>
+              {mode === 'register' && (
+                <label className="shop-auth-input">
+                  <UserRound size={27} />
+
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(event) => setName(event.target.value)}
+                    placeholder="Please Enter your Username"
+                    required
+                  />
+                </label>
+              )}
+
+              <label className="shop-auth-input">
+                <Mail size={27} />
+
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder={
+                    mode === 'login'
+                      ? 'Please Enter your E-mail'
+                      : 'Please Enter your E-mail'
+                  }
+                  required
+                />
+              </label>
+
+              <label className="shop-auth-input">
+                <LockKeyhole size={27} />
+
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Password"
+                  minLength={8}
+                  required
+                />
+              </label>
+
+              {mode === 'register' && (
+                <label className="shop-auth-input">
+                  <LockKeyhole size={27} />
+
+                  <input
+                    type="password"
+                    value={passwordConfirmation}
+                    onChange={(event) =>
+                      setPasswordConfirmation(event.target.value)
+                    }
+                    placeholder="Please Re-type your Password"
+                    minLength={8}
+                    required
+                  />
+                </label>
+              )}
+
+              <div className="shop-auth-options">
+                <label className="remember-option">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(event) =>
+                      setRememberMe(event.target.checked)
+                    }
+                  />
+                  <span>Remember Me</span>
+                </label>
+
+                {mode === 'login' && (
+                  <button
+                    type="button"
+                    className="forgot-password-button"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+
+              {error && <div className="alert error">{error}</div>}
+
+              <button
+                type="submit"
+                className="shop-auth-submit"
+                disabled={loading}
+              >
+                <span>
+                  {loading
+                    ? 'Please wait...'
+                    : mode === 'login'
+                      ? 'Login'
+                      : 'Create Account'}
+                </span>
+
+                {!loading && <ArrowRight size={19} />}
+              </button>
+            </form>
+
+            {mode === 'login' && (
+              <div className="shop-auth-social-section">
+                <div className="social-divider">
+                  <span />
+                  <p>or continue with</p>
+                  <span />
+                </div>
+
+                <div className="social-login-grid">
+                  <button type="button">
+                    <strong className="google-logo">G</strong>
+                    <span>Google</span>
+                  </button>
+
+                  <button type="button">
+                    <strong className="apple-logo">●</strong>
+                    <span>Apple</span>
+                  </button>
+
+                  <button type="button">
+                    <strong className="facebook-logo">f</strong>
+                    <span>Facebook</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="shop-auth-help">
+              <Headphones size={17} />
+              Need assistance? Contact our support team.
+            </div>
+          </div>
+        </section>
+      </main>
     </div>
   );
 }
