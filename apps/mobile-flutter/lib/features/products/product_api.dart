@@ -5,10 +5,8 @@ class ProductApi {
   ProductApi._();
 
   static Future<List<Product>> getProducts() async {
-    final dynamic data = await ApiClient.get('/products');
+    final dynamic data = await ApiClient.get('/products', auth: false);
 
-    // Supports the current Laravel response: [ {...}, {...} ]
-    // and a future Laravel Resource response: { "data": [ ... ] }.
     final dynamic rawList = data is Map<String, dynamic> ? data['data'] : data;
 
     if (rawList is! List) {
@@ -21,5 +19,15 @@ class ProductApi {
           (item) => Product.fromJson(Map<String, dynamic>.from(item)),
         )
         .toList();
+  }
+
+  static Future<Product> getProduct(int id) async {
+    final dynamic data = await ApiClient.get('/products/$id');
+
+    if (data is! Map) {
+      throw const ApiException('Product response is invalid.');
+    }
+
+    return Product.fromJson(Map<String, dynamic>.from(data));
   }
 }
