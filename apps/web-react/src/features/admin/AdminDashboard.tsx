@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 import { apiGet, type AuthUser } from '../../core/api/client';
-import { ProductListPage } from '../products/ProductListPage';
+import { AdminProductsPage } from './products/AdminProductsPage';
 
 import { AdminOrdersPage } from './orders/AdminOrdersPage';
 import { AdminRatingsPage } from './ratings/AdminRatingsPage';
@@ -240,7 +240,7 @@ export function AdminDashboard({
         )}
 
         {section === 'products' && (
-          <ProductListPage />
+         <AdminProductsPage />
         )}
 
         {section === 'orders' && (

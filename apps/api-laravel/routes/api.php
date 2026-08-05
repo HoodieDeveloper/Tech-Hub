@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
@@ -46,6 +47,19 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
         Route::get('/users', [AdminUserController::class, 'index']);
 
+        // Category routes
+        Route::get('/categories', [CategoryController::class, 'index']);
+        Route::post('/categories', [CategoryController::class, 'store']);
+        Route::patch('/categories/{category}', [
+            CategoryController::class,
+            'update',
+        ]);
+        Route::delete('/categories/{category}', [
+            CategoryController::class,
+            'destroy',
+        ]);
+
+        // Product routes
         Route::get('/products', [ProductController::class, 'adminIndex']);
         Route::post('/products', [ProductController::class, 'store']);
 
