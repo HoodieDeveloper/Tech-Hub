@@ -22,6 +22,7 @@ import {
 } from '../../../core/api/client';
 
 import { ProductImage } from '../../products/ProductImage';
+import { DeleteProductModal } from './DeleteProductModal';
 
 import type {
   Category,
@@ -34,7 +35,8 @@ import './ProductsPage.css';
 
 type ProductView =
   | 'list'
-  | 'add';
+  | 'add'
+  | 'edit';
 
 type CategoryResponse = {
   data: Category[];
@@ -50,6 +52,14 @@ type StatusFilter =
 export function AdminProductsPage() {
   const [view, setView] =
     useState<ProductView>('list');
+
+  const [selectedProduct, setSelectedProduct] =
+    useState<Product | null>(null);
+const [pendingDeleteProduct, setPendingDeleteProduct] =
+  useState<Product | null>(null);
+
+const [deleting, setDeleting] =
+  useState(false);
 
   const [products, setProducts] =
     useState<Product[]>([]);
@@ -124,7 +134,8 @@ export function AdminProductsPage() {
       ).length,
 
       outOfStock: products.filter(
-        (product) => product.stock === 0,
+        (product) =>
+          product.stock === 0,
       ).length,
     };
   }, [products]);
@@ -166,9 +177,7 @@ export function AdminProductsPage() {
           product.stock <= 5;
       }
 
-      if (
-        statusFilter === 'out_of_stock'
-      ) {
+      if (statusFilter === 'out_of_stock') {
         matchesStatus =
           product.stock === 0;
       }
@@ -186,64 +195,122 @@ export function AdminProductsPage() {
     statusFilter,
   ]);
 
-  async function handleDelete(
-    product: Product,
-  ) {
-    const confirmed = window.confirm(
-      `Delete "${product.name}"? This will also remove its image.`,
+ function openDeleteModal(product: Product) {
+  setError('');
+  setSuccess('');
+  setPendingDeleteProduct(product);
+}
+
+function closeDeleteModal() {
+  if (deleting) {
+    return;
+  }
+
+  setPendingDeleteProduct(null);
+}
+
+async function confirmDelete() {
+  if (!pendingDeleteProduct) {
+    return;
+  }
+
+  const product = pendingDeleteProduct;
+
+  setDeleting(true);
+  setError('');
+  setSuccess('');
+
+  try {
+    await apiDelete<{ message: string }>(
+      `/admin/products/${product.id}`,
     );
 
-    if (!confirmed) {
-      return;
-    }
+    setProducts((current) =>
+      current.filter(
+        (item) => item.id !== product.id,
+      ),
+    );
 
+    setPendingDeleteProduct(null);
+
+    setSuccess(
+      `${product.name} was deleted successfully.`,
+    );
+  } catch (err) {
+    setError(
+      err instanceof Error
+        ? err.message
+        : 'Unable to delete product.',
+    );
+  } finally {
+    setDeleting(false);
+  }
+}
+
+  function openAddPage() {
+    setSelectedProduct(null);
     setError('');
     setSuccess('');
+    setView('add');
+  }
 
-    try {
-      await apiDelete<{ message: string }>(
-        `/admin/products/${product.id}`,
-      );
+  function openEditPage(
+    product: Product,
+  ) {
+    setSelectedProduct(product);
+    setError('');
+    setSuccess('');
+    setView('edit');
+  }
 
+  function handleSaved(
+    savedProduct: Product,
+  ) {
+    if (view === 'edit') {
       setProducts((current) =>
-        current.filter(
-          (item) =>
-            item.id !== product.id,
+        current.map((product) =>
+          product.id === savedProduct.id
+            ? savedProduct
+            : product,
         ),
       );
 
       setSuccess(
-        `${product.name} was deleted successfully.`,
+        `${savedProduct.name} was updated successfully.`,
       );
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Unable to delete product.',
+    } else {
+      setProducts((current) => [
+        savedProduct,
+        ...current,
+      ]);
+
+      setSuccess(
+        `${savedProduct.name} was created successfully.`,
       );
     }
-  }
 
-  function handleCreated(
-    product: Product,
-  ) {
-    setProducts((current) => [
-      product,
-      ...current,
-    ]);
-
-    setSuccess(
-      `${product.name} was created successfully.`,
-    );
-
+    setSelectedProduct(null);
     setView('list');
   }
 
-  if (view === 'add') {
+  function returnToList() {
+    setSelectedProduct(null);
+    setView('list');
+  }
+
+  if (
+    view === 'add' ||
+    view === 'edit'
+  ) {
     return (
       <AdminProductFormPage
-        onBack={() => setView('list')}
-        onCreated={handleCreated}
+        product={
+          view === 'edit'
+            ? selectedProduct
+            : null
+        }
+        onBack={returnToList}
+        onSaved={handleSaved}
       />
     );
   }
@@ -279,11 +346,7 @@ export function AdminProductsPage() {
           <button
             type="button"
             className="products-primary-button"
-            onClick={() => {
-              setError('');
-              setSuccess('');
-              setView('add');
-            }}
+            onClick={openAddPage}
           >
             <Plus size={19} />
             Add Product
@@ -476,11 +539,9 @@ export function AdminProductsPage() {
                         <td>
                           <span
                             className={`product-stock ${
-                              product.stock ===
-                              0
+                              product.stock === 0
                                 ? 'out'
-                                : product.stock <=
-                                    5
+                                : product.stock <= 5
                                   ? 'low'
                                   : 'available'
                             }`}
@@ -492,14 +553,12 @@ export function AdminProductsPage() {
                         <td>
                           <span
                             className={`product-status ${
-                              product.is_active ===
-                              false
+                              product.is_active === false
                                 ? 'inactive'
                                 : 'active'
                             }`}
                           >
-                            {product.is_active ===
-                            false
+                            {product.is_active === false
                               ? 'Inactive'
                               : 'Active'}
                           </span>
@@ -511,23 +570,25 @@ export function AdminProductsPage() {
                               type="button"
                               className="product-edit-button"
                               title="Edit product"
-                              disabled
-                            >
-                              <Pencil size={40} />
-                            </button>
-
-                            <button
-                              type="button"
-                              className="product-delete-button"
-                              title="Delete product"
                               onClick={() =>
-                                void handleDelete(
+                                openEditPage(
                                   product,
                                 )
                               }
                             >
-                              <Trash2 size={40} />
+                              <Pencil size={21} />
                             </button>
+
+                          <button
+  type="button"
+  className="product-delete-button"
+  title="Delete product"
+  onClick={() =>
+    openDeleteModal(product)
+  }
+>
+  <Trash2 size={21} />
+</button>
                           </div>
                         </td>
                       </tr>
@@ -537,6 +598,15 @@ export function AdminProductsPage() {
               </table>
             </div>
           )}
+
+{pendingDeleteProduct && (
+  <DeleteProductModal
+    product={pendingDeleteProduct}
+    deleting={deleting}
+    onCancel={closeDeleteModal}
+    onConfirm={() => void confirmDelete()}
+  />
+)}
       </section>
     </section>
   );
