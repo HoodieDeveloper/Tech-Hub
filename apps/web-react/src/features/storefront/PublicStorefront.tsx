@@ -85,7 +85,6 @@ export function PublicStorefront({
               customer opens a product or continues to protected actions.
             </p>
           </div>
-          <div className="api-pill">API: {API_URL}</div>
         </section>
 
         <section className="catalog-section">

@@ -1,12 +1,13 @@
 import {
   useEffect,
-  useRef,
   useState,
 } from 'react';
+
 import type {
   ChangeEvent,
   FormEvent,
 } from 'react';
+
 import {
   ArrowLeft,
   ImagePlus,
@@ -16,17 +17,20 @@ import {
 import {
   apiGet,
   apiPostForm,
+  apiUpdateForm,
 } from '../../../core/api/client';
 
 import { ProductImage } from '../../products/ProductImage';
+
 import type {
   Category,
   Product,
 } from '../../products/types';
 
 type Props = {
+  product?: Product | null;
   onBack: () => void;
-  onCreated: (product: Product) => void;
+  onSaved: (product: Product) => void;
 };
 
 type CategoryResponse = {
@@ -42,15 +46,6 @@ type ProductForm = {
   isActive: boolean;
 };
 
-const emptyForm: ProductForm = {
-  name: '',
-  description: '',
-  price: '',
-  stock: '',
-  categoryId: '',
-  isActive: true,
-};
-
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 
 const ALLOWED_IMAGE_TYPES = [
@@ -60,11 +55,27 @@ const ALLOWED_IMAGE_TYPES = [
 ];
 
 export function AdminProductFormPage({
+  product = null,
   onBack,
-  onCreated,
+  onSaved,
 }: Props) {
-  const [form, setForm] =
-    useState<ProductForm>(emptyForm);
+  const isEditing = product !== null;
+
+  const [form, setForm] = useState<ProductForm>({
+    name: product?.name ?? '',
+    description: product?.description ?? '',
+    price: product
+      ? String(product.price)
+      : '',
+    stock: product
+      ? String(product.stock)
+      : '',
+    categoryId: product?.category_id
+      ? String(product.category_id)
+      : '',
+    isActive:
+      product?.is_active !== false,
+  });
 
   const [categories, setCategories] =
     useState<Category[]>([]);
@@ -73,7 +84,7 @@ export function AdminProductFormPage({
     useState<File | null>(null);
 
   const [previewUrl, setPreviewUrl] =
-    useState('');
+    useState(product?.image_url ?? '');
 
   const [loadingCategories, setLoadingCategories] =
     useState(true);
@@ -83,9 +94,6 @@ export function AdminProductFormPage({
 
   const [error, setError] =
     useState('');
-
-  const fileInputRef =
-    useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     apiGet<CategoryResponse>('/admin/categories')
@@ -111,7 +119,7 @@ export function AdminProductFormPage({
 
   useEffect(() => {
     return () => {
-      if (previewUrl) {
+      if (previewUrl.startsWith('blob:')) {
         URL.revokeObjectURL(previewUrl);
       }
     };
@@ -119,9 +127,9 @@ export function AdminProductFormPage({
 
   function handleChange(
     event: ChangeEvent<
-      HTMLInputElement |
-      HTMLTextAreaElement |
-      HTMLSelectElement
+      | HTMLInputElement
+      | HTMLTextAreaElement
+      | HTMLSelectElement
     >,
   ) {
     const { name, value } = event.target;
@@ -151,7 +159,11 @@ export function AdminProductFormPage({
 
     if (!selectedImage) {
       setImage(null);
-      setPreviewUrl('');
+
+      setPreviewUrl(
+        product?.image_url ?? '',
+      );
+
       return;
     }
 
@@ -161,29 +173,30 @@ export function AdminProductFormPage({
       )
     ) {
       event.target.value = '';
-      setImage(null);
-      setPreviewUrl('');
+
       setError(
         'Please choose a JPG, PNG, or WEBP image.',
       );
+
       return;
     }
 
     if (selectedImage.size > MAX_IMAGE_SIZE) {
       event.target.value = '';
-      setImage(null);
-      setPreviewUrl('');
+
       setError(
         'The product image must not be larger than 5 MB.',
       );
+
       return;
     }
 
-    if (previewUrl) {
+    if (previewUrl.startsWith('blob:')) {
       URL.revokeObjectURL(previewUrl);
     }
 
     setImage(selectedImage);
+
     setPreviewUrl(
       URL.createObjectURL(selectedImage),
     );
@@ -199,7 +212,7 @@ export function AdminProductFormPage({
       return;
     }
 
-    if (!image) {
+    if (!isEditing && !image) {
       setError('Please choose a product image.');
       return;
     }
@@ -209,7 +222,10 @@ export function AdminProductFormPage({
 
     const data = new FormData();
 
-    data.append('name', form.name.trim());
+    data.append(
+      'name',
+      form.name.trim(),
+    );
 
     data.append(
       'description',
@@ -229,21 +245,29 @@ export function AdminProductFormPage({
       form.isActive ? '1' : '0',
     );
 
-    data.append('image', image);
+    if (image) {
+      data.append('image', image);
+    }
 
     try {
-      const product =
-        await apiPostForm<Product>(
-          '/admin/products',
-          data,
-        );
+      const savedProduct = isEditing
+        ? await apiUpdateForm<Product>(
+            `/admin/products/${product.id}`,
+            data,
+          )
+        : await apiPostForm<Product>(
+            '/admin/products',
+            data,
+          );
 
-      onCreated(product);
+      onSaved(savedProduct);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : 'Failed to create product.',
+          : isEditing
+            ? 'Failed to update product.'
+            : 'Failed to create product.',
       );
     } finally {
       setSaving(false);
@@ -263,11 +287,16 @@ export function AdminProductFormPage({
         </button>
 
         <div>
-          <h2>Add New Product</h2>
+          <h2>
+            {isEditing
+              ? 'Edit Product'
+              : 'Add New Product'}
+          </h2>
 
           <p>
-            Add product information, category,
-            stock and image.
+            {isEditing
+              ? 'Update product information, category, stock and image.'
+              : 'Add product information, category, stock and image.'}
           </p>
         </div>
       </div>
@@ -400,7 +429,9 @@ export function AdminProductFormPage({
               <h3>Product Image</h3>
 
               <p>
-                Upload JPG, PNG or WEBP up to 5 MB.
+                {isEditing
+                  ? 'Choose a new image only when replacing the current image.'
+                  : 'Upload JPG, PNG or WEBP up to 5 MB.'}
               </p>
             </div>
 
@@ -426,17 +457,15 @@ export function AdminProductFormPage({
               )}
 
               <input
-                ref={fileInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp"
                 onChange={handleImageChange}
-                required
               />
             </label>
 
             {image && (
               <p className="selected-image-name">
-                {image.name}
+                New image: {image.name}
               </p>
             )}
           </section>
@@ -462,8 +491,12 @@ export function AdminProductFormPage({
               <Save size={18} />
 
               {saving
-                ? 'Saving product...'
-                : 'Save Product'}
+                ? isEditing
+                  ? 'Updating product...'
+                  : 'Saving product...'
+                : isEditing
+                  ? 'Update Product'
+                  : 'Save Product'}
             </button>
           </div>
         </aside>

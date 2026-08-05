@@ -180,9 +180,6 @@ export function ProductListPage() {
         </button>
       </div>
 
-      <div className="connection-note">
-        <strong>Admin API:</strong> <code>{API_URL}/admin/products</code>
-      </div>
 
       <div className="product-form-card">
         <div>

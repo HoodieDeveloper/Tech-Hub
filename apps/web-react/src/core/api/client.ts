@@ -17,7 +17,7 @@ export type AuthUser = {
 
 export function getToken() {
   return localStorage.getItem(TOKEN_KEY);
-}
+}      
 
 export function setToken(token: string) {
   localStorage.setItem(TOKEN_KEY, token);
@@ -129,4 +129,17 @@ export function apiPostForm<T>(path: string, body: FormData, auth = true) {
 
 export function apiDelete<T>(path: string) {
   return apiRequest<T>(path, { method: 'DELETE' });
+}
+export function apiUpdateForm<T>(
+  path: string,
+  body: FormData,
+  auth = true,
+) {
+  body.set('_method', 'PUT');
+
+  return apiRequest<T>(path, {
+    method: 'POST',
+    body,
+    auth,
+  });
 }
