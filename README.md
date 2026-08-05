@@ -45,7 +45,7 @@ The backend `.env` connects Laravel to Supabase PostgreSQL and Storage. Do not c
 Create `apps/web-react/.env.local`:
 
 ```env
-VITE_API_URL=https://tech-hub-production-dd8a.up.railway.app/api
+VITE_API_URL=.................
 ```
 
 Then:
@@ -69,7 +69,7 @@ Run both `php artisan serve` and `npm run dev`.
 ```powershell
 cd apps\mobile-flutter
 flutter pub get
-flutter run --dart-define=API_BASE_URL=https://tech-hub-production-dd8a.up.railway.app/api
+flutter run --dart-define=API_BASE_URL=....................
 ```
 
 The mobile code also uses that Railway URL as its default when no `--dart-define` value is supplied.
