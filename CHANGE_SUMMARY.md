@@ -11,3 +11,4 @@
 - Added secure Artisan command to create or promote an admin.
 - Added mobile product-click → login → details flow.
 - Added role and deployment documentation.
+- Add Crud to manage product
