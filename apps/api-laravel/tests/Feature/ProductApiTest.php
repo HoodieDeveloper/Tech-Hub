@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Product;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,10 +19,25 @@ class ProductApiTest extends TestCase
     {
         parent::setUp();
 
-        config()->set('services.supabase.url', 'https://example.supabase.co');
-        config()->set('services.supabase.secret_key', 'sb_secret_test-key');
-        config()->set('services.supabase.service_role_key', 'header.payload.signature');
-        config()->set('services.supabase.storage_bucket', 'product-images');
+        config()->set(
+            'services.supabase.url',
+            'https://example.supabase.co'
+        );
+
+        config()->set(
+            'services.supabase.secret_key',
+            'sb_secret_test-key'
+        );
+
+        config()->set(
+            'services.supabase.service_role_key',
+            'header.payload.signature'
+        );
+
+        config()->set(
+            'services.supabase.storage_bucket',
+            'product-images'
+        );
     }
 
     public function test_guests_can_browse_active_products(): void
@@ -69,11 +85,14 @@ class ProductApiTest extends TestCase
     {
         $this->actingAsAdmin();
 
+        $category = $this->createCategory();
+
         Http::fake([
-            'https://example.supabase.co/storage/v1/object/product-images/products/*' => Http::response([
-                'Id' => 'test-object-id',
-                'Key' => 'product-images/products/test.png',
-            ], 200),
+            'https://example.supabase.co/storage/v1/object/product-images/products/*'
+                => Http::response([
+                    'Id' => 'test-object-id',
+                    'Key' => 'product-images/products/test.png',
+                ], 200),
         ]);
 
         $response = $this->post('/api/admin/products', [
@@ -81,6 +100,7 @@ class ProductApiTest extends TestCase
             'description' => 'Shared image test product',
             'price' => '899.99',
             'stock' => '4',
+            'category_id' => (string) $category->id,
             'is_active' => '1',
             'image' => $this->tinyPng('laptop.png'),
         ], [
@@ -90,7 +110,9 @@ class ProductApiTest extends TestCase
         $response
             ->assertCreated()
             ->assertJsonPath('name', 'Test Laptop')
-            ->assertJsonPath('stock', 4);
+            ->assertJsonPath('stock', 4)
+            ->assertJsonPath('category.id', $category->id)
+            ->assertJsonPath('category.name', 'Laptops');
 
         $imageUrl = (string) $response->json('image_url');
 
@@ -101,6 +123,7 @@ class ProductApiTest extends TestCase
 
         $this->assertDatabaseHas('products', [
             'name' => 'Test Laptop',
+            'category_id' => $category->id,
             'image_url' => $imageUrl,
         ]);
 
@@ -110,8 +133,14 @@ class ProductApiTest extends TestCase
                     $request->url(),
                     'https://example.supabase.co/storage/v1/object/product-images/products/'
                 )
-                && $request->hasHeader('apikey', 'sb_secret_test-key')
-                && $request->hasHeader('Authorization', 'Bearer header.payload.signature');
+                && $request->hasHeader(
+                    'apikey',
+                    'sb_secret_test-key'
+                )
+                && $request->hasHeader(
+                    'Authorization',
+                    'Bearer header.payload.signature'
+                );
         });
     }
 
@@ -132,10 +161,13 @@ class ProductApiTest extends TestCase
     {
         $this->actingAsAdmin();
 
+        $category = $this->createCategory();
+
         $this->postJson('/api/admin/products', [
             'name' => 'Product Without Image',
             'price' => 10,
             'stock' => 1,
+            'category_id' => $category->id,
             'is_active' => true,
         ])
             ->assertUnprocessable()
@@ -146,10 +178,13 @@ class ProductApiTest extends TestCase
     {
         $this->actingAsAdmin();
 
+        $category = $this->createCategory();
+
         $this->post('/api/admin/products', [
             'name' => 'Invalid Image Product',
             'price' => '10',
             'stock' => '1',
+            'category_id' => (string) $category->id,
             'image' => UploadedFile::fake()->createWithContent(
                 'not-an-image.txt',
                 'This is not an image.'
@@ -166,10 +201,22 @@ class ProductApiTest extends TestCase
         $this->getJson('/api/health')
             ->assertOk()
             ->assertJsonPath('status', 'ok')
-            ->assertJsonPath('storage.api_key_configured', true)
-            ->assertJsonPath('storage.service_role_configured', true)
-            ->assertJsonPath('storage.service_role_looks_like_jwt', true)
-            ->assertJsonPath('storage.bucket', 'product-images');
+            ->assertJsonPath(
+                'storage.api_key_configured',
+                true
+            )
+            ->assertJsonPath(
+                'storage.service_role_configured',
+                true
+            )
+            ->assertJsonPath(
+                'storage.service_role_looks_like_jwt',
+                true
+            )
+            ->assertJsonPath(
+                'storage.bucket',
+                'product-images'
+            );
     }
 
     private function actingAsAdmin(): User
@@ -183,6 +230,16 @@ class ProductApiTest extends TestCase
         return $admin;
     }
 
+    private function createCategory(): Category
+    {
+        return Category::create([
+            'name' => 'Laptops',
+            'slug' => 'laptops',
+            'description' => 'Laptop computers',
+            'is_active' => true,
+        ]);
+    }
+
     private function tinyPng(string $name): UploadedFile
     {
         $png = base64_decode(
@@ -190,6 +247,9 @@ class ProductApiTest extends TestCase
             true
         );
 
-        return UploadedFile::fake()->createWithContent($name, $png ?: '');
+        return UploadedFile::fake()->createWithContent(
+            $name,
+            $png ?: ''
+        );
     }
 }
