@@ -120,6 +120,14 @@ export function apiPost<T>(path: string, body: unknown, auth = true) {
   });
 }
 
+export function apiPut<T>(path: string, body: unknown, auth = true) {
+  return apiRequest<T>(path, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+    auth,
+  });
+}
+
 export function apiPostForm<T>(path: string, body: FormData, auth = true) {
   return apiRequest<T>(path, {
     method: 'POST',
@@ -127,6 +135,7 @@ export function apiPostForm<T>(path: string, body: FormData, auth = true) {
     auth,
   });
 }
+
 
 export function apiDelete<T>(path: string) {
   return apiRequest<T>(path, { method: 'DELETE' });
