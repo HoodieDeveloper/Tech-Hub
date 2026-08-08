@@ -16,21 +16,20 @@ class AdminUserController extends Controller
                 'name',
                 'email',
                 'role',
+                'avatar_url',
                 'created_at',
             ])
+            ->where('role', User::ROLE_CUSTOMER)
             ->latest()
             ->get();
 
         return response()->json([
             'users' => $users,
+
             'summary' => [
                 'total' => $users->count(),
-                'customers' => $users
-                    ->where('role', User::ROLE_CUSTOMER)
-                    ->count(),
-                'admins' => $users
-                    ->where('role', User::ROLE_ADMIN)
-                    ->count(),
+                'customers' => $users->count(),
+                'admins' => 0,
             ],
         ]);
     }

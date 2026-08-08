@@ -1,0 +1,272 @@
+.admin-users-page {
+  width: 100%;
+  color: #1e293b;
+}
+
+/* =========================
+   Summary
+========================= */
+
+.admin-users-page .stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+
+.admin-users-page .stat-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 105px;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  background: #ffffff;
+  padding: 20px;
+  box-shadow: 0 4px 16px rgb(15 23 42 / 4%);
+}
+
+.admin-user-stat-icon {
+  display: inline-flex;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 11px;
+  background: #eaf5ff;
+  color: #0074df;
+}
+
+.admin-users-page .stat-card > div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.admin-users-page .stat-card span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.admin-users-page .stat-card strong {
+  color: #003367;
+  font-size: 26px;
+}
+
+/* =========================
+   User Card
+========================= */
+
+.admin-users-page .admin-info-card {
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  border-radius: 13px;
+  background: #ffffff;
+  padding: 0;
+  box-shadow: 0 4px 18px rgb(15 23 42 / 4%);
+}
+
+.admin-users-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 24px;
+}
+
+.admin-users-header h2 {
+  margin: 0;
+  color: #003367;
+  font-size: 22px;
+}
+
+.admin-users-header p {
+  margin: 6px 0 0;
+  color: #64748b;
+  font-size: 14px;
+}
+
+.admin-users-header button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid #0074df;
+  border-radius: 9px;
+  background: #0074df;
+  padding: 11px 17px;
+  color: #ffffff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.admin-users-header button:hover {
+  background: #005fb8;
+  border-color: #005fb8;
+}
+
+/* =========================
+   Table
+========================= */
+
+.admin-users-page .admin-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  padding: 0 24px 24px;
+  box-sizing: border-box;
+}
+
+.admin-users-page .admin-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+.admin-users-page .admin-table thead th {
+  background: #f8fafc;
+  padding: 14px 16px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.admin-users-page .admin-table tbody td {
+  border-top: 1px solid #edf2f7;
+  padding: 14px 16px;
+  color: #334155;
+  font-size: 14px;
+  vertical-align: middle;
+}
+
+.admin-users-page .admin-table tbody tr {
+  transition: background-color 0.2s ease;
+}
+
+.admin-users-page .admin-table tbody tr:hover {
+  background: #f8fbff;
+}
+
+/* =========================
+   Customer Profile
+========================= */
+
+.admin-user-identity {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  min-width: 220px;
+}
+
+.admin-user-avatar {
+  display: flex;
+  width: 50px;
+  height: 50px;
+  flex: 0 0 50px;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 2px solid #dbeafe;
+  border-radius: 50%;
+  background: #eff6ff;
+  color: #0074df;
+}
+
+.admin-user-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-user-details {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-user-details strong {
+  overflow: hidden;
+  color: #1e293b;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-user-details span {
+  color: #94a3b8;
+  font-size: 12px;
+}
+
+/* =========================
+   Role Badge
+========================= */
+
+.admin-users-page .role-badge.customer {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: #dcfce7;
+  padding: 6px 11px;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* =========================
+   Empty State
+========================= */
+
+.admin-users-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 180px;
+  padding: 30px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.admin-users-empty p {
+  margin: 0;
+  color: #64748b;
+}
+
+/* =========================
+   Responsive
+========================= */
+
+@media (max-width: 900px) {
+  .admin-users-page .stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .admin-users-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-users-header button {
+    width: 100%;
+  }
+
+  .admin-users-page .admin-table-wrapper {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+}
+
+@media (max-width: 520px) {
+  .admin-users-page .stat-grid {
+    grid-template-columns: 1fr;
+  }
+}

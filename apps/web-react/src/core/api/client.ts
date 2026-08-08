@@ -13,6 +13,7 @@ export type AuthUser = {
   name: string;
   email: string;
   role: 'admin' | 'customer';
+  avatar_url: string | null;
 };
 
 export function getToken() {
