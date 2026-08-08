@@ -175,6 +175,27 @@ class SupabaseStorageService
     }
 
     /**
+     * Upload the shop/store logo.
+     *
+     * @return array{path: string, url: string}
+     *
+     * @throws RequestException
+     */
+    public function uploadStoreLogo(
+        UploadedFile $image
+    ): array {
+        $path = sprintf(
+            'settings/logo/%s',
+            $this->generateFilename($image)
+        );
+
+        return $this->uploadImage(
+            $image,
+            $path
+        );
+    }
+
+    /**
      * Upload an image to Supabase Storage.
      *
      * @return array{path: string, url: string}

@@ -1,5 +1,6 @@
 .admin-products-page,
 .admin-product-form-page {
+  margin-top: 1%;
   width: 100%;
   color: #1e293b;
 }
@@ -831,5 +832,87 @@
 
   .product-delete-actions button {
     width: 100%;
+  }
+}
+/* =========================
+   Product Pagination
+========================= */
+
+.products-pagination {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+  border-top: 1px solid #e2e8f0;
+  padding: 16px 18px;
+  background: #ffffff;
+}
+
+.products-pagination-info {
+  position: absolute;
+  left: 18px;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.products-pagination-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.products-pagination-buttons button {
+  display: inline-flex;
+  min-width: 40px;
+  height: 40px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d7e0ea;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0 13px;
+  color: #334155;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.products-pagination-buttons button:hover:not(:disabled) {
+  border-color: #0074df;
+  background: #eaf5ff;
+  color: #0074df;
+}
+
+.products-pagination-buttons button.active {
+  border-color: #0074df;
+  background: #0074df;
+  color: #ffffff;
+}
+
+.products-pagination-buttons button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+@media (max-width: 700px) {
+  .products-pagination {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .products-pagination-info {
+    text-align: center;
+  }
+
+  .products-pagination-buttons {
+    justify-content: center;
+    flex-wrap: wrap;
   }
 }
