@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\AdminDashboardController;
+use App\Http\Controllers\Api\AdminSettingController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProductController;
@@ -42,36 +43,69 @@ Route::middleware('auth:sanctum')->group(function (): void {
     Route::get('/products/{product}', [ProductController::class, 'show']);
 
     // Admin-only routes
-    Route::middleware('admin')->prefix('admin')->group(function (): void {
-        Route::get('/dashboard', AdminDashboardController::class);
+    Route::middleware('admin')
+        ->prefix('admin')
+        ->group(function (): void {
+            Route::get('/dashboard', AdminDashboardController::class);
 
-        Route::get('/users', [AdminUserController::class, 'index']);
+            // User routes
+            Route::get('/users', [
+                AdminUserController::class,
+                'index',
+            ]);
 
-        // Category routes
-        Route::get('/categories', [CategoryController::class, 'index']);
-        Route::post('/categories', [CategoryController::class, 'store']);
-        Route::patch('/categories/{category}', [
-            CategoryController::class,
-            'update',
-        ]);
-        Route::delete('/categories/{category}', [
-            CategoryController::class,
-            'destroy',
-        ]);
+            // Settings routes
+            Route::get('/settings', [
+                AdminSettingController::class,
+                'index',
+            ]);
 
-        // Product routes
-        Route::get('/products', [ProductController::class, 'adminIndex']);
-        Route::post('/products', [ProductController::class, 'store']);
+            Route::put('/settings', [
+                AdminSettingController::class,
+                'update',
+            ]);
 
-        Route::match(
-            ['put', 'patch', 'post'],
-            '/products/{product}',
-            [ProductController::class, 'update']
-        );
+            // Category routes
+            Route::get('/categories', [
+                CategoryController::class,
+                'index',
+            ]);
 
-        Route::delete('/products/{product}', [
-            ProductController::class,
-            'destroy',
-        ]);
-    });
+            Route::post('/categories', [
+                CategoryController::class,
+                'store',
+            ]);
+
+            Route::patch('/categories/{category}', [
+                CategoryController::class,
+                'update',
+            ]);
+
+            Route::delete('/categories/{category}', [
+                CategoryController::class,
+                'destroy',
+            ]);
+
+            // Product routes
+            Route::get('/products', [
+                ProductController::class,
+                'adminIndex',
+            ]);
+
+            Route::post('/products', [
+                ProductController::class,
+                'store',
+            ]);
+
+            Route::match(
+                ['put', 'patch', 'post'],
+                '/products/{product}',
+                [ProductController::class, 'update']
+            );
+
+            Route::delete('/products/{product}', [
+                ProductController::class,
+                'destroy',
+            ]);
+        });
 });
