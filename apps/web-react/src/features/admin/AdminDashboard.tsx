@@ -219,16 +219,6 @@ export function AdminDashboard({
       </aside>
 
       <main className="admin-main">
-        <header className="admin-topbar">
-          <div>
-            <h1>{currentSection?.label}</h1>
-
-            <p>
-              Signed in as {user.name} · administrator
-            </p>
-          </div>
-        </header>
-
         {error && (
           <div className="alert error">
             {error}

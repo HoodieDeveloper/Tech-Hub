@@ -31,16 +31,37 @@ Route::get('/health', function (SupabaseStorageService $storage) {
 });
 
 // Public routes
-Route::get('/products', [ProductController::class, 'index']);
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::get('/products', [
+    ProductController::class,
+    'index',
+]);
+
+Route::post('/register', [
+    AuthController::class,
+    'register',
+]);
+
+Route::post('/login', [
+    AuthController::class,
+    'login',
+]);
 
 // Logged-in routes
 Route::middleware('auth:sanctum')->group(function (): void {
-    Route::get('/me', [AuthController::class, 'me']);
-    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::get('/me', [
+        AuthController::class,
+        'me',
+    ]);
 
-    Route::get('/products/{product}', [ProductController::class, 'show']);
+    Route::post('/logout', [
+        AuthController::class,
+        'logout',
+    ]);
+
+    Route::get('/products/{product}', [
+        ProductController::class,
+        'show',
+    ]);
 
     // Admin-only routes
     Route::middleware('admin')
@@ -63,6 +84,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::put('/settings', [
                 AdminSettingController::class,
                 'update',
+            ]);
+
+            Route::post('/settings/logo', [
+                AdminSettingController::class,
+                'uploadLogo',
             ]);
 
             // Category routes
@@ -100,7 +126,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::match(
                 ['put', 'patch', 'post'],
                 '/products/{product}',
-                [ProductController::class, 'update']
+                [
+                    ProductController::class,
+                    'update',
+                ]
             );
 
             Route::delete('/products/{product}', [
