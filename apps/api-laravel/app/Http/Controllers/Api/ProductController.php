@@ -102,7 +102,8 @@ class ProductController extends Controller
                 }
             )
             ->latest()
-            ->get();
+            ->paginate(5)
+            ->withQueryString();
 
         return response()->json($products);
     }
