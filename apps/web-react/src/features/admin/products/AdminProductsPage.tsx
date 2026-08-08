@@ -1,6 +1,5 @@
 import {
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 
@@ -49,17 +48,39 @@ type StatusFilter =
   | 'low_stock'
   | 'out_of_stock';
 
+type PaginatedProducts = {
+  current_page: number;
+  data: Product[];
+  from: number | null;
+  last_page: number;
+  per_page: number;
+  to: number | null;
+  total: number;
+};
+
+type ProductSummary = {
+  total: number;
+  active: number;
+  lowStock: number;
+  outOfStock: number;
+};
+
 export function AdminProductsPage() {
   const [view, setView] =
     useState<ProductView>('list');
 
-  const [selectedProduct, setSelectedProduct] =
-    useState<Product | null>(null);
-const [pendingDeleteProduct, setPendingDeleteProduct] =
-  useState<Product | null>(null);
+  const [
+    selectedProduct,
+    setSelectedProduct,
+  ] = useState<Product | null>(null);
 
-const [deleting, setDeleting] =
-  useState(false);
+  const [
+    pendingDeleteProduct,
+    setPendingDeleteProduct,
+  ] = useState<Product | null>(null);
+
+  const [deleting, setDeleting] =
+    useState(false);
 
   const [products, setProducts] =
     useState<Product[]>([]);
@@ -70,11 +91,15 @@ const [deleting, setDeleting] =
   const [search, setSearch] =
     useState('');
 
-  const [categoryFilter, setCategoryFilter] =
-    useState('all');
+  const [
+    categoryFilter,
+    setCategoryFilter,
+  ] = useState('all');
 
-  const [statusFilter, setStatusFilter] =
-    useState<StatusFilter>('all');
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] = useState<StatusFilter>('all');
 
   const [loading, setLoading] =
     useState(true);
@@ -85,24 +110,103 @@ const [deleting, setDeleting] =
   const [success, setSuccess] =
     useState('');
 
-  async function loadProducts() {
+  /*
+   * Pagination
+   */
+  const [currentPage, setCurrentPage] =
+    useState(1);
+
+  const [lastPage, setLastPage] =
+    useState(1);
+
+  const [totalResults, setTotalResults] =
+    useState(0);
+
+  /*
+   * Dashboard summary.
+   *
+   * We load these counts separately so that
+   * the cards still show totals for ALL
+   * products instead of only the current
+   * five products.
+   */
+  const [summary, setSummary] =
+    useState<ProductSummary>({
+      total: 0,
+      active: 0,
+      lowStock: 0,
+      outOfStock: 0,
+    });
+
+  function buildProductsUrl(
+    page: number,
+  ) {
+    const params =
+      new URLSearchParams();
+
+    params.set(
+      'page',
+      String(page),
+    );
+
+    const cleanSearch =
+      search.trim();
+
+    if (cleanSearch !== '') {
+      params.set(
+        'search',
+        cleanSearch,
+      );
+    }
+
+    if (
+      categoryFilter !== 'all'
+    ) {
+      params.set(
+        'category_id',
+        categoryFilter,
+      );
+    }
+
+    if (
+      statusFilter !== 'all'
+    ) {
+      params.set(
+        'status',
+        statusFilter,
+      );
+    }
+
+    return `/admin/products?${params.toString()}`;
+  }
+
+  async function loadProducts(
+    page = currentPage,
+  ) {
     setLoading(true);
     setError('');
 
     try {
-      const [
-        productData,
-        categoryData,
-      ] = await Promise.all([
-        apiGet<Product[]>('/admin/products'),
+      const productData =
+        await apiGet<PaginatedProducts>(
+          buildProductsUrl(page),
+        );
 
-        apiGet<CategoryResponse>(
-          '/admin/categories',
-        ),
-      ]);
+      setProducts(
+        productData.data,
+      );
 
-      setProducts(productData);
-      setCategories(categoryData.data);
+      setCurrentPage(
+        productData.current_page,
+      );
+
+      setLastPage(
+        productData.last_page,
+      );
+
+      setTotalResults(
+        productData.total,
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -114,138 +218,243 @@ const [deleting, setDeleting] =
     }
   }
 
+  async function loadCategories() {
+    try {
+      const categoryData =
+        await apiGet<CategoryResponse>(
+          '/admin/categories',
+        );
+
+      setCategories(
+        categoryData.data,
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to load categories.',
+      );
+    }
+  }
+
+  /*
+   * Laravel pagination contains a "total"
+   * value.
+   *
+   * We use that value to get the numbers
+   * for the summary cards without loading
+   * every product into React.
+   */
+  async function loadSummary() {
+    try {
+      const [
+        allData,
+        activeData,
+        lowStockData,
+        outOfStockData,
+      ] = await Promise.all([
+        apiGet<PaginatedProducts>(
+          '/admin/products?page=1',
+        ),
+
+        apiGet<PaginatedProducts>(
+          '/admin/products?page=1&status=active',
+        ),
+
+        apiGet<PaginatedProducts>(
+          '/admin/products?page=1&status=low_stock',
+        ),
+
+        apiGet<PaginatedProducts>(
+          '/admin/products?page=1&status=out_of_stock',
+        ),
+      ]);
+
+      setSummary({
+        total: allData.total,
+        active: activeData.total,
+        lowStock:
+          lowStockData.total,
+        outOfStock:
+          outOfStockData.total,
+      });
+    } catch (err) {
+      console.error(
+        'Unable to load product summary.',
+        err,
+      );
+    }
+  }
+
+  /*
+   * Load categories and summary once.
+   */
   useEffect(() => {
-    void loadProducts();
+    void loadCategories();
+    void loadSummary();
   }, []);
 
-  const summary = useMemo(() => {
-    return {
-      total: products.length,
+  /*
+   * Reload products whenever the page
+   * or filters change.
+   *
+   * Search uses a small delay so Laravel
+   * is not called on every single
+   * keyboard press immediately.
+   */
+  useEffect(() => {
+    const timer =
+      window.setTimeout(() => {
+        void loadProducts(
+          currentPage,
+        );
+      }, 300);
 
-      active: products.filter(
-        (product) =>
-          product.is_active !== false,
-      ).length,
-
-      lowStock: products.filter(
-        (product) =>
-          product.stock > 0 &&
-          product.stock <= 5,
-      ).length,
-
-      outOfStock: products.filter(
-        (product) =>
-          product.stock === 0,
-      ).length,
-    };
-  }, [products]);
-
-  const filteredProducts = useMemo(() => {
-    const normalizedSearch =
-      search.trim().toLowerCase();
-
-    return products.filter((product) => {
-      const matchesSearch =
-        normalizedSearch === '' ||
-        product.name
-          .toLowerCase()
-          .includes(normalizedSearch) ||
-        (product.description ?? '')
-          .toLowerCase()
-          .includes(normalizedSearch);
-
-      const matchesCategory =
-        categoryFilter === 'all' ||
-        String(product.category_id) ===
-          categoryFilter;
-
-      let matchesStatus = true;
-
-      if (statusFilter === 'active') {
-        matchesStatus =
-          product.is_active !== false;
-      }
-
-      if (statusFilter === 'inactive') {
-        matchesStatus =
-          product.is_active === false;
-      }
-
-      if (statusFilter === 'low_stock') {
-        matchesStatus =
-          product.stock > 0 &&
-          product.stock <= 5;
-      }
-
-      if (statusFilter === 'out_of_stock') {
-        matchesStatus =
-          product.stock === 0;
-      }
-
-      return (
-        matchesSearch &&
-        matchesCategory &&
-        matchesStatus
+    return () => {
+      window.clearTimeout(
+        timer,
       );
-    });
+    };
   }, [
-    products,
+    currentPage,
     search,
     categoryFilter,
     statusFilter,
   ]);
 
- function openDeleteModal(product: Product) {
-  setError('');
-  setSuccess('');
-  setPendingDeleteProduct(product);
-}
+  function changePage(
+    page: number,
+  ) {
+    if (
+      page < 1 ||
+      page > lastPage ||
+      page === currentPage
+    ) {
+      return;
+    }
 
-function closeDeleteModal() {
-  if (deleting) {
-    return;
+    setCurrentPage(page);
   }
 
-  setPendingDeleteProduct(null);
-}
+  function getPageNumbers() {
+    const pages: number[] = [];
 
-async function confirmDelete() {
-  if (!pendingDeleteProduct) {
-    return;
+    /*
+     * Show maximum 5 page buttons.
+     *
+     * Example:
+     * Previous 1 2 3 4 5 Next
+     */
+    let startPage =
+      Math.max(
+        1,
+        currentPage - 2,
+      );
+
+    let endPage =
+      Math.min(
+        lastPage,
+        startPage + 4,
+      );
+
+    if (
+      endPage - startPage < 4
+    ) {
+      startPage =
+        Math.max(
+          1,
+          endPage - 4,
+        );
+    }
+
+    for (
+      let page = startPage;
+      page <= endPage;
+      page += 1
+    ) {
+      pages.push(page);
+    }
+
+    return pages;
   }
 
-  const product = pendingDeleteProduct;
+  function openDeleteModal(
+    product: Product,
+  ) {
+    setError('');
+    setSuccess('');
 
-  setDeleting(true);
-  setError('');
-  setSuccess('');
-
-  try {
-    await apiDelete<{ message: string }>(
-      `/admin/products/${product.id}`,
+    setPendingDeleteProduct(
+      product,
     );
-
-    setProducts((current) =>
-      current.filter(
-        (item) => item.id !== product.id,
-      ),
-    );
-
-    setPendingDeleteProduct(null);
-
-    setSuccess(
-      `${product.name} was deleted successfully.`,
-    );
-  } catch (err) {
-    setError(
-      err instanceof Error
-        ? err.message
-        : 'Unable to delete product.',
-    );
-  } finally {
-    setDeleting(false);
   }
-}
+
+  function closeDeleteModal() {
+    if (deleting) {
+      return;
+    }
+
+    setPendingDeleteProduct(
+      null,
+    );
+  }
+
+  async function confirmDelete() {
+    if (!pendingDeleteProduct) {
+      return;
+    }
+
+    const product =
+      pendingDeleteProduct;
+
+    setDeleting(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await apiDelete<{
+        message: string;
+      }>(
+        `/admin/products/${product.id}`,
+      );
+
+      setPendingDeleteProduct(
+        null,
+      );
+
+      setSuccess(
+        `${product.name} was deleted successfully.`,
+      );
+
+      /*
+       * If the last product on this
+       * page was deleted, move back
+       * one page.
+       */
+      if (
+        products.length === 1 &&
+        currentPage > 1
+      ) {
+        setCurrentPage(
+          currentPage - 1,
+        );
+      } else {
+        await loadProducts(
+          currentPage,
+        );
+      }
+
+      await loadSummary();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to delete product.',
+      );
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   function openAddPage() {
     setSelectedProduct(null);
@@ -267,35 +476,51 @@ async function confirmDelete() {
     savedProduct: Product,
   ) {
     if (view === 'edit') {
-      setProducts((current) =>
-        current.map((product) =>
-          product.id === savedProduct.id
-            ? savedProduct
-            : product,
-        ),
-      );
-
       setSuccess(
         `${savedProduct.name} was updated successfully.`,
       );
-    } else {
-      setProducts((current) => [
-        savedProduct,
-        ...current,
-      ]);
 
+      setSelectedProduct(null);
+      setView('list');
+
+      void loadProducts(
+        currentPage,
+      );
+    } else {
       setSuccess(
         `${savedProduct.name} was created successfully.`,
       );
+
+      setSelectedProduct(null);
+      setView('list');
+
+      /*
+       * New products are sorted newest
+       * first, so return to page 1.
+       */
+      if (currentPage === 1) {
+        void loadProducts(1);
+      } else {
+        setCurrentPage(1);
+      }
     }
 
-    setSelectedProduct(null);
-    setView('list');
+    void loadSummary();
   }
 
   function returnToList() {
     setSelectedProduct(null);
     setView('list');
+  }
+
+  async function refreshPage() {
+    await Promise.all([
+      loadProducts(
+        currentPage,
+      ),
+      loadSummary(),
+      loadCategories(),
+    ]);
   }
 
   if (
@@ -319,11 +544,14 @@ async function confirmDelete() {
     <section className="admin-products-page">
       <div className="products-page-heading">
         <div>
-          <h2>Product Management</h2>
+          <h2>
+            Product Management
+          </h2>
 
           <p>
-            Manage products, categories,
-            stock and availability.
+            Manage products,
+            categories, stock and
+            availability.
           </p>
         </div>
 
@@ -332,7 +560,7 @@ async function confirmDelete() {
             type="button"
             className="products-refresh-button"
             onClick={() =>
-              void loadProducts()
+              void refreshPage()
             }
             disabled={loading}
           >
@@ -387,7 +615,9 @@ async function confirmDelete() {
 
         <SummaryCard
           label="Out of Stock"
-          value={summary.outOfStock}
+          value={
+            summary.outOfStock
+          }
           icon={Boxes}
         />
       </div>
@@ -399,22 +629,26 @@ async function confirmDelete() {
 
             <input
               value={search}
-              onChange={(event) =>
+              onChange={(event) => {
                 setSearch(
                   event.target.value,
-                )
-              }
+                );
+
+                setCurrentPage(1);
+              }}
               placeholder="Search products..."
             />
           </label>
 
           <select
             value={categoryFilter}
-            onChange={(event) =>
+            onChange={(event) => {
               setCategoryFilter(
                 event.target.value,
-              )
-            }
+              );
+
+              setCurrentPage(1);
+            }}
           >
             <option value="all">
               All Categories
@@ -423,8 +657,12 @@ async function confirmDelete() {
             {categories.map(
               (category) => (
                 <option
-                  key={category.id}
-                  value={category.id}
+                  key={
+                    category.id
+                  }
+                  value={
+                    category.id
+                  }
                 >
                   {category.name}
                 </option>
@@ -434,12 +672,14 @@ async function confirmDelete() {
 
           <select
             value={statusFilter}
-            onChange={(event) =>
+            onChange={(event) => {
               setStatusFilter(
                 event.target
                   .value as StatusFilter,
-              )
-            }
+              );
+
+              setCurrentPage(1);
+            }}
           >
             <option value="all">
               All Statuses
@@ -470,143 +710,251 @@ async function confirmDelete() {
         )}
 
         {!loading &&
-          filteredProducts.length === 0 && (
+          products.length === 0 && (
             <div className="products-empty-state">
-              No products match your filters.
+              No products match your
+              filters.
             </div>
           )}
 
         {!loading &&
-          filteredProducts.length > 0 && (
-            <div className="products-table-wrapper">
-              <table className="products-table">
-                <thead>
-                  <tr>
-                    <th>Product</th>
-                    <th>Category</th>
-                    <th>Price</th>
-                    <th>Stock</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
+          products.length > 0 && (
+            <>
+              <div className="products-table-wrapper">
+                <table className="products-table">
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>
+                        Category
+                      </th>
+                      <th>Price</th>
+                      <th>Stock</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
 
-                <tbody>
-                  {filteredProducts.map(
-                    (product) => (
-                      <tr key={product.id}>
-                        <td>
-                          <div className="product-table-identity">
-                            <ProductImage
-                              imageUrl={
-                                product.image_url
-                              }
-                              alt={
-                                product.name
-                              }
-                            />
+                  <tbody>
+                    {products.map(
+                      (product) => (
+                        <tr
+                          key={
+                            product.id
+                          }
+                        >
+                          <td>
+                            <div className="product-table-identity">
+                              <ProductImage
+                                imageUrl={
+                                  product.image_url
+                                }
+                                alt={
+                                  product.name
+                                }
+                              />
 
-                            <div>
-                              <strong>
-                                {product.name}
-                              </strong>
+                              <div>
+                                <strong>
+                                  {
+                                    product.name
+                                  }
+                                </strong>
 
-                              <span>
-                                {product.description ||
-                                  'No description'}
-                              </span>
+                                <span>
+                                  {product.description ||
+                                    'No description'}
+                                </span>
+                              </div>
                             </div>
-                          </div>
-                        </td>
+                          </td>
 
-                        <td>
-                          <span className="product-category-badge">
-                            {product.category
-                              ?.name ??
-                              'Uncategorized'}
-                          </span>
-                        </td>
+                          <td>
+                            <span className="product-category-badge">
+                              {product
+                                .category
+                                ?.name ??
+                                'Uncategorized'}
+                            </span>
+                          </td>
 
-                        <td>
-                          <strong>
-                            $
-                            {Number(
-                              product.price,
-                            ).toFixed(2)}
-                          </strong>
-                        </td>
+                          <td>
+                            <strong>
+                              $
+                              {Number(
+                                product.price,
+                              ).toFixed(
+                                2,
+                              )}
+                            </strong>
+                          </td>
 
-                        <td>
-                          <span
-                            className={`product-stock ${
-                              product.stock === 0
-                                ? 'out'
-                                : product.stock <= 5
-                                  ? 'low'
-                                  : 'available'
-                            }`}
-                          >
-                            {product.stock}
-                          </span>
-                        </td>
-
-                        <td>
-                          <span
-                            className={`product-status ${
-                              product.is_active === false
-                                ? 'inactive'
-                                : 'active'
-                            }`}
-                          >
-                            {product.is_active === false
-                              ? 'Inactive'
-                              : 'Active'}
-                          </span>
-                        </td>
-
-                        <td>
-                          <div className="product-table-actions">
-                            <button
-                              type="button"
-                              className="product-edit-button"
-                              title="Edit product"
-                              onClick={() =>
-                                openEditPage(
-                                  product,
-                                )
-                              }
+                          <td>
+                            <span
+                              className={`product-stock ${
+                                product.stock ===
+                                0
+                                  ? 'out'
+                                  : product.stock <=
+                                      5
+                                    ? 'low'
+                                    : 'available'
+                              }`}
                             >
-                              <Pencil size={21} />
-                            </button>
+                              {
+                                product.stock
+                              }
+                            </span>
+                          </td>
 
-                          <button
-  type="button"
-  className="product-delete-button"
-  title="Delete product"
-  onClick={() =>
-    openDeleteModal(product)
-  }
->
-  <Trash2 size={21} />
-</button>
-                          </div>
-                        </td>
-                      </tr>
+                          <td>
+                            <span
+                              className={`product-status ${
+                                product.is_active ===
+                                false
+                                  ? 'inactive'
+                                  : 'active'
+                              }`}
+                            >
+                              {product.is_active ===
+                              false
+                                ? 'Inactive'
+                                : 'Active'}
+                            </span>
+                          </td>
+
+                          <td>
+                            <div className="product-table-actions">
+                              <button
+                                type="button"
+                                className="product-edit-button"
+                                title="Edit product"
+                                onClick={() =>
+                                  openEditPage(
+                                    product,
+                                  )
+                                }
+                              >
+                                <Pencil
+                                  size={
+                                    21
+                                  }
+                                />
+                              </button>
+
+                              <button
+                                type="button"
+                                className="product-delete-button"
+                                title="Delete product"
+                                onClick={() =>
+                                  openDeleteModal(
+                                    product,
+                                  )
+                                }
+                              >
+                                <Trash2
+                                  size={
+                                    21
+                                  }
+                                />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ),
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination */}
+              <div className="products-pagination">
+                <div className="products-pagination-info">
+                  Showing{' '}
+                  {products.length}{' '}
+                  of{' '}
+                  {totalResults}{' '}
+                  matching products
+                </div>
+
+                <div className="products-pagination-buttons">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      changePage(
+                        currentPage -
+                          1,
+                      )
+                    }
+                    disabled={
+                      currentPage ===
+                        1 ||
+                      loading
+                    }
+                  >
+                    ← Previous
+                  </button>
+
+                  {getPageNumbers().map(
+                    (page) => (
+                      <button
+                        type="button"
+                        key={page}
+                        className={
+                          page ===
+                          currentPage
+                            ? 'active'
+                            : ''
+                        }
+                        onClick={() =>
+                          changePage(
+                            page,
+                          )
+                        }
+                        disabled={
+                          loading
+                        }
+                      >
+                        {page}
+                      </button>
                     ),
                   )}
-                </tbody>
-              </table>
-            </div>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      changePage(
+                        currentPage +
+                          1,
+                      )
+                    }
+                    disabled={
+                      currentPage ===
+                        lastPage ||
+                      loading
+                    }
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            </>
           )}
 
-{pendingDeleteProduct && (
-  <DeleteProductModal
-    product={pendingDeleteProduct}
-    deleting={deleting}
-    onCancel={closeDeleteModal}
-    onConfirm={() => void confirmDelete()}
-  />
-)}
+        {pendingDeleteProduct && (
+          <DeleteProductModal
+            product={
+              pendingDeleteProduct
+            }
+            deleting={deleting}
+            onCancel={
+              closeDeleteModal
+            }
+            onConfirm={() =>
+              void confirmDelete()
+            }
+          />
+        )}
       </section>
     </section>
   );
