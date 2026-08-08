@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+
 import {
   BarChart3,
   ChevronRight,
@@ -12,9 +13,12 @@ import {
   Users,
 } from 'lucide-react';
 
-import { apiGet, type AuthUser } from '../../core/api/client';
-import { AdminProductsPage } from './products/AdminProductsPage';
+import {
+  apiGet,
+  type AuthUser,
+} from '../../core/api/client';
 
+import { AdminProductsPage } from './products/AdminProductsPage';
 import { AdminOrdersPage } from './orders/AdminOrdersPage';
 import { AdminRatingsPage } from './ratings/AdminRatingsPage';
 import { AdminReportsPage } from './reports/AdminReportsPage';
@@ -40,6 +44,12 @@ type DashboardStats = {
   out_of_stock_products: number;
   customers: number;
   admins: number;
+};
+
+type SettingsResponse = {
+  settings: {
+    logo_url: string | null;
+  };
 };
 
 type Props = {
@@ -96,22 +106,31 @@ const navigation: Array<{
 ];
 
 export function AdminDashboard({
-  user,
   onStorefront,
   onLogout,
 }: Props) {
   const [section, setSection] =
     useState<AdminSection>('dashboard');
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] =
+    useState(false);
 
   const [stats, setStats] =
     useState<DashboardStats | null>(null);
 
-  const [error, setError] = useState('');
+  const [storeLogo, setStoreLogo] =
+    useState<string | null>(null);
 
+  const [error, setError] =
+    useState('');
+
+  /*
+   * Load dashboard statistics.
+   */
   useEffect(() => {
-    apiGet<DashboardStats>('/admin/dashboard')
+    apiGet<DashboardStats>(
+      '/admin/dashboard',
+    )
       .then(setStats)
       .catch((err: unknown) => {
         setError(
@@ -122,24 +141,78 @@ export function AdminDashboard({
       });
   }, []);
 
-  const currentSection = navigation.find(
-    (item) => item.key === section,
-  );
+  /*
+   * Load the shop logo from Website Settings.
+   */
+  useEffect(() => {
+    apiGet<SettingsResponse>(
+      '/admin/settings',
+    )
+      .then((response) => {
+        setStoreLogo(
+          response.settings.logo_url,
+        );
+      })
+      .catch((err: unknown) => {
+        console.error(
+          'Unable to load store logo:',
+          err,
+        );
+      });
+  }, []);
+
+  /*
+   * Listen for logo changes from the Settings page.
+   * We will use this so the sidebar can update
+   * immediately after the boss changes the logo.
+   */
+  useEffect(() => {
+    function handleLogoUpdated(
+      event: Event,
+    ) {
+      const logoEvent =
+        event as CustomEvent<{
+          logoUrl: string | null;
+        }>;
+
+      setStoreLogo(
+        logoEvent.detail?.logoUrl ??
+          null,
+      );
+    }
+
+    window.addEventListener(
+      'techhub:logo-updated',
+      handleLogoUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        'techhub:logo-updated',
+        handleLogoUpdated,
+      );
+    };
+  }, []);
 
   return (
     <div
       className={`admin-shell ${
-        sidebarOpen ? 'sidebar-open' : 'sidebar-closed'
+        sidebarOpen
+          ? 'sidebar-open'
+          : 'sidebar-closed'
       }`}
     >
       <aside className="admin-sidebar">
-        <div className="admin-brand">
-          <Package size={27} />
+        {/* Dynamic Shop Logo */}
 
-          <span className="admin-brand-text">
-            <strong>TechHub</strong>
-            <small>Admin Console</small>
-          </span>
+        <div className="admin-brand admin-logo-brand">
+          {storeLogo && (
+            <img
+              src={storeLogo}
+              alt="Shop logo"
+              className="admin-sidebar-logo"
+            />
+          )}
         </div>
 
         <nav>
@@ -151,12 +224,18 @@ export function AdminDashboard({
                 type="button"
                 key={item.key}
                 title={
-                  sidebarOpen ? undefined : item.label
+                  sidebarOpen
+                    ? undefined
+                    : item.label
                 }
                 className={
-                  section === item.key ? 'active' : ''
+                  section === item.key
+                    ? 'active'
+                    : ''
                 }
-                onClick={() => setSection(item.key)}
+                onClick={() =>
+                  setSection(item.key)
+                }
               >
                 <Icon size={19} />
 
@@ -187,7 +266,11 @@ export function AdminDashboard({
 
           <button
             type="button"
-            title={sidebarOpen ? undefined : 'Logout'}
+            title={
+              sidebarOpen
+                ? undefined
+                : 'Logout'
+            }
             onClick={onLogout}
           >
             <LogOut size={18} />
@@ -206,13 +289,17 @@ export function AdminDashboard({
                 : 'Expand sidebar'
             }
             onClick={() =>
-              setSidebarOpen((current) => !current)
+              setSidebarOpen(
+                (current) => !current,
+              )
             }
           >
             <ChevronRight size={20} />
 
             <span className="admin-nav-label">
-              {sidebarOpen ? 'Collapse' : 'Expand'}
+              {sidebarOpen
+                ? 'Collapse'
+                : 'Expand'}
             </span>
           </button>
         </div>
@@ -226,11 +313,13 @@ export function AdminDashboard({
         )}
 
         {section === 'dashboard' && (
-          <DashboardHome stats={stats} />
+          <DashboardHome
+            stats={stats}
+          />
         )}
 
         {section === 'products' && (
-         <AdminProductsPage />
+          <AdminProductsPage />
         )}
 
         {section === 'orders' && (
@@ -268,20 +357,33 @@ function DashboardHome({
 }) {
   return (
     <section className="admin-dashboard-home">
-      <div className="stat-grid">
+      <div className="admin-page-heading">
+        <h1>Dashboard</h1>
+
+        <p>
+          Overview of your TechHub
+          store.
+        </p>
+      </div>
+
+      <div className="admin-stats-grid">
         <StatCard
-          label="All products"
+          label="Products"
           value={stats?.products}
         />
 
         <StatCard
           label="Active products"
-          value={stats?.active_products}
+          value={
+            stats?.active_products
+          }
         />
 
         <StatCard
           label="Out of stock"
-          value={stats?.out_of_stock_products}
+          value={
+            stats?.out_of_stock_products
+          }
         />
 
         <StatCard
@@ -294,9 +396,11 @@ function DashboardHome({
         <h2>Production control</h2>
 
         <p>
-          Product changes use the authenticated Laravel
-          API and are saved in the connected Supabase
-          database and Storage bucket.
+          Product changes use the
+          authenticated Laravel API and
+          are saved in the connected
+          Supabase database and Storage
+          bucket.
         </p>
       </div>
     </section>
@@ -311,9 +415,12 @@ function StatCard({
   value?: number;
 }) {
   return (
-    <article className="stat-card">
+    <article className="admin-stat-card">
       <span>{label}</span>
-      <strong>{value ?? '—'}</strong>
+
+      <strong>
+        {value ?? '—'}
+      </strong>
     </article>
   );
 }
