@@ -1,5 +1,5 @@
 <?php
-
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AdminSettingController;
@@ -142,4 +142,20 @@ Route::middleware('auth:sanctum')->group(function (): void {
                 'destroy',
             ]);
         });
+
+        // Customer order routes
+            Route::get('/orders', [
+                OrderController::class,
+                'index',
+            ]);
+
+            Route::post('/orders', [
+                OrderController::class,
+                'store',
+            ]);
+
+            Route::get('/orders/{order}', [
+                OrderController::class,
+                'show',
+            ]);
 });
