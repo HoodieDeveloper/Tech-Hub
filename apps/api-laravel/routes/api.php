@@ -36,6 +36,11 @@ Route::get('/products', [
     'index',
 ]);
 
+Route::get('/categories', [
+    CategoryController::class,
+    'index',
+]);
+
 Route::post('/register', [
     AuthController::class,
     'register',
