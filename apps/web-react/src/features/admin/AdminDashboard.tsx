@@ -1,15 +1,23 @@
-import { useEffect, useState } from 'react';
+import {
+  useEffect,
+  useState,
+} from 'react';
 
 import {
   BarChart3,
+  CheckCircle2,
   ChevronRight,
+  CircleDollarSign,
+  Clock3,
   LayoutDashboard,
   LogOut,
   Package,
+  PackageCheck,
   Settings,
   ShoppingBag,
   Star,
   Store,
+  TrendingUp,
   Users,
 } from 'lucide-react';
 
@@ -18,13 +26,33 @@ import {
   type AuthUser,
 } from '../../core/api/client';
 
-import { AdminProductsPage } from './products/AdminProductsPage';
-import { AdminOrdersPage } from './orders/AdminOrdersPage';
-import { AdminRatingsPage } from './ratings/AdminRatingsPage';
-import { AdminReportsPage } from './reports/AdminReportsPage';
-import { AdminSettingsPage } from './settings/AdminSettingsPage';
-import { AdminUsersPage } from './users/AdminUsersPage';
-import { AdminVendorsPage } from './vendors/AdminVendorsPage';
+import {
+  AdminProductsPage,
+} from './products/AdminProductsPage';
+
+import {
+  AdminOrdersPage,
+} from './orders/AdminOrdersPage';
+
+import {
+  AdminRatingsPage,
+} from './ratings/AdminRatingsPage';
+
+import {
+  AdminReportsPage,
+} from './reports/AdminReportsPage';
+
+import {
+  AdminSettingsPage,
+} from './settings/AdminSettingsPage';
+
+import {
+  AdminUsersPage,
+} from './users/AdminUsersPage';
+
+import {
+  AdminVendorsPage,
+} from './vendors/AdminVendorsPage';
 
 import './AdminDashboard.css';
 
@@ -38,12 +66,34 @@ type AdminSection =
   | 'ratings'
   | 'settings';
 
+type BestSellingProduct = {
+  product_id: number | null;
+  product_name: string;
+  quantity_sold: number;
+  sales_total: string;
+};
+
 type DashboardStats = {
   products: number;
   active_products: number;
   out_of_stock_products: number;
+
   customers: number;
   admins: number;
+
+  total_orders: number;
+  pending_orders: number;
+  completed_orders: number;
+  cancelled_orders: number;
+
+  total_sales: string;
+  today_orders: number;
+  today_sales: string;
+
+  items_sold: number;
+
+  best_selling_products:
+    BestSellingProduct[];
 };
 
 type SettingsResponse = {
@@ -109,62 +159,120 @@ export function AdminDashboard({
   onStorefront,
   onLogout,
 }: Props) {
-  const [section, setSection] =
-    useState<AdminSection>('dashboard');
+  const [
+    section,
+    setSection,
+  ] =
+    useState<AdminSection>(
+      'dashboard',
+    );
 
-  const [sidebarOpen, setSidebarOpen] =
+  const [
+    sidebarOpen,
+    setSidebarOpen,
+  ] =
     useState(false);
 
-  const [stats, setStats] =
-    useState<DashboardStats | null>(null);
+  const [
+    stats,
+    setStats,
+  ] =
+    useState<DashboardStats | null>(
+      null,
+    );
 
-  const [storeLogo, setStoreLogo] =
-    useState<string | null>(null);
+  const [
+    storeLogo,
+    setStoreLogo,
+  ] =
+    useState<string | null>(
+      null,
+    );
 
-  const [error, setError] =
+  const [
+    dashboardLoading,
+    setDashboardLoading,
+  ] =
+    useState(false);
+
+  const [
+    error,
+    setError,
+  ] =
     useState('');
 
   /*
-   * Load dashboard statistics.
+   * Load / refresh dashboard
+   * analytics.
    */
   useEffect(() => {
-    apiGet<DashboardStats>(
-      '/admin/dashboard',
-    )
-      .then(setStats)
-      .catch((err: unknown) => {
+    if (
+      section !== 'dashboard'
+    ) {
+      return;
+    }
+
+    async function loadDashboard() {
+      setDashboardLoading(
+        true,
+      );
+
+      setError('');
+
+      try {
+        const response =
+          await apiGet<DashboardStats>(
+            '/admin/dashboard',
+          );
+
+        setStats(
+          response,
+        );
+      } catch (err) {
         setError(
           err instanceof Error
             ? err.message
             : 'Unable to load dashboard.',
         );
-      });
-  }, []);
+      } finally {
+        setDashboardLoading(
+          false,
+        );
+      }
+    }
+
+    void loadDashboard();
+  }, [section]);
 
   /*
-   * Load the shop logo from Website Settings.
+   * Load dynamic shop logo.
    */
   useEffect(() => {
     apiGet<SettingsResponse>(
       '/admin/settings',
     )
-      .then((response) => {
-        setStoreLogo(
-          response.settings.logo_url,
-        );
-      })
-      .catch((err: unknown) => {
-        console.error(
-          'Unable to load store logo:',
-          err,
-        );
-      });
+      .then(
+        (response) => {
+          setStoreLogo(
+            response.settings
+              .logo_url,
+          );
+        },
+      )
+      .catch(
+        (err: unknown) => {
+          console.error(
+            'Unable to load store logo:',
+            err,
+          );
+        },
+      );
   }, []);
 
   /*
-   * Listen for logo changes from the Settings page.
-   * We will use this so the sidebar can update
-   * immediately after the boss changes the logo.
+   * Update sidebar logo
+   * immediately after Settings
+   * changes it.
    */
   useEffect(() => {
     function handleLogoUpdated(
@@ -172,11 +280,14 @@ export function AdminDashboard({
     ) {
       const logoEvent =
         event as CustomEvent<{
-          logoUrl: string | null;
+          logoUrl:
+            | string
+            | null;
         }>;
 
       setStoreLogo(
-        logoEvent.detail?.logoUrl ??
+        logoEvent.detail
+          ?.logoUrl ??
           null,
       );
     }
@@ -202,9 +313,11 @@ export function AdminDashboard({
           : 'sidebar-closed'
       }`}
     >
-      <aside className="admin-sidebar">
-        {/* Dynamic Shop Logo */}
+      {/* =====================
+          SIDEBAR
+      ====================== */}
 
+      <aside className="admin-sidebar">
         <div className="admin-brand admin-logo-brand">
           {storeLogo && (
             <img
@@ -216,35 +329,47 @@ export function AdminDashboard({
         </div>
 
         <nav>
-          {navigation.map((item) => {
-            const Icon = item.icon;
+          {navigation.map(
+            (item) => {
+              const Icon =
+                item.icon;
 
-            return (
-              <button
-                type="button"
-                key={item.key}
-                title={
-                  sidebarOpen
-                    ? undefined
-                    : item.label
-                }
-                className={
-                  section === item.key
-                    ? 'active'
-                    : ''
-                }
-                onClick={() =>
-                  setSection(item.key)
-                }
-              >
-                <Icon size={19} />
+              return (
+                <button
+                  type="button"
+                  key={
+                    item.key
+                  }
+                  title={
+                    sidebarOpen
+                      ? undefined
+                      : item.label
+                  }
+                  className={
+                    section ===
+                    item.key
+                      ? 'active'
+                      : ''
+                  }
+                  onClick={() =>
+                    setSection(
+                      item.key,
+                    )
+                  }
+                >
+                  <Icon
+                    size={19}
+                  />
 
-                <span className="admin-nav-label">
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
+                  <span className="admin-nav-label">
+                    {
+                      item.label
+                    }
+                  </span>
+                </button>
+              );
+            },
+          )}
         </nav>
 
         <div className="admin-sidebar-footer">
@@ -255,7 +380,9 @@ export function AdminDashboard({
                 ? undefined
                 : 'View customer store'
             }
-            onClick={onStorefront}
+            onClick={
+              onStorefront
+            }
           >
             <Store size={18} />
 
@@ -271,9 +398,13 @@ export function AdminDashboard({
                 ? undefined
                 : 'Logout'
             }
-            onClick={onLogout}
+            onClick={
+              onLogout
+            }
           >
-            <LogOut size={18} />
+            <LogOut
+              size={18}
+            />
 
             <span className="admin-nav-label">
               Logout
@@ -290,11 +421,16 @@ export function AdminDashboard({
             }
             onClick={() =>
               setSidebarOpen(
-                (current) => !current,
+                (
+                  current,
+                ) =>
+                  !current,
               )
             }
           >
-            <ChevronRight size={20} />
+            <ChevronRight
+              size={20}
+            />
 
             <span className="admin-nav-label">
               {sidebarOpen
@@ -305,6 +441,10 @@ export function AdminDashboard({
         </div>
       </aside>
 
+      {/* =====================
+          CONTENT
+      ====================== */}
+
       <main className="admin-main">
         {error && (
           <div className="alert error">
@@ -312,37 +452,48 @@ export function AdminDashboard({
           </div>
         )}
 
-        {section === 'dashboard' && (
+        {section ===
+          'dashboard' && (
           <DashboardHome
             stats={stats}
+            loading={
+              dashboardLoading
+            }
           />
         )}
 
-        {section === 'products' && (
+        {section ===
+          'products' && (
           <AdminProductsPage />
         )}
 
-        {section === 'orders' && (
+        {section ===
+          'orders' && (
           <AdminOrdersPage />
         )}
 
-        {section === 'vendors' && (
+        {section ===
+          'vendors' && (
           <AdminVendorsPage />
         )}
 
-        {section === 'users' && (
+        {section ===
+          'users' && (
           <AdminUsersPage />
         )}
 
-        {section === 'reports' && (
+        {section ===
+          'reports' && (
           <AdminReportsPage />
         )}
 
-        {section === 'ratings' && (
+        {section ===
+          'ratings' && (
           <AdminRatingsPage />
         )}
 
-        {section === 'settings' && (
+        {section ===
+          'settings' && (
           <AdminSettingsPage />
         )}
       </main>
@@ -350,77 +501,349 @@ export function AdminDashboard({
   );
 }
 
+/* =========================
+   DASHBOARD HOME
+========================= */
+
 function DashboardHome({
   stats,
+  loading,
 }: {
-  stats: DashboardStats | null;
+  stats:
+    | DashboardStats
+    | null;
+
+  loading: boolean;
 }) {
   return (
     <section className="admin-dashboard-home">
       <div className="admin-page-heading">
-        <h1>Dashboard</h1>
+        <div>
+          <h1>
+            Dashboard
+          </h1>
 
-        <p>
-          Overview of your TechHub
-          store.
-        </p>
+          <p>
+            Real-time overview
+            of your store,
+            orders and sales.
+          </p>
+        </div>
       </div>
+
+      {loading &&
+        !stats && (
+          <div className="admin-dashboard-loading">
+            Loading analytics...
+          </div>
+        )}
+
+      {/* =====================
+          SALES CARDS
+      ====================== */}
 
       <div className="admin-stats-grid">
         <StatCard
+          label="Total Sales"
+          value={
+            stats
+              ? `$${Number(
+                  stats.total_sales,
+                ).toFixed(2)}`
+              : undefined
+          }
+          icon={
+            CircleDollarSign
+          }
+          description="All non-cancelled orders"
+        />
+
+        <StatCard
+          label="Today's Sales"
+          value={
+            stats
+              ? `$${Number(
+                  stats.today_sales,
+                ).toFixed(2)}`
+              : undefined
+          }
+          icon={
+            TrendingUp
+          }
+          description={`${stats?.today_orders ?? 0} orders today`}
+        />
+
+        <StatCard
+          label="Total Orders"
+          value={
+            stats?.total_orders
+          }
+          icon={
+            ShoppingBag
+          }
+          description={`${stats?.items_sold ?? 0} items sold`}
+        />
+
+        <StatCard
+          label="Pending Orders"
+          value={
+            stats?.pending_orders
+          }
+          icon={Clock3}
+          description="Waiting for processing"
+        />
+      </div>
+
+      {/* =====================
+          ORDER STATUS
+      ====================== */}
+
+      <div className="admin-stats-grid admin-secondary-stats">
+        <StatCard
+          label="Completed Orders"
+          value={
+            stats?.completed_orders
+          }
+          icon={
+            CheckCircle2
+          }
+          description="Successfully completed"
+        />
+
+        <StatCard
+          label="Cancelled Orders"
+          value={
+            stats?.cancelled_orders
+          }
+          icon={
+            ShoppingBag
+          }
+          description="Cancelled orders"
+        />
+
+        <StatCard
           label="Products"
-          value={stats?.products}
-        />
-
-        <StatCard
-          label="Active products"
           value={
-            stats?.active_products
+            stats?.products
           }
-        />
-
-        <StatCard
-          label="Out of stock"
-          value={
-            stats?.out_of_stock_products
-          }
+          icon={Package}
+          description={`${stats?.active_products ?? 0} active products`}
         />
 
         <StatCard
           label="Customers"
-          value={stats?.customers}
+          value={
+            stats?.customers
+          }
+          icon={Users}
+          description="Registered customers"
         />
       </div>
 
-      <div className="admin-info-card">
-        <h2>Production control</h2>
+      {/* =====================
+          LOWER ANALYTICS
+      ====================== */}
 
-        <p>
-          Product changes use the
-          authenticated Laravel API and
-          are saved in the connected
-          Supabase database and Storage
-          bucket.
-        </p>
+      <div className="admin-dashboard-analytics-grid">
+        {/* BEST SELLERS */}
+
+        <section className="admin-analytics-card">
+          <div className="admin-analytics-card-heading">
+            <div>
+              <h2>
+                Best Selling
+                Products
+              </h2>
+
+              <p>
+                Based on real
+                customer orders.
+              </p>
+            </div>
+
+            <PackageCheck
+              size={22}
+            />
+          </div>
+
+          {!stats?.best_selling_products?.length ? (
+            <div className="admin-analytics-empty">
+              No sales data
+              available yet.
+            </div>
+          ) : (
+            <div className="admin-best-seller-list">
+              {stats.best_selling_products.map(
+                (
+                  product,
+                  index,
+                ) => (
+                  <div
+                    className="admin-best-seller-row"
+                    key={`${
+                      product.product_id ??
+                      product.product_name
+                    }-${index}`}
+                  >
+                    <div className="admin-best-seller-rank">
+                      {index +
+                        1}
+                    </div>
+
+                    <div className="admin-best-seller-info">
+                      <strong>
+                        {
+                          product.product_name
+                        }
+                      </strong>
+
+                      <span>
+                        {
+                          product.quantity_sold
+                        }{' '}
+                        sold
+                      </span>
+                    </div>
+
+                    <strong className="admin-best-seller-sales">
+                      $
+                      {Number(
+                        product.sales_total,
+                      ).toFixed(
+                        2,
+                      )}
+                    </strong>
+                  </div>
+                ),
+              )}
+            </div>
+          )}
+        </section>
+
+        {/* STORE SUMMARY */}
+
+        <section className="admin-analytics-card">
+          <div className="admin-analytics-card-heading">
+            <div>
+              <h2>
+                Store Summary
+              </h2>
+
+              <p>
+                Current inventory
+                and sales status.
+              </p>
+            </div>
+
+            <BarChart3
+              size={22}
+            />
+          </div>
+
+          <div className="admin-summary-list">
+            <SummaryRow
+              label="Active Products"
+              value={
+                stats?.active_products
+              }
+            />
+
+            <SummaryRow
+              label="Out of Stock"
+              value={
+                stats
+                  ?.out_of_stock_products
+              }
+            />
+
+            <SummaryRow
+              label="Items Sold"
+              value={
+                stats?.items_sold
+              }
+            />
+
+            <SummaryRow
+              label="Admins"
+              value={
+                stats?.admins
+              }
+            />
+          </div>
+        </section>
       </div>
     </section>
   );
 }
 
+/* =========================
+   STAT CARD
+========================= */
+
 function StatCard({
   label,
   value,
+  description,
+  icon: Icon,
 }: {
   label: string;
-  value?: number;
+
+  value:
+    | string
+    | number
+    | undefined;
+
+  description: string;
+
+  icon: typeof Package;
 }) {
   return (
     <article className="admin-stat-card">
-      <span>{label}</span>
+      <div className="admin-stat-card-top">
+        <span>
+          {label}
+        </span>
+
+        <div className="admin-stat-icon">
+          <Icon
+            size={20}
+          />
+        </div>
+      </div>
 
       <strong>
         {value ?? '—'}
       </strong>
+
+      <small>
+        {description}
+      </small>
     </article>
+  );
+}
+
+/* =========================
+   SUMMARY ROW
+========================= */
+
+function SummaryRow({
+  label,
+  value,
+}: {
+  label: string;
+  value:
+    | number
+    | undefined;
+}) {
+  return (
+    <div className="admin-summary-row">
+      <span>
+        {label}
+      </span>
+
+      <strong>
+        {value ?? '—'}
+      </strong>
+    </div>
   );
 }
