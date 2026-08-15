@@ -10,6 +10,7 @@ use App\Services\SupabaseStorageService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\WishlistController;
+use App\Http\Controllers\Api\CartController;
 
 Route::get('/test', fn () => response()->json([
     'message' => 'API is working',
@@ -175,4 +176,10 @@ Route::middleware('auth:sanctum')->group(function (): void {
                 WishlistController::class,
                 'destroy',
             ]);
+
+            Route::get('/cart', [CartController::class, 'index']);
+            Route::post('/cart/{product}', [CartController::class, 'store']);
+            Route::put('/cart/{product}', [CartController::class, 'update']);
+            Route::delete('/cart/{product}', [CartController::class, 'destroy']);
+            Route::delete('/cart', [CartController::class, 'clear']);
 });

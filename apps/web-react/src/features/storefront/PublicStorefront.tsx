@@ -47,7 +47,7 @@ type Props = {
   user: AuthUser | null;
 
   onLogin: () => void;
-
+  onWishlistClick?: () => void;
   onAdminDashboard: () => void;
 
   onProductClick: (
@@ -59,15 +59,24 @@ type Props = {
   onLogout: () => void;
 
   /*
-   * Real number of products
-   * currently inside the cart.
+   * Cart
    */
   cartCount?: number;
 
-  /*
-   * Will open the Cart page later.
-   */
   onCartClick?: () => void;
+
+  /*
+   * Wishlist
+   */
+  wishlistCount?: number;
+
+  isWishlisted?: (
+    productId: number,
+  ) => boolean;
+
+  onToggleWishlist?: (
+    productId: number,
+  ) => void;
 };
 
 const banners = [
@@ -83,8 +92,13 @@ export function PublicStorefront({
   onProductClick,
   onLogout,
   onViewAll,
+  onWishlistClick,
   cartCount = 0,
   onCartClick,
+
+  wishlistCount = 0,
+  isWishlisted,
+  onToggleWishlist,
 }: Props) {
   const [
     products,
@@ -196,17 +210,13 @@ export function PublicStorefront({
         (product) =>
           product.name
             .toLowerCase()
-            .includes(
-              keyword,
-            ) ||
+            .includes(keyword) ||
           (
             product.description ??
             ''
           )
             .toLowerCase()
-            .includes(
-              keyword,
-            ),
+            .includes(keyword),
       );
     }, [
       products,
@@ -237,6 +247,25 @@ export function PublicStorefront({
         banners.length - 1
           ? 0
           : current + 1,
+    );
+  }
+
+  function handleWishlistClick(
+    productId: number,
+  ) {
+    if (!user) {
+      onLogin();
+      return;
+    }
+
+    if (
+      user.role !== 'customer'
+    ) {
+      return;
+    }
+
+    onToggleWishlist?.(
+      productId,
     );
   }
 
@@ -296,15 +325,17 @@ export function PublicStorefront({
             className="store-brand"
           >
             <strong>
-              TechHub Computer
-              Shop
+              TechHub Computer Shop
             </strong>
           </button>
 
           <div className="store-search">
+            {/* CLICKABLE ALL CATEGORIES */}
+
             <button
               type="button"
               className="category-button"
+              onClick={onViewAll}
             >
               All Categories
 
@@ -335,19 +366,35 @@ export function PublicStorefront({
           </div>
 
           <div className="store-header-actions">
-            <button
-              type="button"
-              className="header-icon-button"
-              title="Wishlist"
-            >
-              <Heart
-                size={19}
-              />
+            {/* WISHLIST */}
 
-              <span>
-                Wishlist
+          <button
+            type="button"
+            className="header-icon-button wishlist-header-button"
+            title="Wishlist"
+            onClick={onWishlistClick}
+          >
+            <Heart
+              size={19}
+              fill={
+                wishlistCount > 0
+                  ? 'currentColor'
+                  : 'none'
+              }
+            />
+
+            <span>
+              Wishlist
+            </span>
+
+            {wishlistCount > 0 && (
+              <span className="wishlist-count">
+                {wishlistCount}
               </span>
-            </button>
+            )}
+          </button>
+
+            {/* ACCOUNT */}
 
             {user ? (
               <button
@@ -383,7 +430,7 @@ export function PublicStorefront({
               </button>
             )}
 
-            {/* REAL CART BUTTON */}
+            {/* CART */}
 
             <button
               type="button"
@@ -422,8 +469,11 @@ export function PublicStorefront({
             Home
           </button>
 
+          {/* CLICKABLE SHOP BY CATEGORY */}
+
           <button
             type="button"
+            onClick={onViewAll}
           >
             Shop by Category
 
@@ -479,11 +529,11 @@ export function PublicStorefront({
       </nav>
 
       {/* =========================
-          MAIN PAGE
+          MAIN
       ========================== */}
 
       <main className="storefront-container storefront-main">
-        {/* HERO SLIDER */}
+        {/* HERO */}
 
         <section
           className="hero-slider"
@@ -632,8 +682,7 @@ export function PublicStorefront({
                 className="spin"
               />
 
-              Loading
-              products...
+              Loading products...
             </div>
           )}
 
@@ -642,80 +691,104 @@ export function PublicStorefront({
               .length ===
               0 && (
               <div className="empty-state">
-                No products
-                found.
+                No products found.
               </div>
             )}
 
           <div className="public-product-grid">
             {visibleProducts.map(
-              (product) => (
-                <article
-                  className="public-product-card"
-                  key={
-                    product.id
-                  }
-                >
-                  <button
-                    type="button"
-                    className="product-click-area"
-                    onClick={() =>
-                      onProductClick(
-                        product,
-                      )
+              (product) => {
+                const wishlisted =
+                  isWishlisted?.(
+                    product.id,
+                  ) ?? false;
+
+                return (
+                  <article
+                    className="public-product-card"
+                    key={
+                      product.id
                     }
                   >
-                    <div className="product-image-area">
-                      <span className="product-badge">
-                        NEW
-                      </span>
+                    <button
+                      type="button"
+                      className="product-click-area"
+                      onClick={() =>
+                        onProductClick(
+                          product,
+                        )
+                      }
+                    >
+                      <div className="product-image-area">
+                        <span className="product-badge">
+                          NEW
+                        </span>
 
-                      <ProductImage
-                        imageUrl={
-                          product.image_url
-                        }
-                        alt={
-                          product.name
-                        }
-                      />
-                    </div>
-
-                    <div className="public-product-body">
-                      <h3>
-                        {
-                          product.name
-                        }
-                      </h3>
-
-                      <div className="product-stars">
-                        ☆☆☆☆☆
-                      </div>
-
-                      <div className="product-price-row">
-                        <strong>
-                          $
-                          {Number(
-                            product.price,
-                          ).toFixed(
-                            2,
-                          )}
-                        </strong>
-
-                        <Heart
-                          size={18}
-                          className="product-heart"
+                        <ProductImage
+                          imageUrl={
+                            product.image_url
+                          }
+                          alt={
+                            product.name
+                          }
                         />
                       </div>
-                    </div>
-                  </button>
-                </article>
-              ),
+
+                      <div className="public-product-body">
+                        <h3>
+                          {
+                            product.name
+                          }
+                        </h3>
+
+                        <div className="product-stars">
+                          ☆☆☆☆☆
+                        </div>
+
+                        <div className="product-price-row">
+                          <strong>
+                            $
+                            {Number(
+                              product.price,
+                            ).toFixed(
+                              2,
+                            )}
+                          </strong>
+
+                          <Heart
+                            size={20}
+                            className={
+                              wishlisted
+                                ? 'product-heart wishlisted'
+                                : 'product-heart'
+                            }
+                            fill={
+                              wishlisted
+                                ? 'currentColor'
+                                : 'none'
+                            }
+                            onClick={(
+                              event,
+                            ) => {
+                              event.stopPropagation();
+
+                              handleWishlistClick(
+                                product.id,
+                              );
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </button>
+                  </article>
+                );
+              },
             )}
           </div>
         </section>
 
         {/* =========================
-            BENEFITS STRIP
+            BENEFITS
         ========================== */}
 
         <section className="store-benefits">
@@ -730,8 +803,7 @@ export function PublicStorefront({
               </strong>
 
               <span>
-                On orders over
-                $49
+                On orders over $49
               </span>
             </div>
           </div>
@@ -747,8 +819,7 @@ export function PublicStorefront({
               </strong>
 
               <span>
-                100% encrypted
-                checkout
+                100% encrypted checkout
               </span>
             </div>
           </div>
@@ -764,8 +835,7 @@ export function PublicStorefront({
               </strong>
 
               <span>
-                30-day return
-                policy
+                30-day return policy
               </span>
             </div>
           </div>
@@ -781,8 +851,7 @@ export function PublicStorefront({
               </strong>
 
               <span>
-                We're here to
-                help
+                We're here to help
               </span>
             </div>
           </div>
@@ -797,17 +866,14 @@ export function PublicStorefront({
         <div className="storefront-container footer-grid">
           <div className="footer-brand">
             <h3>
-              TechHub Computer
-              Shop
+              TechHub Computer Shop
             </h3>
 
             <p>
-              Your trusted
-              destination for
-              the latest tech,
-              quality products
-              and better
-              experiences.
+              Your trusted destination
+              for the latest tech,
+              quality products and
+              better experiences.
             </p>
 
             <div className="social-links">
@@ -836,6 +902,7 @@ export function PublicStorefront({
 
             <button
               type="button"
+              onClick={onViewAll}
             >
               All Categories
             </button>
@@ -931,9 +998,8 @@ export function PublicStorefront({
             </h4>
 
             <p>
-              Subscribe for
-              exclusive deals
-              and updates.
+              Subscribe for exclusive
+              deals and updates.
             </p>
 
             <div className="newsletter-form">
@@ -966,8 +1032,8 @@ export function PublicStorefront({
         </div>
 
         <div className="storefront-container footer-bottom">
-          © 2026 TechHub.
-          All rights reserved.
+          © 2026 TechHub. All rights
+          reserved.
         </div>
       </footer>
     </div>

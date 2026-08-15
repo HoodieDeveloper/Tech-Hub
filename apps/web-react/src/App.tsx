@@ -1,5 +1,4 @@
 import {
-  useMemo,
   useState,
 } from 'react';
 
@@ -22,9 +21,9 @@ import {
   CustomerCartPage,
 } from './features/customer/cart/CustomerCartPage';
 
-import type {
-  CartItem,
-} from './features/customer/cart/types';
+import {
+  useCart,
+} from './features/customer/cart/useCart';
 
 import {
   CustomerCatalogPage,
@@ -39,6 +38,14 @@ import {
 } from './features/customer/CustomerProductDetailsPage';
 
 import {
+  CustomerWishlistPage,
+} from './features/customer/wishlist/CustomerWishlistPage';
+
+import {
+  useWishlist,
+} from './features/customer/wishlist/useWishlist';
+
+import {
   PublicStorefront,
 } from './features/storefront/PublicStorefront';
 
@@ -51,6 +58,7 @@ type View =
   | 'catalog'
   | 'cart'
   | 'checkout'
+  | 'wishlist'
   | 'login'
   | 'product-details'
   | 'admin';
@@ -58,6 +66,7 @@ type View =
 type LoginReturnView =
   | 'storefront'
   | 'checkout'
+  | 'wishlist'
   | 'product-details';
 
 export default function App() {
@@ -89,35 +98,39 @@ export default function App() {
       null,
     );
 
-  const [
-    cartItems,
-    setCartItems,
-  ] =
-    useState<CartItem[]>(
-      [],
-    );
-
   /*
-   * Total quantity shown
-   * in the cart badge.
+   * =========================================
+   * DATABASE CART
+   * =========================================
    */
-  const cartCount =
-    useMemo(
-      () =>
-        cartItems.reduce(
-          (
-            total,
-            item,
-          ) =>
-            total +
-            item.quantity,
-          0,
-        ),
-      [cartItems],
-    );
+  const {
+    cartItems,
+    cartCount,
+    cartError,
+    addToCart,
+    updateCartQuantity,
+    removeFromCart,
+    clearCart,
+  } = useCart(user);
 
   /*
-   * Open product details.
+   * =========================================
+   * WISHLIST
+   * =========================================
+   */
+  const {
+    wishlistProducts,
+    wishlistCount,
+    loadingWishlist,
+    wishlistError,
+    isWishlisted,
+    toggleWishlist,
+  } = useWishlist(user);
+
+  /*
+   * =========================================
+   * PRODUCT DETAILS
+   * =========================================
    */
   function handleProductClick(
     product: Product,
@@ -154,9 +167,11 @@ export default function App() {
   }
 
   /*
-   * Add product to cart.
+   * =========================================
+   * ADD TO DATABASE CART
+   * =========================================
    */
-  function handleAddToCart(
+  async function handleAddToCart(
     product: Product,
   ) {
     if (
@@ -165,158 +180,124 @@ export default function App() {
       return;
     }
 
-    setCartItems(
-      (
-        currentItems,
-      ) => {
-        const existingItem =
-          currentItems.find(
-            (item) =>
-              item.product.id ===
-              product.id,
-          );
+    /*
+     * Cart belongs to an account,
+     * so customer must login.
+     */
+    if (!user) {
+      setLoginReturnView(
+        'storefront',
+      );
 
-        /*
-         * Product not yet
-         * in the cart.
-         */
-        if (
-          !existingItem
-        ) {
-          return [
-            ...currentItems,
-            {
-              product,
-              quantity: 1,
-            },
-          ];
-        }
+      setView(
+        'login',
+      );
 
-        /*
-         * Prevent quantity
-         * higher than stock.
-         */
-        if (
-          existingItem.quantity >=
-          product.stock
-        ) {
-          return currentItems;
-        }
+      return;
+    }
 
-        return currentItems.map(
-          (item) =>
-            item.product.id ===
-            product.id
-              ? {
-                  ...item,
-                  quantity:
-                    item.quantity +
-                    1,
-                }
-              : item,
-        );
-      },
+    if (
+      user.role !== 'customer'
+    ) {
+      setView(
+        'admin',
+      );
+
+      return;
+    }
+
+    await addToCart(
+      product,
     );
   }
 
   /*
-   * Increase quantity
-   * from cart.
+   * =========================================
+   * INCREASE CART QUANTITY
+   * =========================================
    */
-  function handleIncreaseCartItem(
+  async function handleIncreaseCartItem(
     productId: number,
   ) {
-    setCartItems(
-      (
-        currentItems,
-      ) =>
-        currentItems.map(
-          (item) => {
-            if (
-              item.product.id !==
-              productId
-            ) {
-              return item;
-            }
+    const item =
+      cartItems.find(
+        (cartItem) =>
+          cartItem.product.id ===
+          productId,
+      );
 
-            if (
-              item.quantity >=
-              item.product.stock
-            ) {
-              return item;
-            }
+    if (!item) {
+      return;
+    }
 
-            return {
-              ...item,
-              quantity:
-                item.quantity +
-                1,
-            };
-          },
-        ),
+    if (
+      item.quantity >=
+      item.product.stock
+    ) {
+      return;
+    }
+
+    await updateCartQuantity(
+      productId,
+      item.quantity + 1,
     );
   }
 
   /*
-   * Decrease quantity.
-   *
-   * Quantity 1 → 0 removes
-   * the product completely.
+   * =========================================
+   * DECREASE CART QUANTITY
+   * =========================================
    */
-  function handleDecreaseCartItem(
+  async function handleDecreaseCartItem(
     productId: number,
   ) {
-    setCartItems(
-      (
-        currentItems,
-      ) =>
-        currentItems
-          .map(
-            (item) => {
-              if (
-                item.product.id !==
-                productId
-              ) {
-                return item;
-              }
+    const item =
+      cartItems.find(
+        (cartItem) =>
+          cartItem.product.id ===
+          productId,
+      );
 
-              return {
-                ...item,
-                quantity:
-                  item.quantity -
-                  1,
-              };
-            },
-          )
-          .filter(
-            (item) =>
-              item.quantity >
-              0,
-          ),
+    if (!item) {
+      return;
+    }
+
+    /*
+     * Quantity 1 → remove item.
+     */
+    if (
+      item.quantity <= 1
+    ) {
+      await removeFromCart(
+        productId,
+      );
+
+      return;
+    }
+
+    await updateCartQuantity(
+      productId,
+      item.quantity - 1,
     );
   }
 
   /*
-   * Remove product from cart.
+   * =========================================
+   * REMOVE FROM CART
+   * =========================================
    */
-  function handleRemoveCartItem(
+  async function handleRemoveCartItem(
     productId: number,
   ) {
-    setCartItems(
-      (
-        currentItems,
-      ) =>
-        currentItems.filter(
-          (item) =>
-            item.product.id !==
-            productId,
-        ),
+    await removeFromCart(
+      productId,
     );
   }
 
   /*
-   * Proceed from Cart
-   * to Checkout.
+   * =========================================
+   * CHECKOUT
+   * =========================================
    */
   function handleCheckout() {
     if (
@@ -353,9 +334,57 @@ export default function App() {
   }
 
   /*
-   * After login, return customer
-   * to the page they were trying
-   * to access.
+   * =========================================
+   * WISHLIST
+   * =========================================
+   */
+  async function handleToggleWishlist(
+    productId: number,
+  ) {
+    if (
+      !user ||
+      user.role !== 'customer'
+    ) {
+      return;
+    }
+
+    await toggleWishlist(
+      productId,
+    );
+  }
+
+  function handleOpenWishlist() {
+    if (!user) {
+      setLoginReturnView(
+        'wishlist',
+      );
+
+      setView(
+        'login',
+      );
+
+      return;
+    }
+
+    if (
+      user.role === 'admin'
+    ) {
+      setView(
+        'admin',
+      );
+
+      return;
+    }
+
+    setView(
+      'wishlist',
+    );
+  }
+
+  /*
+   * =========================================
+   * LOGIN SUCCESS
+   * =========================================
    */
   function handleLoginSuccess(
     authenticatedUser: AuthUser,
@@ -383,22 +412,27 @@ export default function App() {
       return;
     }
 
+    /*
+     * Return to Wishlist.
+     */
     if (
       loginReturnView ===
-        'checkout' &&
-      cartItems.length > 0
+      'wishlist'
     ) {
       setLoginReturnView(
         'storefront',
       );
 
       setView(
-        'checkout',
+        'wishlist',
       );
 
       return;
     }
 
+    /*
+     * Return to Product Details.
+     */
     if (
       loginReturnView ===
         'product-details' &&
@@ -424,6 +458,11 @@ export default function App() {
     );
   }
 
+  /*
+   * =========================================
+   * LOGOUT
+   * =========================================
+   */
   async function handleLogout() {
     try {
       await apiPost(
@@ -431,12 +470,19 @@ export default function App() {
         {},
       );
     } catch {
-      // Clear local session even
-      // if API token is invalid.
+      // Local session will
+      // still be cleared.
     }
 
     clearAuthSession();
 
+    /*
+     * IMPORTANT:
+     * We DO NOT delete the database cart.
+     *
+     * After user logs in again,
+     * useCart() loads it from Supabase.
+     */
     setUser(
       null,
     );
@@ -455,7 +501,9 @@ export default function App() {
   }
 
   /*
-   * Login
+   * =========================================
+   * LOGIN PAGE
+   * =========================================
    */
   if (
     view === 'login'
@@ -465,6 +513,7 @@ export default function App() {
         onSuccess={
           handleLoginSuccess
         }
+
         onBack={() =>
           setView(
             'storefront',
@@ -475,7 +524,9 @@ export default function App() {
   }
 
   /*
-   * Admin
+   * =========================================
+   * ADMIN
+   * =========================================
    */
   if (
     view === 'admin' &&
@@ -485,11 +536,13 @@ export default function App() {
     return (
       <AdminDashboard
         user={user}
+
         onStorefront={() =>
           setView(
             'storefront',
           )
         }
+
         onLogout={() =>
           void handleLogout()
         }
@@ -498,7 +551,53 @@ export default function App() {
   }
 
   /*
-   * Customer Cart
+   * =========================================
+   * WISHLIST PAGE
+   * =========================================
+   */
+  if (
+    view === 'wishlist' &&
+    user?.role === 'customer'
+  ) {
+    return (
+      <CustomerWishlistPage
+        products={
+          wishlistProducts
+        }
+
+        onBack={() =>
+          setView(
+            'storefront',
+          )
+        }
+
+        onProductClick={
+          handleProductClick
+        }
+
+        onAddToCart={(
+          product,
+        ) =>
+          void handleAddToCart(
+            product,
+          )
+        }
+
+        onRemove={(
+          productId,
+        ) =>
+          void handleToggleWishlist(
+            productId,
+          )
+        }
+      />
+    );
+  }
+
+  /*
+   * =========================================
+   * CART PAGE
+   * =========================================
    */
   if (
     view === 'cart'
@@ -508,20 +607,37 @@ export default function App() {
         cartItems={
           cartItems
         }
+
         onBack={() =>
           setView(
             'storefront',
           )
         }
-        onIncrease={
-          handleIncreaseCartItem
+
+        onIncrease={(
+          productId,
+        ) =>
+          void handleIncreaseCartItem(
+            productId,
+          )
         }
-        onDecrease={
-          handleDecreaseCartItem
+
+        onDecrease={(
+          productId,
+        ) =>
+          void handleDecreaseCartItem(
+            productId,
+          )
         }
-        onRemove={
-          handleRemoveCartItem
+
+        onRemove={(
+          productId,
+        ) =>
+          void handleRemoveCartItem(
+            productId,
+          )
         }
+
         onCheckout={
           handleCheckout
         }
@@ -530,7 +646,9 @@ export default function App() {
   }
 
   /*
-   * Customer Checkout
+   * =========================================
+   * CHECKOUT
+   * =========================================
    */
   if (
     view ===
@@ -542,26 +660,27 @@ export default function App() {
     return (
       <CustomerCheckoutPage
         user={user}
+
         cartItems={
           cartItems
         }
+
         onBack={() =>
           setView(
             'cart',
           )
         }
+
         onOrderSuccess={(
           order,
         ) => {
           /*
-           * Order has already
-           * been saved by Laravel.
+           * Order is already saved.
            *
-           * Now clear the cart.
+           * Now remove the purchased
+           * cart items from Supabase.
            */
-          setCartItems(
-            [],
-          );
+          void clearCart();
 
           window.alert(
             `Order ${order.order_number} placed successfully!`,
@@ -576,7 +695,9 @@ export default function App() {
   }
 
   /*
-   * Catalog
+   * =========================================
+   * CATALOG
+   * =========================================
    */
   if (
     view === 'catalog'
@@ -588,18 +709,50 @@ export default function App() {
             'storefront',
           )
         }
+
         onProductClick={
           handleProductClick
         }
-        onAddToCart={
-          handleAddToCart
+
+        onAddToCart={(
+          product,
+        ) =>
+          void handleAddToCart(
+            product,
+          )
         }
+
+        isWishlisted={
+          isWishlisted
+        }
+
+        onToggleWishlist={(
+          productId,
+        ) => {
+          if (!user) {
+            setLoginReturnView(
+              'storefront',
+            );
+
+            setView(
+              'login',
+            );
+
+            return;
+          }
+
+          void handleToggleWishlist(
+            productId,
+          );
+        }}
       />
     );
   }
 
   /*
-   * Product Details
+   * =========================================
+   * PRODUCT DETAILS
+   * =========================================
    */
   if (
     view ===
@@ -612,7 +765,9 @@ export default function App() {
         productId={
           pendingProductId
         }
+
         user={user}
+
         onBack={() =>
           setView(
             'storefront',
@@ -623,48 +778,138 @@ export default function App() {
   }
 
   /*
-   * Customer Home
+   * =========================================
+   * CUSTOMER HOME
+   * =========================================
    */
   return (
-    <PublicStorefront
-      user={user}
-      cartCount={
-        cartCount
-      }
-      onCartClick={() =>
-        setView(
-          'cart',
-        )
-      }
-      onLogin={() => {
-        setPendingProductId(
-          null,
-        );
+    <>
+      {cartError && (
+        <div className="alert error">
+          {cartError}
+        </div>
+      )}
 
-        setLoginReturnView(
-          'storefront',
-        );
+      {wishlistError && (
+        <div className="alert error">
+          {wishlistError}
+        </div>
+      )}
 
-        setView(
-          'login',
-        );
-      }}
-      onAdminDashboard={() =>
-        setView(
-          'admin',
-        )
-      }
-      onProductClick={
-        handleProductClick
-      }
-      onLogout={() =>
-        void handleLogout()
-      }
-      onViewAll={() =>
-        setView(
-          'catalog',
-        )
-      }
-    />
+      <PublicStorefront
+        user={user}
+
+        /*
+         * Cart
+         */
+        cartCount={
+          cartCount
+        }
+
+        onCartClick={() => {
+          /*
+           * Customer cart belongs
+           * to their account.
+           */
+          if (!user) {
+            setLoginReturnView(
+              'storefront',
+            );
+
+            setView(
+              'login',
+            );
+
+            return;
+          }
+
+          setView(
+            'cart',
+          );
+        }}
+
+        /*
+         * Wishlist
+         */
+        wishlistCount={
+          wishlistCount
+        }
+
+        isWishlisted={
+          isWishlisted
+        }
+
+        onToggleWishlist={(
+          productId,
+        ) => {
+          if (!user) {
+            setLoginReturnView(
+              'storefront',
+            );
+
+            setView(
+              'login',
+            );
+
+            return;
+          }
+
+          void handleToggleWishlist(
+            productId,
+          );
+        }}
+
+        onWishlistClick={
+          handleOpenWishlist
+        }
+
+        /*
+         * Login
+         */
+        onLogin={() => {
+          setPendingProductId(
+            null,
+          );
+
+          setLoginReturnView(
+            'storefront',
+          );
+
+          setView(
+            'login',
+          );
+        }}
+
+        onAdminDashboard={() =>
+          setView(
+            'admin',
+          )
+        }
+
+        onProductClick={
+          handleProductClick
+        }
+
+        onLogout={() =>
+          void handleLogout()
+        }
+
+        onViewAll={() =>
+          setView(
+            'catalog',
+          )
+        }
+      />
+
+      {loadingWishlist && (
+        <div
+          style={{
+            display: 'none',
+          }}
+        >
+          Loading wishlist...
+        </div>
+      )}
+    </>
   );
 }
