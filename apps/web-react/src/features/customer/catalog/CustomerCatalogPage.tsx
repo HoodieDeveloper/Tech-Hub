@@ -32,8 +32,25 @@ import './CustomerCatalogPage.css';
 
 type Props = {
   onBack: () => void;
-  onProductClick: (product: Product) => void;
-  onAddToCart?: (product: Product) => void;
+
+  onProductClick: (
+    product: Product,
+  ) => void;
+
+  onAddToCart?: (
+    product: Product,
+  ) => void;
+
+  /*
+   * Wishlist
+   */
+  isWishlisted?: (
+    productId: number,
+  ) => boolean;
+
+  onToggleWishlist?: (
+    productId: number,
+  ) => void;
 };
 
 type CategoryItem = {
@@ -46,14 +63,25 @@ export function CustomerCatalogPage({
   onBack,
   onProductClick,
   onAddToCart,
+  isWishlisted,
+  onToggleWishlist,
 }: Props) {
-  const [products, setProducts] =
+  const [
+    products,
+    setProducts,
+  ] =
     useState<Product[]>([]);
 
-  const [loading, setLoading] =
+  const [
+    loading,
+    setLoading,
+  ] =
     useState(true);
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
     useState('');
 
   const [
@@ -76,7 +104,9 @@ export function CustomerCatalogPage({
             false,
           );
 
-        setProducts(data);
+        setProducts(
+          data,
+        );
       } catch (err) {
         setError(
           err instanceof Error
@@ -84,58 +114,79 @@ export function CustomerCatalogPage({
             : 'Unable to load products.',
         );
       } finally {
-        setLoading(false);
+        setLoading(
+          false,
+        );
       }
     }
 
     void loadProducts();
   }, []);
 
+  /*
+   * Build category list
+   * from products.
+   */
   const categories =
-    useMemo<CategoryItem[]>(() => {
-      const map = new Map<
-        number,
-        CategoryItem
-      >();
+    useMemo<CategoryItem[]>(
+      () => {
+        const map =
+          new Map<
+            number,
+            CategoryItem
+          >();
 
-      products.forEach((product) => {
-        if (
-          !product.category_id ||
-          !product.category
-        ) {
-          return;
-        }
+        products.forEach(
+          (product) => {
+            if (
+              !product.category_id ||
+              !product.category
+            ) {
+              return;
+            }
 
-        const existing =
-          map.get(
-            product.category_id,
-          );
+            const existing =
+              map.get(
+                product.category_id,
+              );
 
-        if (existing) {
-          existing.count += 1;
-          return;
-        }
+            if (existing) {
+              existing.count += 1;
+              return;
+            }
 
-        map.set(
-          product.category_id,
-          {
-            id: product.category_id,
-            name:
-              product.category.name,
-            count: 1,
+            map.set(
+              product.category_id,
+              {
+                id:
+                  product.category_id,
+
+                name:
+                  product.category
+                    .name,
+
+                count: 1,
+              },
+            );
           },
         );
-      });
 
-      return Array.from(
-        map.values(),
-      );
-    }, [products]);
+        return Array.from(
+          map.values(),
+        );
+      },
+      [products],
+    );
 
+  /*
+   * Filter products by
+   * selected category.
+   */
   const filteredProducts =
     useMemo(() => {
       if (
-        selectedCategory === 'all'
+        selectedCategory ===
+        'all'
       ) {
         return products;
       }
@@ -152,13 +203,22 @@ export function CustomerCatalogPage({
 
   return (
     <div className="customer-catalog-page">
+      {/* =====================
+          TOP
+      ====================== */}
+
       <div className="catalog-page-top">
         <button
           type="button"
           className="catalog-back-button"
-          onClick={onBack}
+          onClick={
+            onBack
+          }
         >
-          <ArrowLeft size={18} />
+          <ArrowLeft
+            size={18}
+          />
+
           Home
         </button>
 
@@ -175,6 +235,10 @@ export function CustomerCatalogPage({
       </div>
 
       <div className="catalog-page-layout">
+        {/* =====================
+            CATEGORY SIDEBAR
+        ====================== */}
+
         <aside className="catalog-category-sidebar">
           <h2>
             Categories
@@ -217,7 +281,9 @@ export function CustomerCatalogPage({
               return (
                 <button
                   type="button"
-                  key={category.id}
+                  key={
+                    category.id
+                  }
                   className={
                     selectedCategory ===
                     category.id
@@ -252,6 +318,10 @@ export function CustomerCatalogPage({
             },
           )}
         </aside>
+
+        {/* =====================
+            PRODUCTS
+        ====================== */}
 
         <main className="catalog-products-area">
           <div className="catalog-products-heading">
@@ -296,95 +366,129 @@ export function CustomerCatalogPage({
             filteredProducts.length ===
               0 && (
               <div className="catalog-empty">
-                No products found
-                in this category.
+                No products
+                found in this
+                category.
               </div>
             )}
 
           <div className="catalog-product-grid">
             {filteredProducts.map(
-              (product) => (
-                <article
-                  key={
-                    product.id
-                  }
-                  className="catalog-product-card"
-                >
-                  <button
-                    type="button"
-                    className="catalog-product-main"
-                    onClick={() =>
-                      onProductClick(
-                        product,
-                      )
+              (product) => {
+                const wishlisted =
+                  isWishlisted?.(
+                    product.id,
+                  ) ?? false;
+
+                return (
+                  <article
+                    key={
+                      product.id
                     }
+                    className="catalog-product-card"
                   >
-                    <div className="catalog-product-image">
-                      <ProductImage
-                        imageUrl={
-                          product.image_url
-                        }
-                        alt={
-                          product.name
-                        }
-                      />
-                    </div>
-
-                    <div className="catalog-product-info">
-                      <h3>
-                        {
-                          product.name
-                        }
-                      </h3>
-
-                      <div className="catalog-product-stars">
-                        ☆☆☆☆☆
-                      </div>
-
-                      <div className="catalog-product-bottom">
-                        <strong>
-                          $
-                          {Number(
-                            product.price,
-                          ).toFixed(
-                            2,
-                          )}
-                        </strong>
-
-                        <Heart
-                          size={
-                            22
+                    <button
+                      type="button"
+                      className="catalog-product-main"
+                      onClick={() =>
+                        onProductClick(
+                          product,
+                        )
+                      }
+                    >
+                      <div className="catalog-product-image">
+                        <ProductImage
+                          imageUrl={
+                            product.image_url
                           }
-                          className="catalog-heart"
+                          alt={
+                            product.name
+                          }
                         />
                       </div>
-                    </div>
-                  </button>
 
-                  <button
-                    type="button"
-                    className="catalog-add-cart"
-                    disabled={
-                      product.stock <=
+                      <div className="catalog-product-info">
+                        <h3>
+                          {
+                            product.name
+                          }
+                        </h3>
+
+                        <div className="catalog-product-stars">
+                          ☆☆☆☆☆
+                        </div>
+
+                        <div className="catalog-product-bottom">
+                          <strong>
+                            $
+                            {Number(
+                              product.price,
+                            ).toFixed(
+                              2,
+                            )}
+                          </strong>
+
+                          {/* REAL WISHLIST HEART */}
+
+                          <Heart
+                            size={22}
+                            className={
+                              wishlisted
+                                ? 'catalog-heart wishlisted'
+                                : 'catalog-heart'
+                            }
+                            fill={
+                              wishlisted
+                                ? 'currentColor'
+                                : 'none'
+                            }
+                            onClick={(
+                              event,
+                            ) => {
+                              /*
+                               * Do not open
+                               * Product Details.
+                               */
+                              event.stopPropagation();
+
+                              onToggleWishlist?.(
+                                product.id,
+                              );
+                            }}
+                          />
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* =====================
+                        ADD TO CART
+                    ====================== */}
+
+                    <button
+                      type="button"
+                      className="catalog-add-cart"
+                      disabled={
+                        product.stock <=
+                        0
+                      }
+                      onClick={() =>
+                        onAddToCart?.(
+                          product,
+                        )
+                      }
+                    >
+                      <ShoppingCart
+                        size={15}
+                      />
+
+                      {product.stock >
                       0
-                    }
-                    onClick={() =>
-                      onAddToCart?.(
-                        product,
-                      )
-                    }
-                  >
-                    <ShoppingCart
-                      size={15}
-                    />
-
-                    {product.stock >
-                    0
-                      ? 'Add to Cart'
-                      : 'Out of Stock'}
-                  </button>
-                </article>
-              ),
+                        ? 'Add to Cart'
+                        : 'Out of Stock'}
+                    </button>
+                  </article>
+                );
+              },
             )}
           </div>
         </main>

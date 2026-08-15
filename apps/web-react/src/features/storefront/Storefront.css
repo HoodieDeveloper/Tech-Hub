@@ -1318,3 +1318,44 @@ f
 .storefront-page .product-heart {
   color: #ff174f;
 }
+
+/* =========================
+   Wishlist Heart
+========================= */
+
+.product-heart {
+  color: #ff3b5c;
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    color 0.2s ease,
+    fill 0.2s ease;
+}
+
+.product-heart:hover {
+  transform: scale(1.12);
+}
+
+.product-heart.wishlisted {
+  color: #ff3b5c !important;
+  fill: #ff3b5c !important;
+  stroke: #ff3b5c !important;
+}
+
+.wishlist-header-button svg {
+  color: #ffffff;
+}
+
+.wishlist-header-button .wishlist-count {
+  display: inline-flex;
+  min-width: 18px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #ff3b5c;
+  padding: 0 5px;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
+}
