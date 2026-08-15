@@ -1,7 +1,9 @@
 import {
   useState,
 } from 'react';
-
+import type {
+  CartItem,
+} from './features/customer/cart/types';
 import {
   apiPost,
   clearAuthSession,
@@ -98,6 +100,13 @@ export default function App() {
       null,
     );
 
+      const [
+    buyNowItems,
+    setBuyNowItems,
+  ] = useState<CartItem[] | null>(
+    null,
+  );
+
   /*
    * =========================================
    * DATABASE CART
@@ -173,6 +182,7 @@ export default function App() {
    */
   async function handleAddToCart(
     product: Product,
+    quantity = 1,
   ) {
     if (
       product.stock <= 0
@@ -208,6 +218,7 @@ export default function App() {
 
     await addToCart(
       product,
+      quantity,
     );
   }
 
@@ -386,6 +397,29 @@ export default function App() {
    * LOGIN SUCCESS
    * =========================================
    */
+function handleBuyNow(
+  product: Product,
+  quantity: number,
+) {
+  if (
+    !user ||
+    user.role !== 'customer'
+  ) {
+    return;
+  }
+
+  setBuyNowItems([
+    {
+      product,
+      quantity,
+    },
+  ]);
+
+  setView(
+    'checkout',
+  );
+}
+
   function handleLoginSuccess(
     authenticatedUser: AuthUser,
   ) {
@@ -645,54 +679,93 @@ export default function App() {
     );
   }
 
-  /*
-   * =========================================
-   * CHECKOUT
-   * =========================================
-   */
-  if (
-    view ===
-      'checkout' &&
-    user &&
-    user.role ===
-      'customer'
-  ) {
-    return (
-      <CustomerCheckoutPage
-        user={user}
+/*
+ * =========================================
+ * CHECKOUT
+ * =========================================
+ */
+if (
+  view ===
+    'checkout' &&
+  user &&
+  user.role ===
+    'customer'
+) {
+  return (
+    <CustomerCheckoutPage
+      user={user}
 
-        cartItems={
-          cartItems
-        }
+      /*
+       * Buy Now:
+       * checkout only selected product.
+       *
+       * Normal checkout:
+       * checkout normal saved cart.
+       */
+      cartItems={
+        buyNowItems ??
+        cartItems
+      }
 
-        onBack={() =>
+      onBack={() => {
+        /*
+         * Buy Now came from
+         * Product Details.
+         */
+        if (buyNowItems) {
+          setBuyNowItems(
+            null,
+          );
+
           setView(
-            'cart',
-          )
+            'product-details',
+          );
+
+          return;
         }
 
-        onOrderSuccess={(
-          order,
-        ) => {
+        /*
+         * Normal cart checkout.
+         */
+        setView(
+          'cart',
+        );
+      }}
+
+      onOrderSuccess={(
+        order,
+      ) => {
+        /*
+         * BUY NOW
+         *
+         * Do NOT clear the customer's
+         * normal saved cart.
+         */
+        if (buyNowItems) {
+          setBuyNowItems(
+            null,
+          );
+        } else {
           /*
-           * Order is already saved.
+           * NORMAL CART CHECKOUT
            *
-           * Now remove the purchased
-           * cart items from Supabase.
+           * Purchased cart should
+           * be cleared from Supabase.
            */
           void clearCart();
+        }
 
-          window.alert(
-            `Order ${order.order_number} placed successfully!`,
-          );
+        window.alert(
+          `Order ${order.order_number} placed successfully!`,
+        );
 
-          setView(
-            'storefront',
-          );
-        }}
-      />
-    );
-  }
+        setView(
+          'storefront',
+        );
+      }}
+    />
+  );
+}
 
   /*
    * =========================================
@@ -761,19 +834,38 @@ export default function App() {
     pendingProductId
   ) {
     return (
-      <CustomerProductDetailsPage
-        productId={
-          pendingProductId
-        }
+<CustomerProductDetailsPage
+  productId={
+    pendingProductId
+  }
 
-        user={user}
+  user={user}
 
-        onBack={() =>
-          setView(
-            'storefront',
-          )
-        }
-      />
+  onBack={() =>
+    setView(
+      'storefront',
+    )
+  }
+
+  onAddToCart={(
+    product,
+    quantity,
+  ) =>
+    void handleAddToCart(
+      product,
+      quantity,
+    )
+  }
+  onBuyNow={(
+  product,
+  quantity,
+) =>
+  handleBuyNow(
+    product,
+    quantity,
+  )
+}
+/>
     );
   }
 

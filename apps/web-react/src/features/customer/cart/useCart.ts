@@ -124,77 +124,80 @@ export function useCart(
   /*
    * Add product.
    */
-  async function addToCart(
-    product: Product,
+async function addToCart(
+  product: Product,
+  quantity = 1,
+) {
+  if (
+    !user ||
+    user.role !== 'customer'
   ) {
-    if (
-      !user ||
-      user.role !== 'customer'
-    ) {
-      return false;
-    }
+    return false;
+  }
 
-    setCartError('');
+  setCartError('');
 
-    try {
-      const response =
-        await apiPost<CartItemResponse>(
-          `/cart/${product.id}`,
-          {},
-        );
-
-      const saved =
-        response.cart_item;
-
-      setCartItems(
-        (current) => {
-          const exists =
-            current.some(
-              (item) =>
-                item.product.id ===
-                product.id,
-            );
-
-          if (!exists) {
-            return [
-              ...current,
-              {
-                product:
-                  saved.product,
-
-                quantity:
-                  saved.quantity,
-              },
-            ];
-          }
-
-          return current.map(
-            (item) =>
-              item.product.id ===
-              product.id
-                ? {
-                    product:
-                      saved.product,
-
-                    quantity:
-                      saved.quantity,
-                  }
-                : item,
-          );
+  try {
+    const response =
+      await apiPost<CartItemResponse>(
+        `/cart/${product.id}`,
+        {
+          quantity,
         },
       );
 
-      return true;
-    } catch (err) {
-      setCartError(
-        err instanceof Error
-          ? err.message
-          : 'Unable to add product to cart.',
-      );
+    const saved =
+      response.cart_item;
 
-      return false;
-    }
+    setCartItems(
+      (current) => {
+        const exists =
+          current.some(
+            (item) =>
+              item.product.id ===
+              product.id,
+          );
+
+        if (!exists) {
+          return [
+            ...current,
+            {
+              product:
+                saved.product,
+
+              quantity:
+                saved.quantity,
+            },
+          ];
+        }
+
+        return current.map(
+          (item) =>
+            item.product.id ===
+            product.id
+              ? {
+                  product:
+                    saved.product,
+
+                  quantity:
+                    saved.quantity,
+                }
+              : item,
+        );
+      },
+    );
+
+    return true;
+  } catch (err) {
+    setCartError(
+      err instanceof Error
+        ? err.message
+        : 'Unable to add product to cart.',
+    );
+
+    return false;
   }
+}
 
   /*
    * Set exact quantity.

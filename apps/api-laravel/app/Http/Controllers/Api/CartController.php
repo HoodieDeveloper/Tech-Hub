@@ -29,56 +29,102 @@ class CartController extends Controller
     /*
      * Add product to cart.
      */
-    public function store(
-        Request $request,
-        Product $product
-    ): JsonResponse {
-        if (!$product->is_active) {
-            return response()->json([
-                'message' => 'This product is not currently available.',
-            ], 422);
-        }
+ public function store(
+    Request $request,
+    Product $product
+): JsonResponse {
+    $validated = $request->validate([
+        'quantity' => [
+            'sometimes',
+            'integer',
+            'min:1',
+        ],
+    ]);
 
-        if ($product->stock <= 0) {
-            return response()->json([
-                'message' => 'This product is out of stock.',
-            ], 422);
-        }
+    $quantityToAdd =
+        $validated['quantity'] ?? 1;
 
-        $cartItem = CartItem::query()
-            ->where('user_id', $request->user()->id)
-            ->where('product_id', $product->id)
-            ->first();
-
-        /*
-         * Product already exists in cart:
-         * increase quantity by 1.
-         */
-        if ($cartItem) {
-            if ($cartItem->quantity >= $product->stock) {
-                return response()->json([
-                    'message' => 'Cart quantity cannot exceed available stock.',
-                ], 422);
-            }
-
-            $cartItem->increment('quantity');
-
-            $cartItem->refresh();
-        } else {
-            $cartItem = CartItem::create([
-                'user_id' => $request->user()->id,
-                'product_id' => $product->id,
-                'quantity' => 1,
-            ]);
-        }
-
-        $cartItem->load('product.category');
-
+    if (!$product->is_active) {
         return response()->json([
-            'message' => 'Product added to cart.',
-            'cart_item' => $cartItem,
-        ], 200);
+            'message' => 'This product is not currently available.',
+        ], 422);
     }
+
+    if ($product->stock <= 0) {
+        return response()->json([
+            'message' => 'This product is out of stock.',
+        ], 422);
+    }
+
+    if ($quantityToAdd > $product->stock) {
+        return response()->json([
+            'message' => 'Requested quantity exceeds available stock.',
+        ], 422);
+    }
+
+    $cartItem = CartItem::query()
+        ->where(
+            'user_id',
+            $request->user()->id,
+        )
+        ->where(
+            'product_id',
+            $product->id,
+        )
+        ->first();
+
+    /*
+     * Product already exists:
+     * add selected quantity
+     * to existing quantity.
+     */
+    if ($cartItem) {
+        $newQuantity =
+            $cartItem->quantity +
+            $quantityToAdd;
+
+        if (
+            $newQuantity >
+            $product->stock
+        ) {
+            return response()->json([
+                'message' => 'Cart quantity cannot exceed available stock.',
+            ], 422);
+        }
+
+        $cartItem->update([
+            'quantity' =>
+                $newQuantity,
+        ]);
+    } else {
+        /*
+         * New cart item.
+         */
+        $cartItem =
+            CartItem::create([
+                'user_id' =>
+                    $request->user()->id,
+
+                'product_id' =>
+                    $product->id,
+
+                'quantity' =>
+                    $quantityToAdd,
+            ]);
+    }
+
+    $cartItem->load(
+        'product.category',
+    );
+
+    return response()->json([
+        'message' =>
+            'Product added to cart.',
+
+        'cart_item' =>
+            $cartItem,
+    ], 200);
+}
 
     /*
      * Change product quantity.
