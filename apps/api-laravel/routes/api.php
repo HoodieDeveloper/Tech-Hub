@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\ProductController;
 use App\Services\SupabaseStorageService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\WishlistController;
 
 Route::get('/test', fn () => response()->json([
     'message' => 'API is working',
@@ -157,5 +158,21 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::get('/orders/{order}', [
                 OrderController::class,
                 'show',
+            ]);
+
+            // Customer wishlist routes
+            Route::get('/wishlist', [
+                WishlistController::class,
+                'index',
+            ]);
+
+            Route::post('/wishlist/{product}', [
+                WishlistController::class,
+                'store',
+            ]);
+
+            Route::delete('/wishlist/{product}', [
+                WishlistController::class,
+                'destroy',
             ]);
 });
