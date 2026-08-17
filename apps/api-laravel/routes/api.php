@@ -1,16 +1,23 @@
 <?php
-use App\Http\Controllers\Api\OrderController;
+
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AdminSettingController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\CartController;
+use App\Http\Controllers\Api\OrderController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\WishlistController;
 use App\Services\SupabaseStorageService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\Api\WishlistController;
-use App\Http\Controllers\Api\CartController;
+
+/*
+|--------------------------------------------------------------------------
+| Test Routes
+|--------------------------------------------------------------------------
+*/
 
 Route::get('/test', fn () => response()->json([
     'message' => 'API is working',
@@ -19,6 +26,7 @@ Route::get('/test', fn () => response()->json([
 Route::get('/health', function (SupabaseStorageService $storage) {
     try {
         DB::select('select 1');
+
         $database = 'connected';
     } catch (\Throwable) {
         $database = 'failed';
@@ -32,57 +40,210 @@ Route::get('/health', function (SupabaseStorageService $storage) {
     ]);
 });
 
-// Public routes
+/*
+|--------------------------------------------------------------------------
+| Public Routes
+|--------------------------------------------------------------------------
+|
+| These routes do NOT require login.
+|
+*/
+
+/*
+ * Get all public products.
+ */
 Route::get('/products', [
     ProductController::class,
     'index',
 ]);
 
+/*
+ * Get one product detail.
+ *
+ * PUBLIC:
+ * Customer does not need to login
+ * just to view product information.
+ */
+Route::get('/products/{product}', [
+    ProductController::class,
+    'show',
+]);
+
+/*
+ * Get public categories.
+ */
 Route::get('/categories', [
     CategoryController::class,
     'index',
 ]);
 
+/*
+ * Customer registration.
+ */
 Route::post('/register', [
     AuthController::class,
     'register',
 ]);
 
+/*
+ * Customer/Admin login.
+ */
 Route::post('/login', [
     AuthController::class,
     'login',
 ]);
 
-// Logged-in routes
+/*
+|--------------------------------------------------------------------------
+| Logged-in Routes
+|--------------------------------------------------------------------------
+|
+| Everything inside this group requires
+| a valid Laravel Sanctum token.
+|
+*/
+
 Route::middleware('auth:sanctum')->group(function (): void {
+
+    /*
+     * Current logged-in user.
+     */
     Route::get('/me', [
         AuthController::class,
         'me',
     ]);
 
+    /*
+     * Logout.
+     */
     Route::post('/logout', [
         AuthController::class,
         'logout',
     ]);
 
-    Route::get('/products/{product}', [
-        ProductController::class,
+    /*
+    |--------------------------------------------------------------------------
+    | Customer Order Routes
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/orders', [
+        OrderController::class,
+        'index',
+    ]);
+
+    Route::post('/orders', [
+        OrderController::class,
+        'store',
+    ]);
+
+    Route::get('/orders/{order}', [
+        OrderController::class,
         'show',
     ]);
 
-    // Admin-only routes
+    /*
+    |--------------------------------------------------------------------------
+    | Customer Wishlist Routes
+    |--------------------------------------------------------------------------
+    */
+
+    Route::get('/wishlist', [
+        WishlistController::class,
+        'index',
+    ]);
+
+    Route::post('/wishlist/{product}', [
+        WishlistController::class,
+        'store',
+    ]);
+
+    Route::delete('/wishlist/{product}', [
+        WishlistController::class,
+        'destroy',
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Customer Cart Routes
+    |--------------------------------------------------------------------------
+    */
+
+    /*
+     * Get logged-in customer's cart.
+     */
+    Route::get('/cart', [
+        CartController::class,
+        'index',
+    ]);
+
+    /*
+     * Add product to cart.
+     */
+    Route::post('/cart/{product}', [
+        CartController::class,
+        'store',
+    ]);
+
+    /*
+     * Update product quantity.
+     */
+    Route::put('/cart/{product}', [
+        CartController::class,
+        'update',
+    ]);
+
+    /*
+     * Remove one product from cart.
+     */
+    Route::delete('/cart/{product}', [
+        CartController::class,
+        'destroy',
+    ]);
+
+    /*
+     * Clear entire cart.
+     */
+    Route::delete('/cart', [
+        CartController::class,
+        'clear',
+    ]);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Admin-only Routes
+    |--------------------------------------------------------------------------
+    */
+
     Route::middleware('admin')
         ->prefix('admin')
         ->group(function (): void {
-            Route::get('/dashboard', AdminDashboardController::class);
 
-            // User routes
+            /*
+             * Dashboard.
+             */
+            Route::get(
+                '/dashboard',
+                AdminDashboardController::class
+            );
+
+            /*
+            |--------------------------------------------------------------------------
+            | Admin Users
+            |--------------------------------------------------------------------------
+            */
+
             Route::get('/users', [
                 AdminUserController::class,
                 'index',
             ]);
 
-            // Settings routes
+            /*
+            |--------------------------------------------------------------------------
+            | Admin Settings
+            |--------------------------------------------------------------------------
+            */
+
             Route::get('/settings', [
                 AdminSettingController::class,
                 'index',
@@ -98,7 +259,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
                 'uploadLogo',
             ]);
 
-            // Category routes
+            /*
+            |--------------------------------------------------------------------------
+            | Admin Categories
+            |--------------------------------------------------------------------------
+            */
+
             Route::get('/categories', [
                 CategoryController::class,
                 'index',
@@ -119,7 +285,12 @@ Route::middleware('auth:sanctum')->group(function (): void {
                 'destroy',
             ]);
 
-            // Product routes
+            /*
+            |--------------------------------------------------------------------------
+            | Admin Products
+            |--------------------------------------------------------------------------
+            */
+
             Route::get('/products', [
                 ProductController::class,
                 'adminIndex',
@@ -131,7 +302,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
             ]);
 
             Route::match(
-                ['put', 'patch', 'post'],
+                [
+                    'put',
+                    'patch',
+                    'post',
+                ],
                 '/products/{product}',
                 [
                     ProductController::class,
@@ -144,42 +319,4 @@ Route::middleware('auth:sanctum')->group(function (): void {
                 'destroy',
             ]);
         });
-
-        // Customer order routes
-            Route::get('/orders', [
-                OrderController::class,
-                'index',
-            ]);
-
-            Route::post('/orders', [
-                OrderController::class,
-                'store',
-            ]);
-
-            Route::get('/orders/{order}', [
-                OrderController::class,
-                'show',
-            ]);
-
-            // Customer wishlist routes
-            Route::get('/wishlist', [
-                WishlistController::class,
-                'index',
-            ]);
-
-            Route::post('/wishlist/{product}', [
-                WishlistController::class,
-                'store',
-            ]);
-
-            Route::delete('/wishlist/{product}', [
-                WishlistController::class,
-                'destroy',
-            ]);
-
-            Route::get('/cart', [CartController::class, 'index']);
-            Route::post('/cart/{product}', [CartController::class, 'store']);
-            Route::put('/cart/{product}', [CartController::class, 'update']);
-            Route::delete('/cart/{product}', [CartController::class, 'destroy']);
-            Route::delete('/cart', [CartController::class, 'clear']);
 });
