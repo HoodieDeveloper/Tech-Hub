@@ -108,12 +108,54 @@ class ProductController extends Controller
         return response()->json($products);
     }
 
-    public function show(Product $product): JsonResponse
-    {
-        return response()->json(
-            $product->load('category:id,name,slug')
-        );
+public function show(string $product): JsonResponse
+{
+    $item = Product::query()
+        ->leftJoin(
+            'categories',
+            'categories.id',
+            '=',
+            'products.category_id'
+        )
+        ->select([
+            'products.*',
+            'categories.id as joined_category_id',
+            'categories.name as joined_category_name',
+            'categories.slug as joined_category_slug',
+        ])
+        ->where('products.id', $product)
+        ->firstOrFail();
+
+    $category = null;
+
+    if ($item->joined_category_id !== null) {
+        $category = [
+            'id' => (int) $item->joined_category_id,
+            'name' => $item->joined_category_name,
+            'slug' => $item->joined_category_slug,
+        ];
     }
+
+    /*
+     * Do not expose the temporary
+     * JOIN fields in the API response.
+     */
+    $item->makeHidden([
+        'joined_category_id',
+        'joined_category_name',
+        'joined_category_slug',
+    ]);
+
+    $data = $item->toArray();
+
+    /*
+     * Keep the same API structure
+     * your React app already expects.
+     */
+    $data['category'] = $category;
+
+    return response()->json($data);
+}
 
     /**
      * Create a product and upload its image to Supabase Storage.
