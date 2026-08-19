@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\AdminDashboardController;
+use App\Http\Controllers\Api\AdminOrderController;
 use App\Http\Controllers\Api\AdminSettingController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
@@ -44,50 +45,28 @@ Route::get('/health', function (SupabaseStorageService $storage) {
 |--------------------------------------------------------------------------
 | Public Routes
 |--------------------------------------------------------------------------
-|
-| These routes do NOT require login.
-|
 */
 
-/*
- * Get all public products.
- */
 Route::get('/products', [
     ProductController::class,
     'index',
 ]);
 
-/*
- * Get one product detail.
- *
- * PUBLIC:
- * Customer does not need to login
- * just to view product information.
- */
 Route::get('/products/{product}', [
     ProductController::class,
     'show',
 ]);
 
-/*
- * Get public categories.
- */
 Route::get('/categories', [
     CategoryController::class,
     'index',
 ]);
 
-/*
- * Customer registration.
- */
 Route::post('/register', [
     AuthController::class,
     'register',
 ]);
 
-/*
- * Customer/Admin login.
- */
 Route::post('/login', [
     AuthController::class,
     'login',
@@ -97,25 +76,21 @@ Route::post('/login', [
 |--------------------------------------------------------------------------
 | Logged-in Routes
 |--------------------------------------------------------------------------
-|
-| Everything inside this group requires
-| a valid Laravel Sanctum token.
-|
 */
 
 Route::middleware('auth:sanctum')->group(function (): void {
 
     /*
-     * Current logged-in user.
-     */
+    |--------------------------------------------------------------------------
+    | Current User
+    |--------------------------------------------------------------------------
+    */
+
     Route::get('/me', [
         AuthController::class,
         'me',
     ]);
 
-    /*
-     * Logout.
-     */
     Route::post('/logout', [
         AuthController::class,
         'logout',
@@ -123,7 +98,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     /*
     |--------------------------------------------------------------------------
-    | Customer Order Routes
+    | Customer Orders
     |--------------------------------------------------------------------------
     */
 
@@ -144,7 +119,7 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     /*
     |--------------------------------------------------------------------------
-    | Customer Wishlist Routes
+    | Customer Wishlist
     |--------------------------------------------------------------------------
     */
 
@@ -165,45 +140,30 @@ Route::middleware('auth:sanctum')->group(function (): void {
 
     /*
     |--------------------------------------------------------------------------
-    | Customer Cart Routes
+    | Customer Cart
     |--------------------------------------------------------------------------
     */
 
-    /*
-     * Get logged-in customer's cart.
-     */
     Route::get('/cart', [
         CartController::class,
         'index',
     ]);
 
-    /*
-     * Add product to cart.
-     */
     Route::post('/cart/{product}', [
         CartController::class,
         'store',
     ]);
 
-    /*
-     * Update product quantity.
-     */
     Route::put('/cart/{product}', [
         CartController::class,
         'update',
     ]);
 
-    /*
-     * Remove one product from cart.
-     */
     Route::delete('/cart/{product}', [
         CartController::class,
         'destroy',
     ]);
 
-    /*
-     * Clear entire cart.
-     */
     Route::delete('/cart', [
         CartController::class,
         'clear',
@@ -220,8 +180,11 @@ Route::middleware('auth:sanctum')->group(function (): void {
         ->group(function (): void {
 
             /*
-             * Dashboard.
-             */
+            |--------------------------------------------------------------------------
+            | Admin Dashboard
+            |--------------------------------------------------------------------------
+            */
+
             Route::get(
                 '/dashboard',
                 AdminDashboardController::class
@@ -317,6 +280,32 @@ Route::middleware('auth:sanctum')->group(function (): void {
             Route::delete('/products/{product}', [
                 ProductController::class,
                 'destroy',
+            ]);
+
+            /*
+            |--------------------------------------------------------------------------
+            | Admin Orders
+            |--------------------------------------------------------------------------
+            */
+
+            Route::get('/orders', [
+                AdminOrderController::class,
+                'index',
+            ]);
+
+            Route::get('/customers/{user}/orders', [
+                AdminOrderController::class,
+                'customerHistory',
+            ]);
+
+            Route::patch('/orders/{order}/status', [
+                AdminOrderController::class,
+                'updateStatus',
+            ]);
+
+            Route::patch('/orders/{order}/payment-status', [
+                AdminOrderController::class,
+                'updatePaymentStatus',
             ]);
         });
 });
