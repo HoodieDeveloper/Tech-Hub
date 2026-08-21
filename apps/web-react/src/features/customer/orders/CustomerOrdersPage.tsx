@@ -15,17 +15,10 @@ import {
 
 import './CustomerOrdersPage.css';
 
-type OrderStatus =
-  | 'pending'
-  | 'confirmed'
-  | 'preparing'
-  | 'shipped'
-  | 'completed'
-  | 'cancelled';
-
-type PaymentStatus =
-  | 'unpaid'
-  | 'paid';
+type OrderProduct = {
+  id: number;
+  image_url: string | null;
+};
 
 type OrderItem = {
   id: number;
@@ -34,30 +27,15 @@ type OrderItem = {
   unit_price: string;
   quantity: number;
   line_total: string;
+
+  product?: OrderProduct | null;
 };
 
 type CustomerOrder = {
   id: number;
   order_number: string;
-
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  shipping_address: string;
-
-  status: OrderStatus;
-  payment_status: PaymentStatus;
-  payment_method: string | null;
-
-  subtotal: string;
-  delivery_fee: string;
-  total: string;
   currency: string;
-
-  notes: string | null;
-
   created_at: string;
-
   items: OrderItem[];
 };
 
@@ -75,17 +53,20 @@ export function CustomerOrdersPage({
   const [
     orders,
     setOrders,
-  ] = useState<CustomerOrder[]>([]);
+  ] =
+    useState<CustomerOrder[]>([]);
 
   const [
     loading,
     setLoading,
-  ] = useState(true);
+  ] =
+    useState(true);
 
   const [
     error,
     setError,
-  ] = useState('');
+  ] =
+    useState('');
 
   function loadOrders() {
     setLoading(true);
@@ -134,6 +115,7 @@ export function CustomerOrdersPage({
   return (
     <div className="customer-orders-page">
       <div className="customer-orders-container">
+
         {/* =========================
             TOP ACTIONS
         ========================== */}
@@ -176,7 +158,7 @@ export function CustomerOrdersPage({
 
           <p>
             View your order history
-            and current order status.
+            and purchased items.
           </p>
         </div>
 
@@ -227,6 +209,7 @@ export function CustomerOrdersPage({
                     key={order.id}
                     className="customer-order-card"
                   >
+
                     {/* ORDER HEADER */}
 
                     <div className="customer-order-header">
@@ -248,60 +231,20 @@ export function CustomerOrdersPage({
                         ).toLocaleDateString(
                           undefined,
                           {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
+                            year:
+                              'numeric',
+
+                            month:
+                              'short',
+
+                            day:
+                              'numeric',
                           },
                         )}
                       </span>
                     </div>
 
-                    {/* ORDER INFORMATION */}
-
-                    <div className="customer-order-info">
-                      <div className="customer-order-info-item">
-                        <span>
-                          Payment Status
-                        </span>
-
-                        <span
-                          className={`customer-order-status ${order.payment_status}`}
-                        >
-                          {
-                            order.payment_status
-                          }
-                        </span>
-                      </div>
-
-                      <div className="customer-order-info-item">
-                        <span>
-                          Delivery Status
-                        </span>
-
-                        <span
-                          className={`customer-order-status ${order.status}`}
-                        >
-                          {
-                            order.status
-                          }
-                        </span>
-                      </div>
-
-                      <div className="customer-order-info-item">
-                        <span>
-                          Order Total
-                        </span>
-
-                        <span className="customer-order-total">
-                          {formatMoney(
-                            order.total,
-                            order.currency,
-                          )}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* ITEMS */}
+                    {/* ORDER ITEMS */}
 
                     <div className="customer-order-items">
                       <h3>
@@ -311,25 +254,52 @@ export function CustomerOrdersPage({
                       {order.items.map(
                         (item) => (
                           <div
-                            key={
-                              item.id
-                            }
+                            key={item.id}
                             className="customer-order-item"
                           >
-                            <div className="customer-order-item-name">
-                              <strong>
-                                {
-                                  item.product_name
-                                }
-                              </strong>
+                            <div className="customer-order-item-main">
 
-                              <span>
-                                Quantity:{' '}
-                                {
-                                  item.quantity
-                                }
-                              </span>
+                              {/* PRODUCT IMAGE */}
+
+                              <div className="customer-order-item-image">
+                                {item.product?.image_url ? (
+                                  <img
+                                    src={
+                                      item.product
+                                        .image_url
+                                    }
+                                    alt={
+                                      item.product_name
+                                    }
+                                  />
+                                ) : (
+                                  <div className="customer-order-item-image-placeholder">
+                                    <Package
+                                      size={26}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* NAME + QUANTITY */}
+
+                              <div className="customer-order-item-name">
+                                <strong>
+                                  {
+                                    item.product_name
+                                  }
+                                </strong>
+
+                                <span>
+                                  Quantity:{' '}
+                                  {
+                                    item.quantity
+                                  }
+                                </span>
+                              </div>
                             </div>
+
+                            {/* PRICE */}
 
                             <span className="customer-order-item-total">
                               {formatMoney(

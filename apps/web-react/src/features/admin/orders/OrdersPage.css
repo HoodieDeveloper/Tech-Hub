@@ -544,3 +544,52 @@ button:disabled {
       calc(90vh - 100px);
   }
 }
+/* =========================================================
+   ORDER PRODUCT NAMES
+   ========================================================= */
+
+.order-products-cell {
+  min-width: 170px;
+
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.order-product-line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.order-product-line strong {
+  color: #0f172a;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.order-product-line small {
+  color: #64748b;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.order-product-empty {
+  color: #94a3b8;
+}
+
+.admin-page-heading {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  margin-bottom: 28px;
+}
+
+.admin-page-heading h1 {
+  margin: 0;
+}
+
+.admin-page-heading p {
+  margin: 0;
+}
