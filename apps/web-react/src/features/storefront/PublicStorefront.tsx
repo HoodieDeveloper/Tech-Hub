@@ -5,17 +5,15 @@ import {
 } from 'react';
 
 import {
-  ArrowRight,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Globe2,
   Heart,
-  LogIn,
   LogOut,
   MessageCircle,
-  RefreshCw,
+  PackageSearch,
   RotateCcw,
   Search,
   ShieldCheck,
@@ -25,7 +23,6 @@ import {
 } from 'lucide-react';
 
 import {
-  apiGet,
   type AuthUser,
 } from '../../core/api/client';
 
@@ -37,6 +34,14 @@ import type {
   Product,
 } from '../products/types';
 
+import {
+  useProducts,
+} from '../products/useProducts';
+
+import {
+  ScrollReveal,
+} from './ScrollReveal';
+
 import banner1 from './assets/banner-1.png';
 import banner2 from './assets/banner-2.png';
 import banner3 from './assets/banner-3.png';
@@ -47,7 +52,11 @@ type Props = {
   user: AuthUser | null;
 
   onLogin: () => void;
+
   onWishlistClick?: () => void;
+
+  onOrdersClick?: () => void;
+
   onAdminDashboard: () => void;
 
   onProductClick: (
@@ -93,6 +102,7 @@ export function PublicStorefront({
   onLogout,
   onViewAll,
   onWishlistClick,
+  onOrdersClick,
   cartCount = 0,
   onCartClick,
 
@@ -100,23 +110,23 @@ export function PublicStorefront({
   isWishlisted,
   onToggleWishlist,
 }: Props) {
-  const [
+  /*
+   * =========================================
+   * SHARED PRODUCT CACHE
+   * =========================================
+   *
+   * Important:
+   *
+   * We keep OUR product system.
+   *
+   * Home → Cart → Home
+   * will NOT fetch products again.
+   */
+  const {
     products,
-    setProducts,
-  ] =
-    useState<Product[]>([]);
-
-  const [
-    loading,
-    setLoading,
-  ] =
-    useState(true);
-
-  const [
-    error,
-    setError,
-  ] =
-    useState('');
+    loadingProducts,
+    productsError,
+  } = useProducts();
 
   const [
     search,
@@ -136,39 +146,24 @@ export function PublicStorefront({
   ] =
     useState(false);
 
-  const [
-    showAll,
-    setShowAll,
-  ] =
-    useState(false);
-
-  async function loadProducts() {
-    setLoading(true);
-    setError('');
-
-    try {
-      const data =
-        await apiGet<Product[]>(
-          '/products',
-          false,
-        );
-
-      setProducts(data);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Unable to load products.',
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
+  /*
+   * =========================================
+   * HOME START POSITION
+   * =========================================
+   */
   useEffect(() => {
-    void loadProducts();
+    window.scrollTo({
+      top: 0,
+      left: 0,
+      behavior: 'auto',
+    });
   }, []);
 
+  /*
+   * =========================================
+   * HERO SLIDER
+   * =========================================
+   */
   useEffect(() => {
     if (sliderPaused) {
       return;
@@ -195,6 +190,11 @@ export function PublicStorefront({
     };
   }, [sliderPaused]);
 
+  /*
+   * =========================================
+   * SEARCH
+   * =========================================
+   */
   const filteredProducts =
     useMemo(() => {
       const keyword =
@@ -223,13 +223,15 @@ export function PublicStorefront({
       search,
     ]);
 
+  /*
+   * Friend's UI shows
+   * four Best Sales products.
+   */
   const visibleProducts =
-    showAll
-      ? filteredProducts
-      : filteredProducts.slice(
-          0,
-          4,
-        );
+    filteredProducts.slice(
+      0,
+      4,
+    );
 
   function previousBanner() {
     setCurrentBanner(
@@ -255,6 +257,7 @@ export function PublicStorefront({
   ) {
     if (!user) {
       onLogin();
+
       return;
     }
 
@@ -271,516 +274,494 @@ export function PublicStorefront({
 
   return (
     <div className="storefront-page">
-      {/* =========================
-          TOP INFORMATION BAR
-      ========================== */}
+      {/* =====================================
+          FRIEND'S STICKY HEADER UI
+      ====================================== */}
 
-      <div className="storefront-topbar">
-        <div className="storefront-container storefront-topbar-inner">
-          <span>
-            <Truck size={13} />
+      <div className="storefront-header-stack">
+        {/* =========================
+            BLUE MAIN HEADER
+        ========================== */}
 
-            Free shipping on
-            orders over $49
-          </span>
-
-          <div className="topbar-links">
-            <span>
-              Need help?
-            </span>
-
-            <span>
-              +855 12 23 38 56
-            </span>
+        <header className="storefront-main-header">
+          <div className="storefront-container main-header-inner">
+            {/* BRAND */}
 
             <button
               type="button"
+              className="store-brand"
             >
-              Support
+              <strong>
+                DCS Computer Shop
+              </strong>
             </button>
 
-            <button
-              type="button"
-            >
-              Track Order
-            </button>
+            {/* SEARCH */}
 
-            <button
-              type="button"
-            >
-              English | USD
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* =========================
-          BLUE MAIN HEADER
-      ========================== */}
-
-      <header className="storefront-main-header">
-        <div className="storefront-container main-header-inner">
-          <button
-            type="button"
-            className="store-brand"
-          >
-            <strong>
-              TechHub Computer Shop
-            </strong>
-          </button>
-
-          <div className="store-search">
-            {/* CLICKABLE ALL CATEGORIES */}
-
-            <button
-              type="button"
-              className="category-button"
-              onClick={onViewAll}
-            >
-              All Categories
-
-              <ChevronDown
-                size={15}
-              />
-            </button>
-
-            <div className="search-input-wrap">
-              <input
-                type="search"
-                placeholder="Search for product, brands or categories..."
-                value={search}
-                onChange={(
-                  event,
-                ) =>
-                  setSearch(
-                    event.target
-                      .value,
-                  )
-                }
-              />
-
-              <Search
-                size={18}
-              />
-            </div>
-          </div>
-
-          <div className="store-header-actions">
-            {/* WISHLIST */}
-
-          <button
-            type="button"
-            className="header-icon-button wishlist-header-button"
-            title="Wishlist"
-            onClick={onWishlistClick}
-          >
-            <Heart
-              size={19}
-              fill={
-                wishlistCount > 0
-                  ? 'currentColor'
-                  : 'none'
-              }
-            />
-
-            <span>
-              Wishlist
-            </span>
-
-            {wishlistCount > 0 && (
-              <span className="wishlist-count">
-                {wishlistCount}
-              </span>
-            )}
-          </button>
-
-            {/* ACCOUNT */}
-
-            {user ? (
-              <button
-                type="button"
-                className="header-icon-button"
-                title={
-                  user.name
-                }
-              >
-                <UserRound
-                  size={19}
-                />
-
-                <span>
-                  {user.name}
-                </span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="header-icon-button"
-                onClick={
-                  onLogin
-                }
-              >
-                <LogIn
-                  size={19}
-                />
-
-                <span>
-                  Account
-                </span>
-              </button>
-            )}
-
-            {/* CART */}
-
-            <button
-              type="button"
-              className="header-icon-button cart-header-button"
-              title="Cart"
-              onClick={
-                onCartClick
-              }
-            >
-              <ShoppingCart
-                size={20}
-              />
-
-              <span className="cart-count">
-                {cartCount}
-              </span>
-
-              <span>
-                Cart
-              </span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* =========================
-          NAVIGATION
-      ========================== */}
-
-      <nav className="store-navigation">
-        <div className="storefront-container store-navigation-inner">
-          <button
-            type="button"
-            className="active"
-          >
-            Home
-          </button>
-
-          {/* CLICKABLE SHOP BY CATEGORY */}
-
-          <button
-            type="button"
-            onClick={onViewAll}
-          >
-            Shop by Category
-
-            <ChevronDown
-              size={14}
-            />
-          </button>
-
-          <button
-            type="button"
-          >
-            About
-          </button>
-
-          <button
-            type="button"
-          >
-            Partnership
-          </button>
-
-          {user?.role ===
-            'admin' && (
-            <button
-              type="button"
-              onClick={
-                onAdminDashboard
-              }
-            >
-              <ShieldCheck
-                size={15}
-              />
-
-              Admin Dashboard
-            </button>
-          )}
-
-          {user && (
-            <button
-              type="button"
-              className="nav-logout"
-              onClick={
-                onLogout
-              }
-            >
-              <LogOut
-                size={15}
-              />
-
-              Logout
-            </button>
-          )}
-        </div>
-      </nav>
-
-      {/* =========================
-          MAIN
-      ========================== */}
-
-      <main className="storefront-container storefront-main">
-        {/* HERO */}
-
-        <section
-          className="hero-slider"
-          onMouseEnter={() =>
-            setSliderPaused(
-              true,
-            )
-          }
-          onMouseLeave={() =>
-            setSliderPaused(
-              false,
-            )
-          }
-        >
-          <div className="hero-slider-images">
-            {banners.map(
-              (
-                banner,
-                index,
-              ) => (
-                <img
-                  key={
-                    banner
-                  }
-                  src={
-                    banner
-                  }
-                  alt={`TechHub promotion ${
-                    index + 1
-                  }`}
-                  className={`hero-slide ${
-                    index ===
-                    currentBanner
-                      ? 'active'
-                      : ''
-                  }`}
-                />
-              ),
-            )}
-          </div>
-
-          <button
-            type="button"
-            className="hero-arrow hero-arrow-left"
-            onClick={
-              previousBanner
-            }
-            aria-label="Previous banner"
-          >
-            <ChevronLeft
-              size={22}
-            />
-          </button>
-
-          <button
-            type="button"
-            className="hero-arrow hero-arrow-right"
-            onClick={
-              nextBanner
-            }
-            aria-label="Next banner"
-          >
-            <ChevronRight
-              size={22}
-            />
-          </button>
-
-          <div className="hero-dots">
-            {banners.map(
-              (
-                _,
-                index,
-              ) => (
-                <button
-                  key={
-                    index
-                  }
-                  type="button"
-                  className={
-                    index ===
-                    currentBanner
-                      ? 'hero-dot active'
-                      : 'hero-dot'
-                  }
-                  onClick={() =>
-                    setCurrentBanner(
-                      index,
+            <div className="store-search">
+              <div className="search-input-wrap">
+                <input
+                  type="search"
+                  placeholder="Search for product, brands or categories..."
+                  value={search}
+                  onChange={(
+                    event,
+                  ) =>
+                    setSearch(
+                      event.target
+                        .value,
                     )
                   }
-                  aria-label={`Banner ${
-                    index + 1
-                  }`}
                 />
-              ),
+
+                <Search
+                  size={18}
+                />
+              </div>
+            </div>
+
+            {/* HEADER ACTIONS */}
+
+            <div className="store-header-actions">
+              {/* WISHLIST */}
+
+              <button
+                type="button"
+                className="header-icon-button wishlist-header-button"
+                title="Wishlist"
+                onClick={
+                  onWishlistClick
+                }
+              >
+                <Heart
+                  size={19}
+                  fill={
+                    wishlistCount > 0
+                      ? 'currentColor'
+                      : 'none'
+                  }
+                />
+
+                <span>
+                  Wishlist
+                </span>
+
+                {wishlistCount > 0 && (
+                  <span className="wishlist-count">
+                    {
+                      wishlistCount
+                    }
+                  </span>
+                )}
+              </button>
+
+              {/* MY ORDERS */}
+
+              {user?.role ===
+                'customer' && (
+                <button
+                  type="button"
+                  className="header-icon-button"
+                  title="My Orders"
+                  onClick={
+                    onOrdersClick
+                  }
+                >
+                  <PackageSearch
+                    size={19}
+                  />
+
+                  <span>
+                    My Orders
+                  </span>
+                </button>
+              )}
+
+              {/* ACCOUNT */}
+
+              {user ? (
+                <button
+                  type="button"
+                  className="header-icon-button"
+                  title={
+                    user.name
+                  }
+                >
+                  <UserRound
+                    size={19}
+                  />
+
+                  <span>
+                    {user.name}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="header-icon-button"
+                  onClick={
+                    onLogin
+                  }
+                >
+                  <UserRound
+                    size={19}
+                  />
+
+                  <span>
+                    Account
+                  </span>
+                </button>
+              )}
+
+              {/* CART */}
+
+              <button
+                type="button"
+                className="header-icon-button cart-header-button"
+                title="Cart"
+                onClick={
+                  onCartClick
+                }
+              >
+                <ShoppingCart
+                  size={20}
+                />
+
+                <span className="cart-count">
+                  {cartCount}
+                </span>
+
+                <span>
+                  Cart
+                </span>
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* =========================
+            NAVIGATION
+        ========================== */}
+
+        <nav className="store-navigation">
+          <div className="storefront-container store-navigation-inner">
+            <button
+              type="button"
+              className="active"
+            >
+              Home
+            </button>
+
+            <button
+              type="button"
+              onClick={
+                onViewAll
+              }
+            >
+              Shop by Category
+
+              <ChevronDown
+                size={14}
+              />
+            </button>
+
+            <button
+              type="button"
+            >
+              About
+            </button>
+
+            <button
+              type="button"
+            >
+              Partnership
+            </button>
+
+            {user?.role ===
+              'admin' && (
+              <button
+                type="button"
+                onClick={
+                  onAdminDashboard
+                }
+              >
+                <ShieldCheck
+                  size={15}
+                />
+
+                Admin Dashboard
+              </button>
+            )}
+
+            {user && (
+              <button
+                type="button"
+                className="nav-logout"
+                onClick={
+                  onLogout
+                }
+              >
+                <LogOut
+                  size={15}
+                />
+
+                Logout
+              </button>
             )}
           </div>
-        </section>
+        </nav>
+      </div>
+
+      {/* =====================================
+          MAIN CONTENT
+      ====================================== */}
+
+      <main className="storefront-container storefront-main">
+        {/* =========================
+            HERO
+        ========================== */}
+
+        <ScrollReveal>
+          <section
+            className="hero-slider"
+            onMouseEnter={() =>
+              setSliderPaused(
+                true,
+              )
+            }
+            onMouseLeave={() =>
+              setSliderPaused(
+                false,
+              )
+            }
+          >
+            <div className="hero-slider-images">
+              {banners.map(
+                (
+                  banner,
+                  index,
+                ) => (
+                  <img
+                    key={
+                      banner
+                    }
+                    src={
+                      banner
+                    }
+                    alt={`TechHub promotion ${
+                      index + 1
+                    }`}
+                    className={`hero-slide ${
+                      index ===
+                      currentBanner
+                        ? 'active'
+                        : ''
+                    }`}
+                  />
+                ),
+              )}
+            </div>
+
+            <button
+              type="button"
+              className="hero-arrow hero-arrow-left"
+              onClick={
+                previousBanner
+              }
+              aria-label="Previous banner"
+            >
+              <ChevronLeft
+                size={22}
+              />
+            </button>
+
+            <button
+              type="button"
+              className="hero-arrow hero-arrow-right"
+              onClick={
+                nextBanner
+              }
+              aria-label="Next banner"
+            >
+              <ChevronRight
+                size={22}
+              />
+            </button>
+
+            <div className="hero-dots">
+              {banners.map(
+                (
+                  _,
+                  index,
+                ) => (
+                  <button
+                    key={
+                      index
+                    }
+                    type="button"
+                    className={
+                      index ===
+                      currentBanner
+                        ? 'hero-dot active'
+                        : 'hero-dot'
+                    }
+                    onClick={() =>
+                      setCurrentBanner(
+                        index,
+                      )
+                    }
+                    aria-label={`Banner ${
+                      index + 1
+                    }`}
+                  />
+                ),
+              )}
+            </div>
+          </section>
+        </ScrollReveal>
 
         {/* =========================
             BEST SALES
         ========================== */}
 
         <section className="best-sales-section">
-          <div className="best-sales-heading">
-            <h2>
-              Best Sales
-            </h2>
+          <ScrollReveal>
+            <div className="best-sales-heading">
+              <h2>
+                Best Sales
+              </h2>
+            </div>
+          </ScrollReveal>
 
-            <button
-              type="button"
-              className="view-all-button"
-              onClick={() => {
-                if (
-                  onViewAll
-                ) {
-                  onViewAll();
-                  return;
+          {/* ERROR */}
+
+          {productsError && (
+            <ScrollReveal>
+              <div className="alert error">
+                {
+                  productsError
                 }
-
-                setShowAll(
-                  (current) =>
-                    !current,
-                );
-              }}
-            >
-              {showAll
-                ? 'Show Less'
-                : 'View All'}
-
-              <ArrowRight
-                size={16}
-              />
-            </button>
-          </div>
-
-          {error && (
-            <div className="alert error">
-              {error}
-            </div>
-          )}
-
-          {loading && (
-            <div className="loading-card">
-              <RefreshCw
-                size={18}
-                className="spin"
-              />
-
-              Loading products...
-            </div>
-          )}
-
-          {!loading &&
-            filteredProducts
-              .length ===
-              0 && (
-              <div className="empty-state">
-                No products found.
               </div>
+            </ScrollReveal>
+          )}
+
+          {/* LOADING */}
+
+          {loadingProducts && (
+            <ScrollReveal>
+              <div className="loading-card">
+                Loading products...
+              </div>
+            </ScrollReveal>
+          )}
+
+          {/* EMPTY */}
+
+          {!loadingProducts &&
+            filteredProducts
+              .length === 0 && (
+              <ScrollReveal>
+                <div className="empty-state">
+                  No products found.
+                </div>
+              </ScrollReveal>
             )}
+
+          {/* PRODUCTS */}
 
           <div className="public-product-grid">
             {visibleProducts.map(
-              (product) => {
+              (
+                product,
+                index,
+              ) => {
                 const wishlisted =
                   isWishlisted?.(
                     product.id,
                   ) ?? false;
 
                 return (
-                  <article
-                    className="public-product-card"
+                  <ScrollReveal
                     key={
                       product.id
                     }
+                    delay={
+                      index * 120
+                    }
                   >
-                    <button
-                      type="button"
-                      className="product-click-area"
-                      onClick={() =>
-                        onProductClick(
-                          product,
-                        )
-                      }
-                    >
-                      <div className="product-image-area">
-                        <span className="product-badge">
-                          NEW
-                        </span>
+                    <article className="public-product-card">
+                      <button
+                        type="button"
+                        className="product-click-area"
+                        onClick={() =>
+                          onProductClick(
+                            product,
+                          )
+                        }
+                      >
+                        <div className="product-image-area">
+                          <span className="product-badge">
+                            NEW
+                          </span>
 
-                        <ProductImage
-                          imageUrl={
-                            product.image_url
-                          }
-                          alt={
-                            product.name
-                          }
-                        />
-                      </div>
-
-                      <div className="public-product-body">
-                        <h3>
-                          {
-                            product.name
-                          }
-                        </h3>
-
-                        <div className="product-stars">
-                          ☆☆☆☆☆
-                        </div>
-
-                        <div className="product-price-row">
-                          <strong>
-                            $
-                            {Number(
-                              product.price,
-                            ).toFixed(
-                              2,
-                            )}
-                          </strong>
-
-                          <Heart
-                            size={20}
-                            className={
-                              wishlisted
-                                ? 'product-heart wishlisted'
-                                : 'product-heart'
+                          <ProductImage
+                            imageUrl={
+                              product.image_url
                             }
-                            fill={
-                              wishlisted
-                                ? 'currentColor'
-                                : 'none'
+                            alt={
+                              product.name
                             }
-                            onClick={(
-                              event,
-                            ) => {
-                              event.stopPropagation();
-
-                              handleWishlistClick(
-                                product.id,
-                              );
-                            }}
                           />
                         </div>
-                      </div>
-                    </button>
-                  </article>
+
+                        <div className="public-product-body">
+                          <h3>
+                            {
+                              product.name
+                            }
+                          </h3>
+
+                          <div className="product-stars">
+                            ☆☆☆☆☆
+                          </div>
+
+                          <div className="product-price-row">
+                            <strong>
+                              $
+                              {Number(
+                                product.price,
+                              ).toFixed(
+                                2,
+                              )}
+                            </strong>
+
+                            <Heart
+                              size={20}
+                              className={
+                                wishlisted
+                                  ? 'product-heart wishlisted'
+                                  : 'product-heart'
+                              }
+                              fill={
+                                wishlisted
+                                  ? 'currentColor'
+                                  : 'none'
+                              }
+                              onClick={(
+                                event,
+                              ) => {
+                                event.stopPropagation();
+
+                                handleWishlistClick(
+                                  product.id,
+                                );
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </button>
+                    </article>
+                  </ScrollReveal>
                 );
               },
             )}
@@ -791,7 +772,9 @@ export function PublicStorefront({
             BENEFITS
         ========================== */}
 
-        <section className="store-benefits">
+        <ScrollReveal
+          className="store-benefits"
+        >
           <div className="benefit-item">
             <Truck
               size={25}
@@ -855,18 +838,20 @@ export function PublicStorefront({
               </span>
             </div>
           </div>
-        </section>
+        </ScrollReveal>
       </main>
 
-      {/* =========================
+      {/* =====================================
           FOOTER
-      ========================== */}
+      ====================================== */}
 
       <footer className="store-footer">
         <div className="storefront-container footer-grid">
-          <div className="footer-brand">
+          <ScrollReveal
+            className="footer-brand"
+          >
             <h3>
-              TechHub Computer Shop
+              DCS Computer Shop
             </h3>
 
             <p>
@@ -893,16 +878,21 @@ export function PublicStorefront({
                 />
               </button>
             </div>
-          </div>
+          </ScrollReveal>
 
-          <div className="footer-column">
+          <ScrollReveal
+            delay={80}
+            className="footer-column"
+          >
             <h4>
               Shop
             </h4>
 
             <button
               type="button"
-              onClick={onViewAll}
+              onClick={
+                onViewAll
+              }
             >
               All Categories
             </button>
@@ -924,9 +914,12 @@ export function PublicStorefront({
             >
               Deals
             </button>
-          </div>
+          </ScrollReveal>
 
-          <div className="footer-column">
+          <ScrollReveal
+            delay={160}
+            className="footer-column"
+          >
             <h4>
               Customer Care
             </h4>
@@ -960,9 +953,12 @@ export function PublicStorefront({
             >
               FAQ
             </button>
-          </div>
+          </ScrollReveal>
 
-          <div className="footer-column">
+          <ScrollReveal
+            delay={240}
+            className="footer-column"
+          >
             <h4>
               Company
             </h4>
@@ -990,9 +986,12 @@ export function PublicStorefront({
             >
               TechHub Rewards
             </button>
-          </div>
+          </ScrollReveal>
 
-          <div className="footer-newsletter">
+          <ScrollReveal
+            delay={320}
+            className="footer-newsletter"
+          >
             <h4>
               Stay in the loop
             </h4>
@@ -1028,13 +1027,15 @@ export function PublicStorefront({
                 PayPal
               </span>
             </div>
-          </div>
+          </ScrollReveal>
         </div>
 
-        <div className="storefront-container footer-bottom">
+        <ScrollReveal
+          className="storefront-container footer-bottom"
+        >
           © 2026 TechHub. All rights
           reserved.
-        </div>
+        </ScrollReveal>
       </footer>
     </div>
   );

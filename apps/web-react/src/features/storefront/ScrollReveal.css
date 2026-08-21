@@ -1,0 +1,77 @@
+/* =========================================================
+   TECHHUB SCROLL REVEAL
+   ========================================================= */
+
+/*
+ * HIDDEN STATE
+ *
+ * Opacity handles the fade animation.
+ * Visibility makes sure absolutely
+ * nothing inside the section is shown
+ * before it is revealed.
+ */
+.scroll-reveal {
+  opacity: 0;
+  visibility: hidden;
+
+  transform: translateY(45px);
+
+  transition:
+    opacity 0.65s ease,
+    transform 0.65s ease,
+    visibility 0s linear 0.65s;
+
+  will-change:
+    opacity,
+    transform;
+
+  pointer-events: none;
+}
+
+/*
+ * VISIBLE STATE
+ */
+.scroll-reveal-visible {
+  opacity: 1;
+  visibility: visible;
+
+  transform: translateY(0);
+
+  transition:
+    opacity 0.65s ease,
+    transform 0.65s ease,
+    visibility 0s linear 0s;
+
+  pointer-events: auto;
+}
+
+/* =========================================================
+   BENEFITS
+   ========================================================= */
+
+.scroll-reveal.store-benefits:not(
+  .scroll-reveal-visible
+) {
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.scroll-reveal.store-benefits.scroll-reveal-visible {
+  background: #7faaf4;
+}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+
+@media (
+  prefers-reduced-motion: reduce
+) {
+  .scroll-reveal {
+    transform: none;
+
+    transition:
+      opacity 0.01ms linear,
+      visibility 0s linear;
+  }
+}

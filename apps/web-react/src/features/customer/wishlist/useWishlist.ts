@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 
@@ -27,6 +28,12 @@ export function useWishlist(
     useState<WishlistItem[]>([]);
 
   const [
+    wishlistProductIds,
+    setWishlistProductIds,
+  ] =
+    useState<number[]>([]);
+
+  const [
     loadingWishlist,
     setLoadingWishlist,
   ] =
@@ -38,9 +45,21 @@ export function useWishlist(
   ] =
     useState('');
 
+  const pendingProductIds =
+    useRef<Set<number>>(
+      new Set(),
+    );
+
   /*
-   * Load saved wishlist
-   * whenever customer logs in.
+   * =========================================
+   * LOAD SAVED WISHLIST
+   * =========================================
+   *
+   * Wishlist is NOT critical for the
+   * first screen.
+   *
+   * Let the Home page start first,
+   * then fetch Wishlist quietly.
    */
   useEffect(() => {
     if (
@@ -51,8 +70,14 @@ export function useWishlist(
         [],
       );
 
+      setWishlistProductIds(
+        [],
+      );
+
       return;
     }
+
+    let active = true;
 
     async function loadWishlist() {
       setLoadingWishlist(
@@ -69,46 +94,75 @@ export function useWishlist(
             '/wishlist',
           );
 
+        if (!active) {
+          return;
+        }
+
         setWishlistItems(
           response.wishlist,
         );
+
+        setWishlistProductIds(
+          response.wishlist.map(
+            (item) =>
+              item.product_id,
+          ),
+        );
       } catch (err) {
+        if (!active) {
+          return;
+        }
+
         setWishlistError(
           err instanceof Error
             ? err.message
             : 'Unable to load wishlist.',
         );
       } finally {
-        setLoadingWishlist(
-          false,
-        );
+        if (active) {
+          setLoadingWishlist(
+            false,
+          );
+        }
       }
     }
 
-    void loadWishlist();
+    /*
+     * Give the Home page/product request
+     * a head start before Wishlist begins.
+     */
+    const timer =
+      window.setTimeout(
+        () => {
+          void loadWishlist();
+        },
+        500,
+      );
+
+    return () => {
+      active = false;
+
+      window.clearTimeout(
+        timer,
+      );
+    };
   }, [user]);
 
   /*
-   * Product IDs.
-   */
-  const wishlistProductIds =
-    useMemo(
-      () =>
-        wishlistItems.map(
-          (item) =>
-            item.product_id,
-        ),
-      [wishlistItems],
-    );
-
-  /*
-   * Actual products used
-   * by Wishlist page.
+   * =========================================
+   * PRODUCTS USED BY WISHLIST PAGE
+   * =========================================
    */
   const wishlistProducts =
     useMemo(
       () =>
         wishlistItems
+          .filter(
+            (item) =>
+              wishlistProductIds.includes(
+                item.product_id,
+              ),
+          )
           .map(
             (item) =>
               item.product,
@@ -119,9 +173,17 @@ export function useWishlist(
                 product,
               ),
           ),
-      [wishlistItems],
+      [
+        wishlistItems,
+        wishlistProductIds,
+      ],
     );
 
+  /*
+   * =========================================
+   * CHECK WISHLIST
+   * =========================================
+   */
   function isWishlisted(
     productId: number,
   ) {
@@ -131,7 +193,9 @@ export function useWishlist(
   }
 
   /*
-   * Add/remove wishlist.
+   * =========================================
+   * ADD / REMOVE WISHLIST
+   * =========================================
    */
   async function toggleWishlist(
     productId: number,
@@ -143,41 +207,144 @@ export function useWishlist(
       return false;
     }
 
+    if (
+      pendingProductIds.current.has(
+        productId,
+      )
+    ) {
+      return false;
+    }
+
+    pendingProductIds.current.add(
+      productId,
+    );
+
     setWishlistError(
       '',
     );
 
     const alreadyWishlisted =
-      isWishlisted(
+      wishlistProductIds.includes(
         productId,
       );
 
-    try {
+    /*
+     * =========================================
+     * REMOVE
+     * =========================================
+     */
+    if (
+      alreadyWishlisted
+    ) {
+      const removedItem =
+        wishlistItems.find(
+          (item) =>
+            item.product_id ===
+            productId,
+        );
+
       /*
-       * REMOVE
+       * UI changes immediately.
        */
-      if (
-        alreadyWishlisted
-      ) {
+      setWishlistProductIds(
+        (current) =>
+          current.filter(
+            (id) =>
+              id !== productId,
+          ),
+      );
+
+      setWishlistItems(
+        (current) =>
+          current.filter(
+            (item) =>
+              item.product_id !==
+              productId,
+          ),
+      );
+
+      try {
         await apiDelete(
           `/wishlist/${productId}`,
         );
 
-        setWishlistItems(
+        return true;
+      } catch (err) {
+        /*
+         * Rollback.
+         */
+        setWishlistProductIds(
           (current) =>
-            current.filter(
-              (item) =>
-                item.product_id !==
-                productId,
-            ),
+            current.includes(
+              productId,
+            )
+              ? current
+              : [
+                  ...current,
+                  productId,
+                ],
         );
 
-        return true;
-      }
+        if (
+          removedItem
+        ) {
+          setWishlistItems(
+            (current) => {
+              const exists =
+                current.some(
+                  (item) =>
+                    item.product_id ===
+                    productId,
+                );
 
-      /*
-       * ADD
-       */
+              if (exists) {
+                return current;
+              }
+
+              return [
+                ...current,
+                removedItem,
+              ];
+            },
+          );
+        }
+
+        setWishlistError(
+          err instanceof Error
+            ? err.message
+            : 'Unable to remove product from wishlist.',
+        );
+
+        return false;
+      } finally {
+        pendingProductIds.current.delete(
+          productId,
+        );
+      }
+    }
+
+    /*
+     * =========================================
+     * ADD
+     * =========================================
+     */
+
+    /*
+     * Heart/count changes immediately.
+     */
+    setWishlistProductIds(
+      (current) =>
+        current.includes(
+          productId,
+        )
+          ? current
+          : [
+              ...current,
+              productId,
+            ],
+    );
+
+    try {
       const response =
         await apiPost<WishlistAddResponse>(
           `/wishlist/${productId}`,
@@ -206,40 +373,43 @@ export function useWishlist(
 
       return true;
     } catch (err) {
+      /*
+       * Rollback.
+       */
+      setWishlistProductIds(
+        (current) =>
+          current.filter(
+            (id) =>
+              id !== productId,
+          ),
+      );
+
       setWishlistError(
         err instanceof Error
           ? err.message
-          : 'Unable to update wishlist.',
+          : 'Unable to add product to wishlist.',
       );
 
       return false;
+    } finally {
+      pendingProductIds.current.delete(
+        productId,
+      );
     }
   }
 
   return {
-    /*
-     * Full data
-     */
     wishlistItems,
     wishlistProducts,
 
-    /*
-     * IDs / count
-     */
     wishlistProductIds,
 
     wishlistCount:
-      wishlistItems.length,
+      wishlistProductIds.length,
 
-    /*
-     * Status
-     */
     loadingWishlist,
     wishlistError,
 
-    /*
-     * Actions
-     */
     isWishlisted,
     toggleWishlist,
   };
