@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class ApiClient {
@@ -19,12 +18,8 @@ class ApiClient {
       return _withoutTrailingSlash(configuredUrl);
     }
 
-    // Railway is the safe default for the mobile app. Pass a different URL
-    // with --dart-define when a developer wants to test another API.
-    if (kIsWeb) {
-      return 'https://tech-hub-production-dd8a.up.railway.app/api';
-    }
-
+    // Railway is the default for all Flutter targets. Use --dart-define to
+    // override per environment (local/dev/staging).
     return 'https://tech-hub-production-dd8a.up.railway.app/api';
   }
 
@@ -85,11 +80,28 @@ class ApiClient {
       if (!auth) headers.remove('Authorization');
 
       final response = await http
-          .post(
-            _buildUri(path),
-            headers: headers,
-            body: jsonEncode(body),
-          )
+          .post(_buildUri(path), headers: headers, body: jsonEncode(body))
+          .timeout(_timeout);
+      return _handleResponse(response);
+    } on http.ClientException {
+      throw ApiException(
+        'Cannot connect to Laravel at $baseUrl. Check the selected API URL.',
+      );
+    } on FormatException {
+      throw const ApiException('The API returned invalid JSON data.');
+    } catch (error) {
+      if (error is ApiException) rethrow;
+      throw ApiException('Network request failed: $error');
+    }
+  }
+
+  static Future<dynamic> delete(String path, {bool auth = true}) async {
+    try {
+      final headers = Map<String, String>.from(_headers);
+      if (!auth) headers.remove('Authorization');
+
+      final response = await http
+          .delete(_buildUri(path), headers: headers)
           .timeout(_timeout);
       return _handleResponse(response);
     } on http.ClientException {
@@ -137,9 +149,7 @@ class ApiClient {
       }
     }
 
-    throw ApiException(
-      'Request failed with status ${response.statusCode}.',
-    );
+    throw ApiException('Request failed with status ${response.statusCode}.');
   }
 
   static String _withoutTrailingSlash(String value) {
