@@ -24,7 +24,7 @@ class ProductImage extends StatelessWidget {
       url,
       width: double.infinity,
       height: height,
-      fit: BoxFit.cover,
+      fit: BoxFit.contain,
       semanticLabel: productName,
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
@@ -36,9 +36,7 @@ class ProductImage extends StatelessWidget {
 
         return SizedBox(
           height: height,
-          child: Center(
-            child: CircularProgressIndicator(value: progress),
-          ),
+          child: Center(child: CircularProgressIndicator(value: progress)),
         );
       },
       errorBuilder: (context, error, stackTrace) {
