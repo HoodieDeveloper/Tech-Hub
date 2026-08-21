@@ -56,57 +56,138 @@ class ProductController extends Controller
     /**
      * Return all products to the admin dashboard.
      */
-    public function adminIndex(Request $request): JsonResponse
-    {
-        $products = Product::query()
-            ->with('category:id,name,slug')
-            ->when(
-                $request->filled('search'),
-                function ($query) use ($request): void {
-                    $search = trim((string) $request->input('search'));
+public function adminIndex(Request $request): JsonResponse
+{
+    /*
+     * Get dashboard totals in ONE database query.
+     */
+    $summary = Product::query()
+        ->selectRaw('
+            COUNT(*) as total,
+            SUM(
+                CASE
+                    WHEN is_active = true
+                    THEN 1
+                    ELSE 0
+                END
+            ) as active,
+            SUM(
+                CASE
+                    WHEN stock BETWEEN 1 AND 5
+                    THEN 1
+                    ELSE 0
+                END
+            ) as low_stock,
+            SUM(
+                CASE
+                    WHEN stock = 0
+                    THEN 1
+                    ELSE 0
+                END
+            ) as out_of_stock
+        ')
+        ->first();
 
-                    $query->where(function ($subQuery) use ($search): void {
+    /*
+     * Load only the current 5 products
+     * for the admin table.
+     */
+    $products = Product::query()
+        ->with('category:id,name,slug')
+        ->when(
+            $request->filled('search'),
+            function ($query) use ($request): void {
+                $search = trim(
+                    (string) $request->input('search')
+                );
+
+                $query->where(
+                    function ($subQuery) use ($search): void {
                         $subQuery
-                            ->where('name', 'ilike', '%' . $search . '%')
-                            ->orWhere('description', 'ilike', '%' . $search . '%');
-                    });
+                            ->where(
+                                'name',
+                                'ilike',
+                                '%' . $search . '%'
+                            )
+                            ->orWhere(
+                                'description',
+                                'ilike',
+                                '%' . $search . '%'
+                            );
+                    }
+                );
+            }
+        )
+        ->when(
+            $request->filled('category_id'),
+            fn ($query) => $query->where(
+                'category_id',
+                $request->integer('category_id')
+            )
+        )
+        ->when(
+            $request->filled('status'),
+            function ($query) use ($request): void {
+                $status =
+                    (string) $request->input('status');
+
+                if ($status === 'active') {
+                    $query->where(
+                        'is_active',
+                        true
+                    );
                 }
-            )
-            ->when(
-                $request->filled('category_id'),
-                fn ($query) => $query->where(
-                    'category_id',
-                    $request->integer('category_id')
-                )
-            )
-            ->when(
-                $request->filled('status'),
-                function ($query) use ($request): void {
-                    $status = (string) $request->input('status');
 
-                    if ($status === 'active') {
-                        $query->where('is_active', true);
-                    }
-
-                    if ($status === 'inactive') {
-                        $query->where('is_active', false);
-                    }
-
-                    if ($status === 'out_of_stock') {
-                        $query->where('stock', 0);
-                    }
-
-                    if ($status === 'low_stock') {
-                        $query->whereBetween('stock', [1, 5]);
-                    }
+                if ($status === 'inactive') {
+                    $query->where(
+                        'is_active',
+                        false
+                    );
                 }
-            )
-            ->latest()
-            ->paginate(5)
-            ->withQueryString();
 
-        return response()->json($products);
-    }
+                if ($status === 'out_of_stock') {
+                    $query->where(
+                        'stock',
+                        0
+                    );
+                }
+
+                if ($status === 'low_stock') {
+                    $query->whereBetween(
+                        'stock',
+                        [1, 5]
+                    );
+                }
+            }
+        )
+        ->latest()
+        ->paginate(5)
+        ->withQueryString();
+
+    /*
+     * Keep Laravel pagination response,
+     * but add summary totals.
+     */
+    $response = $products->toArray();
+
+    $response['summary'] = [
+        'total' =>
+            (int) ($summary->total ?? 0),
+
+        'active' =>
+            (int) ($summary->active ?? 0),
+
+        'lowStock' =>
+            (int) ($summary->low_stock ?? 0),
+
+        'outOfStock' =>
+            (int) ($summary->out_of_stock ?? 0),
+    ];
+
+    return response()->json(
+        $response
+    );
+}
 
 public function show(string $product): JsonResponse
 {
