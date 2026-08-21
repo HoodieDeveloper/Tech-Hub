@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\Product;
 use App\Services\SupabaseStorageService;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -31,13 +33,25 @@ class ProductController extends Controller
             ->when(
                 $request->filled('search'),
                 function ($query) use ($request): void {
-                    $search = trim((string) $request->input('search'));
+                    $search = trim(
+                        (string) $request->input('search')
+                    );
 
-                    $query->where(function ($subQuery) use ($search): void {
-                        $subQuery
-                            ->where('name', 'ilike', '%' . $search . '%')
-                            ->orWhere('description', 'ilike', '%' . $search . '%');
-                    });
+                    $query->where(
+                        function ($subQuery) use ($search): void {
+                            $subQuery
+                                ->where(
+                                    'name',
+                                    'ilike',
+                                    '%' . $search . '%'
+                                )
+                                ->orWhere(
+                                    'description',
+                                    'ilike',
+                                    '%' . $search . '%'
+                                );
+                        }
+                    );
                 }
             )
             ->when(
@@ -50,250 +64,430 @@ class ProductController extends Controller
             ->latest()
             ->get();
 
-        return response()->json($products);
+        return response()->json(
+            $products
+        );
+    }
+
+    /**
+     * Return the 4 most-sold products.
+     *
+     * We count the total quantity sold
+     * from order_items.
+     *
+     * Cancelled orders are not counted.
+     */
+    public function bestSellers(): JsonResponse
+    {
+        /*
+         * First calculate how many units
+         * of each product have been sold.
+         */
+        $sales = DB::table('order_items')
+            ->join(
+                'orders',
+                'orders.id',
+                '=',
+                'order_items.order_id'
+            )
+            ->where(
+                'orders.status',
+                '!=',
+                Order::STATUS_CANCELLED
+            )
+            ->whereNotNull(
+                'order_items.product_id'
+            )
+            ->select(
+                'order_items.product_id'
+            )
+            ->selectRaw(
+                'SUM(order_items.quantity) as sold_quantity'
+            )
+            ->groupBy(
+                'order_items.product_id'
+            );
+
+        /*
+         * Join the sales totals with products.
+         *
+         * Only active products are shown
+         * on the customer storefront.
+         */
+        $products = Product::query()
+            ->with(
+                'category:id,name,slug'
+            )
+            ->joinSub(
+                $sales,
+                'product_sales',
+                function ($join): void {
+                    $join->on(
+                        'product_sales.product_id',
+                        '=',
+                        'products.id'
+                    );
+                }
+            )
+            ->where(
+                'products.is_active',
+                true
+            )
+            ->select(
+                'products.*'
+            )
+            ->addSelect(
+                'product_sales.sold_quantity'
+            )
+            ->orderByDesc(
+                'product_sales.sold_quantity'
+            )
+            ->orderByDesc(
+                'products.id'
+            )
+            ->limit(4)
+            ->get();
+
+        /*
+         * PostgreSQL may return SUM()
+         * as a string, so convert it
+         * to an integer for React.
+         */
+        $products->each(
+            function (Product $product): void {
+                $product->sold_quantity =
+                    (int) $product->sold_quantity;
+            }
+        );
+
+        return response()->json(
+            $products
+        );
     }
 
     /**
      * Return all products to the admin dashboard.
      */
-public function adminIndex(Request $request): JsonResponse
-{
-    /*
-     * Get dashboard totals in ONE database query.
-     */
-    $summary = Product::query()
-        ->selectRaw('
-            COUNT(*) as total,
-            SUM(
-                CASE
-                    WHEN is_active = true
-                    THEN 1
-                    ELSE 0
-                END
-            ) as active,
-            SUM(
-                CASE
-                    WHEN stock BETWEEN 1 AND 5
-                    THEN 1
-                    ELSE 0
-                END
-            ) as low_stock,
-            SUM(
-                CASE
-                    WHEN stock = 0
-                    THEN 1
-                    ELSE 0
-                END
-            ) as out_of_stock
-        ')
-        ->first();
+    public function adminIndex(
+        Request $request
+    ): JsonResponse {
+        /*
+         * Get dashboard totals in ONE database query.
+         */
+        $summary = Product::query()
+            ->selectRaw('
+                COUNT(*) as total,
+                SUM(
+                    CASE
+                        WHEN is_active = true
+                        THEN 1
+                        ELSE 0
+                    END
+                ) as active,
+                SUM(
+                    CASE
+                        WHEN stock BETWEEN 1 AND 5
+                        THEN 1
+                        ELSE 0
+                    END
+                ) as low_stock,
+                SUM(
+                    CASE
+                        WHEN stock = 0
+                        THEN 1
+                        ELSE 0
+                    END
+                ) as out_of_stock
+            ')
+            ->first();
 
-    /*
-     * Load only the current 5 products
-     * for the admin table.
-     */
-    $products = Product::query()
-        ->with('category:id,name,slug')
-        ->when(
-            $request->filled('search'),
-            function ($query) use ($request): void {
-                $search = trim(
-                    (string) $request->input('search')
-                );
-
-                $query->where(
-                    function ($subQuery) use ($search): void {
-                        $subQuery
-                            ->where(
-                                'name',
-                                'ilike',
-                                '%' . $search . '%'
-                            )
-                            ->orWhere(
-                                'description',
-                                'ilike',
-                                '%' . $search . '%'
-                            );
-                    }
-                );
-            }
-        )
-        ->when(
-            $request->filled('category_id'),
-            fn ($query) => $query->where(
-                'category_id',
-                $request->integer('category_id')
+        /*
+         * Load only the current 5 products
+         * for the admin table.
+         */
+        $products = Product::query()
+            ->with(
+                'category:id,name,slug'
             )
-        )
-        ->when(
-            $request->filled('status'),
-            function ($query) use ($request): void {
-                $status =
-                    (string) $request->input('status');
+            ->when(
+                $request->filled('search'),
+                function ($query) use ($request): void {
+                    $search = trim(
+                        (string) $request->input('search')
+                    );
 
-                if ($status === 'active') {
                     $query->where(
-                        'is_active',
-                        true
+                        function ($subQuery) use ($search): void {
+                            $subQuery
+                                ->where(
+                                    'name',
+                                    'ilike',
+                                    '%' . $search . '%'
+                                )
+                                ->orWhere(
+                                    'description',
+                                    'ilike',
+                                    '%' . $search . '%'
+                                );
+                        }
                     );
                 }
+            )
+            ->when(
+                $request->filled('category_id'),
+                fn ($query) => $query->where(
+                    'category_id',
+                    $request->integer('category_id')
+                )
+            )
+            ->when(
+                $request->filled('status'),
+                function ($query) use ($request): void {
+                    $status =
+                        (string) $request->input('status');
 
-                if ($status === 'inactive') {
-                    $query->where(
-                        'is_active',
-                        false
-                    );
+                    if ($status === 'active') {
+                        $query->where(
+                            'is_active',
+                            true
+                        );
+                    }
+
+                    if ($status === 'inactive') {
+                        $query->where(
+                            'is_active',
+                            false
+                        );
+                    }
+
+                    if ($status === 'out_of_stock') {
+                        $query->where(
+                            'stock',
+                            0
+                        );
+                    }
+
+                    if ($status === 'low_stock') {
+                        $query->whereBetween(
+                            'stock',
+                            [1, 5]
+                        );
+                    }
                 }
+            )
+            ->latest()
+            ->paginate(5)
+            ->withQueryString();
 
-                if ($status === 'out_of_stock') {
-                    $query->where(
-                        'stock',
-                        0
-                    );
-                }
+        /*
+         * Keep Laravel pagination response,
+         * but add summary totals.
+         */
+        $response =
+            $products->toArray();
 
-                if ($status === 'low_stock') {
-                    $query->whereBetween(
-                        'stock',
-                        [1, 5]
-                    );
-                }
-            }
-        )
-        ->latest()
-        ->paginate(5)
-        ->withQueryString();
+        $response['summary'] = [
+            'total' =>
+                (int) ($summary->total ?? 0),
 
-    /*
-     * Keep Laravel pagination response,
-     * but add summary totals.
-     */
-    $response = $products->toArray();
+            'active' =>
+                (int) ($summary->active ?? 0),
 
-    $response['summary'] = [
-        'total' =>
-            (int) ($summary->total ?? 0),
+            'lowStock' =>
+                (int) ($summary->low_stock ?? 0),
 
-        'active' =>
-            (int) ($summary->active ?? 0),
-
-        'lowStock' =>
-            (int) ($summary->low_stock ?? 0),
-
-        'outOfStock' =>
-            (int) ($summary->out_of_stock ?? 0),
-    ];
-
-    return response()->json(
-        $response
-    );
-}
-
-public function show(string $product): JsonResponse
-{
-    $item = Product::query()
-        ->leftJoin(
-            'categories',
-            'categories.id',
-            '=',
-            'products.category_id'
-        )
-        ->select([
-            'products.*',
-            'categories.id as joined_category_id',
-            'categories.name as joined_category_name',
-            'categories.slug as joined_category_slug',
-        ])
-        ->where('products.id', $product)
-        ->firstOrFail();
-
-    $category = null;
-
-    if ($item->joined_category_id !== null) {
-        $category = [
-            'id' => (int) $item->joined_category_id,
-            'name' => $item->joined_category_name,
-            'slug' => $item->joined_category_slug,
+            'outOfStock' =>
+                (int) ($summary->out_of_stock ?? 0),
         ];
+
+        return response()->json(
+            $response
+        );
     }
 
-    /*
-     * Do not expose the temporary
-     * JOIN fields in the API response.
+    /**
+     * Show one product.
      */
-    $item->makeHidden([
-        'joined_category_id',
-        'joined_category_name',
-        'joined_category_slug',
-    ]);
+    public function show(
+        string $product
+    ): JsonResponse {
+        $item = Product::query()
+            ->leftJoin(
+                'categories',
+                'categories.id',
+                '=',
+                'products.category_id'
+            )
+            ->select([
+                'products.*',
 
-    $data = $item->toArray();
+                'categories.id as joined_category_id',
 
-    /*
-     * Keep the same API structure
-     * your React app already expects.
-     */
-    $data['category'] = $category;
+                'categories.name as joined_category_name',
 
-    return response()->json($data);
-}
+                'categories.slug as joined_category_slug',
+            ])
+            ->where(
+                'products.id',
+                $product
+            )
+            ->firstOrFail();
+
+        $category = null;
+
+        if (
+            $item->joined_category_id !==
+            null
+        ) {
+            $category = [
+                'id' =>
+                    (int) $item->joined_category_id,
+
+                'name' =>
+                    $item->joined_category_name,
+
+                'slug' =>
+                    $item->joined_category_slug,
+            ];
+        }
+
+        /*
+         * Do not expose the temporary
+         * JOIN fields in the API response.
+         */
+        $item->makeHidden([
+            'joined_category_id',
+            'joined_category_name',
+            'joined_category_slug',
+        ]);
+
+        $data =
+            $item->toArray();
+
+        /*
+         * Keep the same API structure
+         * your React app already expects.
+         */
+        $data['category'] =
+            $category;
+
+        return response()->json(
+            $data
+        );
+    }
 
     /**
-     * Create a product and upload its image to Supabase Storage.
+     * Create a product and upload
+     * its image to Supabase Storage.
      *
      * @throws ValidationException
      */
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $this->validateProduct(
-            $request,
-            imageRequired: true
-        );
+    public function store(
+        Request $request
+    ): JsonResponse {
+        $validated =
+            $this->validateProduct(
+                $request,
+                imageRequired: true
+            );
 
         try {
-            $uploadedImage = $this->storage->uploadProductImage(
-                $request->file('image')
-            );
-        } catch (RequestException $exception) {
-            Log::error('Supabase product image upload failed.', [
-                'status' => $exception->response?->status(),
-                'response' => $exception->response?->json()
-                    ?? $exception->response?->body(),
-            ]);
-
-            return response()->json([
-                'message' => $this->storageErrorMessage($exception),
-            ], 502);
-        } catch (Throwable $exception) {
+            $uploadedImage =
+                $this->storage
+                    ->uploadProductImage(
+                        $request->file(
+                            'image'
+                        )
+                    );
+        } catch (
+            RequestException $exception
+        ) {
             Log::error(
-                'Product image upload failed before Supabase accepted the request.',
+                'Supabase product image upload failed.',
                 [
-                    'error' => $exception->getMessage(),
+                    'status' =>
+                        $exception
+                            ->response
+                            ?->status(),
+
+                    'response' =>
+                        $exception
+                            ->response
+                            ?->json()
+                        ??
+                        $exception
+                            ->response
+                            ?->body(),
                 ]
             );
 
             return response()->json([
-                'message' => (bool) config('app.debug')
-                    ? $exception->getMessage()
-                    : 'Laravel could not prepare the image upload.',
+                'message' =>
+                    $this
+                        ->storageErrorMessage(
+                            $exception
+                        ),
+            ], 502);
+        } catch (
+            Throwable $exception
+        ) {
+            Log::error(
+                'Product image upload failed before Supabase accepted the request.',
+                [
+                    'error' =>
+                        $exception->getMessage(),
+                ]
+            );
+
+            return response()->json([
+                'message' =>
+                    (bool) config(
+                        'app.debug'
+                    )
+                        ? $exception
+                            ->getMessage()
+                        : 'Laravel could not prepare the image upload.',
             ], 500);
         }
 
         try {
-            $product = Product::create([
-                ...$validated,
-                'image_path' => $uploadedImage['path'],
-                'image_url' => $uploadedImage['url'],
-            ]);
-        } catch (Throwable $exception) {
+            $product =
+                Product::create([
+                    ...$validated,
+
+                    'image_path' =>
+                        $uploadedImage[
+                            'path'
+                        ],
+
+                    'image_url' =>
+                        $uploadedImage[
+                            'url'
+                        ],
+                ]);
+        } catch (
+            Throwable $exception
+        ) {
             try {
-                $this->storage->delete($uploadedImage['path']);
-            } catch (Throwable $cleanupException) {
+                $this->storage->delete(
+                    $uploadedImage[
+                        'path'
+                    ]
+                );
+            } catch (
+                Throwable $cleanupException
+            ) {
                 Log::warning(
                     'Failed to clean up product image after database error.',
                     [
-                        'path' => $uploadedImage['path'],
-                        'error' => $cleanupException->getMessage(),
+                        'path' =>
+                            $uploadedImage[
+                                'path'
+                            ],
+
+                        'error' =>
+                            $cleanupException
+                                ->getMessage(),
                     ]
                 );
             }
@@ -302,13 +496,16 @@ public function show(string $product): JsonResponse
         }
 
         return response()->json(
-            $product->load('category:id,name,slug'),
+            $product->load(
+                'category:id,name,slug'
+            ),
             201
         );
     }
 
     /**
-     * Update a product and optionally replace its image.
+     * Update a product and optionally
+     * replace its image.
      *
      * @throws ValidationException
      */
@@ -316,50 +513,106 @@ public function show(string $product): JsonResponse
         Request $request,
         Product $product
     ): JsonResponse {
-        $validated = $this->validateProduct(
-            $request,
-            isUpdate: true
-        );
+        $validated =
+            $this->validateProduct(
+                $request,
+                isUpdate: true
+            );
 
-        $oldImagePath = $product->image_path;
+        $oldImagePath =
+            $product->image_path;
+
         $newImage = null;
 
-        if ($request->hasFile('image')) {
+        if (
+            $request->hasFile(
+                'image'
+            )
+        ) {
             try {
-                $newImage = $this->storage->uploadProductImage(
-                    $request->file('image')
-                );
-            } catch (RequestException $exception) {
+                $newImage =
+                    $this->storage
+                        ->uploadProductImage(
+                            $request->file(
+                                'image'
+                            )
+                        );
+            } catch (
+                RequestException $exception
+            ) {
                 Log::error(
                     'Supabase replacement product image upload failed.',
                     [
-                        'status' => $exception->response?->status(),
-                        'response' => $exception->response?->json()
-                            ?? $exception->response?->body(),
+                        'status' =>
+                            $exception
+                                ->response
+                                ?->status(),
+
+                        'response' =>
+                            $exception
+                                ->response
+                                ?->json()
+                            ??
+                            $exception
+                                ->response
+                                ?->body(),
                     ]
                 );
 
                 return response()->json([
-                    'message' => $this->storageErrorMessage($exception),
+                    'message' =>
+                        $this
+                            ->storageErrorMessage(
+                                $exception
+                            ),
                 ], 502);
             }
 
-            $validated['image_path'] = $newImage['path'];
-            $validated['image_url'] = $newImage['url'];
+            $validated[
+                'image_path'
+            ] =
+                $newImage[
+                    'path'
+                ];
+
+            $validated[
+                'image_url'
+            ] =
+                $newImage[
+                    'url'
+                ];
         }
 
         try {
-            $product->update($validated);
-        } catch (Throwable $exception) {
-            if ($newImage !== null) {
+            $product->update(
+                $validated
+            );
+        } catch (
+            Throwable $exception
+        ) {
+            if (
+                $newImage !== null
+            ) {
                 try {
-                    $this->storage->delete($newImage['path']);
-                } catch (Throwable $cleanupException) {
+                    $this->storage->delete(
+                        $newImage[
+                            'path'
+                        ]
+                    );
+                } catch (
+                    Throwable $cleanupException
+                ) {
                     Log::warning(
                         'Failed to clean up replacement product image.',
                         [
-                            'path' => $newImage['path'],
-                            'error' => $cleanupException->getMessage(),
+                            'path' =>
+                                $newImage[
+                                    'path'
+                                ],
+
+                            'error' =>
+                                $cleanupException
+                                    ->getMessage(),
                         ]
                     );
                 }
@@ -368,66 +621,114 @@ public function show(string $product): JsonResponse
             throw $exception;
         }
 
-        if ($newImage !== null && $oldImagePath !== null) {
+        if (
+            $newImage !== null &&
+            $oldImagePath !== null
+        ) {
             try {
-                $this->storage->delete($oldImagePath);
-            } catch (Throwable $exception) {
+                $this->storage->delete(
+                    $oldImagePath
+                );
+            } catch (
+                Throwable $exception
+            ) {
                 Log::warning(
                     'Product updated, but the previous image was not deleted.',
                     [
-                        'product_id' => $product->id,
-                        'path' => $oldImagePath,
-                        'error' => $exception->getMessage(),
+                        'product_id' =>
+                            $product->id,
+
+                        'path' =>
+                            $oldImagePath,
+
+                        'error' =>
+                            $exception
+                                ->getMessage(),
                     ]
                 );
             }
         }
 
         return response()->json(
-            $product->fresh()->load('category:id,name,slug')
+            $product
+                ->fresh()
+                ->load(
+                    'category:id,name,slug'
+                )
         );
     }
 
-    public function destroy(Product $product): JsonResponse
-    {
-        $imagePath = $product->image_path;
+    /**
+     * Delete product.
+     */
+    public function destroy(
+        Product $product
+    ): JsonResponse {
+        $imagePath =
+            $product->image_path;
+
         $product->delete();
 
-        if ($imagePath !== null) {
+        if (
+            $imagePath !== null
+        ) {
             try {
-                $this->storage->delete($imagePath);
-            } catch (Throwable $exception) {
+                $this->storage->delete(
+                    $imagePath
+                );
+            } catch (
+                Throwable $exception
+            ) {
                 Log::warning(
                     'Product deleted, but its Supabase image was not deleted.',
                     [
-                        'product_id' => $product->id,
-                        'path' => $imagePath,
-                        'error' => $exception->getMessage(),
+                        'product_id' =>
+                            $product->id,
+
+                        'path' =>
+                            $imagePath,
+
+                        'error' =>
+                            $exception
+                                ->getMessage(),
                     ]
                 );
             }
         }
 
         return response()->json([
-            'message' => 'Product deleted successfully',
+            'message' =>
+                'Product deleted successfully',
         ]);
     }
 
+    /**
+     * Supabase storage error message.
+     */
     private function storageErrorMessage(
         RequestException $exception
     ): string {
-        $response = $exception->response;
-        $supabaseMessage = $response?->json('message');
+        $response =
+            $exception->response;
+
+        $supabaseMessage =
+            $response?->json(
+                'message'
+            );
 
         if (
-            is_string($supabaseMessage)
-            && $supabaseMessage !== ''
+            is_string(
+                $supabaseMessage
+            ) &&
+            $supabaseMessage !== ''
         ) {
-            return 'Supabase Storage rejected the image upload: '
+            return
+                'Supabase Storage rejected the image upload: '
                 . $supabaseMessage;
         }
 
-        return 'Supabase Storage rejected the image upload. '
+        return
+            'Supabase Storage rejected the image upload. '
             . 'Check the Laravel Storage keys and bucket settings.';
     }
 
@@ -441,80 +742,117 @@ public function show(string $product): JsonResponse
         bool $isUpdate = false,
         bool $imageRequired = false,
     ): array {
-        if ($request->has('name')) {
+        if (
+            $request->has(
+                'name'
+            )
+        ) {
             $request->merge([
-                'name' => trim(
-                    (string) $request->input('name')
-                ),
+                'name' =>
+                    trim(
+                        (string) $request
+                            ->input(
+                                'name'
+                            )
+                    ),
             ]);
         }
 
-        $requiredRules = $isUpdate
-            ? ['sometimes', 'required']
-            : ['required'];
-
-        $imageRules = $imageRequired
-            ? [
-                'required',
-                'file',
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ]
-            : [
-                'sometimes',
-                'file',
-                'image',
-                'mimes:jpg,jpeg,png,webp',
-                'max:5120',
-            ];
-
-        $validator = Validator::make(
-            $request->all(),
-            [
-                'name' => [
-                    ...$requiredRules,
-                    'string',
-                    'max:255',
-                ],
-                'description' => [
-                    'nullable',
-                    'string',
-                ],
-                'price' => [
-                    ...$requiredRules,
-                    'numeric',
-                    'min:0',
-                ],
-                'stock' => [
-                    ...$requiredRules,
-                    'integer',
-                    'min:0',
-                ],
-                'category_id' => [
-                    ...$requiredRules,
-                    'integer',
-                    'exists:categories,id',
-                ],
-                'is_active' => [
+        $requiredRules =
+            $isUpdate
+                ? [
                     'sometimes',
-                    'boolean',
+                    'required',
+                ]
+                : [
+                    'required',
+                ];
+
+        $imageRules =
+            $imageRequired
+                ? [
+                    'required',
+                    'file',
+                    'image',
+                    'mimes:jpg,jpeg,png,webp',
+                    'max:5120',
+                ]
+                : [
+                    'sometimes',
+                    'file',
+                    'image',
+                    'mimes:jpg,jpeg,png,webp',
+                    'max:5120',
+                ];
+
+        $validator =
+            Validator::make(
+                $request->all(),
+                [
+                    'name' => [
+                        ...$requiredRules,
+                        'string',
+                        'max:255',
+                    ],
+
+                    'description' => [
+                        'nullable',
+                        'string',
+                    ],
+
+                    'price' => [
+                        ...$requiredRules,
+                        'numeric',
+                        'min:0',
+                    ],
+
+                    'stock' => [
+                        ...$requiredRules,
+                        'integer',
+                        'min:0',
+                    ],
+
+                    'category_id' => [
+                        ...$requiredRules,
+                        'integer',
+                        'exists:categories,id',
+                    ],
+
+                    'is_active' => [
+                        'sometimes',
+                        'boolean',
+                    ],
+
+                    'image' =>
+                        $imageRules,
                 ],
-                'image' => $imageRules,
-            ],
-            [
-                'category_id.required' => 'Please select a category.',
-                'category_id.exists' => 'The selected category does not exist.',
-                'image.required' => 'Please choose a product image.',
-                'image.image' => 'The selected file must be a real image.',
-                'image.mimes' => 'The image must be JPG, JPEG, PNG, or WEBP.',
-                'image.max' => 'The product image must not be larger than 5 MB.',
-            ]
+                [
+                    'category_id.required' =>
+                        'Please select a category.',
+
+                    'category_id.exists' =>
+                        'The selected category does not exist.',
+
+                    'image.required' =>
+                        'Please choose a product image.',
+
+                    'image.image' =>
+                        'The selected file must be a real image.',
+
+                    'image.mimes' =>
+                        'The image must be JPG, JPEG, PNG, or WEBP.',
+
+                    'image.max' =>
+                        'The product image must not be larger than 5 MB.',
+                ]
+            );
+
+        $validated =
+            $validator->validate();
+
+        unset(
+            $validated['image']
         );
-
-        $validated = $validator->validate();
-
-        unset($validated['image']);
 
         return $validated;
     }

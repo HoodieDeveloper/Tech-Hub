@@ -51,7 +51,10 @@ Route::get('/products', [
     ProductController::class,
     'index',
 ]);
-
+Route::get(
+    '/products/best-sellers',
+    [ProductController::class, 'bestSellers']
+);
 Route::get('/products/{product}', [
     ProductController::class,
     'show',

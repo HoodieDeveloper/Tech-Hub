@@ -628,7 +628,7 @@ export function PublicStorefront({
           <ScrollReveal>
             <div className="best-sales-heading">
               <h2>
-                Best Sales
+                New Products
               </h2>
             </div>
           </ScrollReveal>
