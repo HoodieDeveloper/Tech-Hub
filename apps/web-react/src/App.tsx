@@ -1,9 +1,11 @@
 import {
   useState,
 } from 'react';
+
 import type {
   CartItem,
 } from './features/customer/cart/types';
+
 import {
   apiPost,
   clearAuthSession,
@@ -36,6 +38,10 @@ import {
 } from './features/customer/checkout/CustomerCheckoutPage';
 
 import {
+  CustomerOrdersPage,
+} from './features/customer/orders/CustomerOrdersPage';
+
+import {
   CustomerProductDetailsPage,
 } from './features/customer/CustomerProductDetailsPage';
 
@@ -61,6 +67,7 @@ type View =
   | 'cart'
   | 'checkout'
   | 'wishlist'
+  | 'orders'
   | 'login'
   | 'product-details'
   | 'admin';
@@ -100,12 +107,13 @@ export default function App() {
       null,
     );
 
-      const [
+  const [
     buyNowItems,
     setBuyNowItems,
-  ] = useState<CartItem[] | null>(
-    null,
-  );
+  ] =
+    useState<CartItem[] | null>(
+      null,
+    );
 
   /*
    * =========================================
@@ -190,10 +198,6 @@ export default function App() {
       return;
     }
 
-    /*
-     * Cart belongs to an account,
-     * so customer must login.
-     */
     if (!user) {
       setLoginReturnView(
         'storefront',
@@ -273,9 +277,6 @@ export default function App() {
       return;
     }
 
-    /*
-     * Quantity 1 → remove item.
-     */
     if (
       item.quantity <= 1
     ) {
@@ -394,32 +395,37 @@ export default function App() {
 
   /*
    * =========================================
+   * BUY NOW
+   * =========================================
+   */
+  function handleBuyNow(
+    product: Product,
+    quantity: number,
+  ) {
+    if (
+      !user ||
+      user.role !== 'customer'
+    ) {
+      return;
+    }
+
+    setBuyNowItems([
+      {
+        product,
+        quantity,
+      },
+    ]);
+
+    setView(
+      'checkout',
+    );
+  }
+
+  /*
+   * =========================================
    * LOGIN SUCCESS
    * =========================================
    */
-function handleBuyNow(
-  product: Product,
-  quantity: number,
-) {
-  if (
-    !user ||
-    user.role !== 'customer'
-  ) {
-    return;
-  }
-
-  setBuyNowItems([
-    {
-      product,
-      quantity,
-    },
-  ]);
-
-  setView(
-    'checkout',
-  );
-}
-
   function handleLoginSuccess(
     authenticatedUser: AuthUser,
   ) {
@@ -446,9 +452,6 @@ function handleBuyNow(
       return;
     }
 
-    /*
-     * Return to Wishlist.
-     */
     if (
       loginReturnView ===
       'wishlist'
@@ -464,9 +467,6 @@ function handleBuyNow(
       return;
     }
 
-    /*
-     * Return to Product Details.
-     */
     if (
       loginReturnView ===
         'product-details' &&
@@ -510,13 +510,6 @@ function handleBuyNow(
 
     clearAuthSession();
 
-    /*
-     * IMPORTANT:
-     * We DO NOT delete the database cart.
-     *
-     * After user logs in again,
-     * useCart() loads it from Supabase.
-     */
     setUser(
       null,
     );
@@ -564,8 +557,7 @@ function handleBuyNow(
    */
   if (
     view === 'admin' &&
-    user?.role ===
-      'admin'
+    user?.role === 'admin'
   ) {
     return (
       <AdminDashboard
@@ -579,6 +571,26 @@ function handleBuyNow(
 
         onLogout={() =>
           void handleLogout()
+        }
+      />
+    );
+  }
+
+  /*
+   * =========================================
+   * CUSTOMER ORDERS
+   * =========================================
+   */
+  if (
+    view === 'orders' &&
+    user?.role === 'customer'
+  ) {
+    return (
+      <CustomerOrdersPage
+        onBack={() =>
+          setView(
+            'storefront',
+          )
         }
       />
     );
@@ -679,93 +691,65 @@ function handleBuyNow(
     );
   }
 
-/*
- * =========================================
- * CHECKOUT
- * =========================================
- */
-if (
-  view ===
-    'checkout' &&
-  user &&
-  user.role ===
-    'customer'
-) {
-  return (
-    <CustomerCheckoutPage
-      user={user}
+  /*
+   * =========================================
+   * CHECKOUT
+   * =========================================
+   */
+  if (
+    view === 'checkout' &&
+    user &&
+    user.role === 'customer'
+  ) {
+    return (
+      <CustomerCheckoutPage
+        user={user}
 
-      /*
-       * Buy Now:
-       * checkout only selected product.
-       *
-       * Normal checkout:
-       * checkout normal saved cart.
-       */
-      cartItems={
-        buyNowItems ??
-        cartItems
-      }
+        cartItems={
+          buyNowItems ??
+          cartItems
+        }
 
-      onBack={() => {
-        /*
-         * Buy Now came from
-         * Product Details.
-         */
-        if (buyNowItems) {
-          setBuyNowItems(
-            null,
+        onBack={() => {
+          if (buyNowItems) {
+            setBuyNowItems(
+              null,
+            );
+
+            setView(
+              'product-details',
+            );
+
+            return;
+          }
+
+          setView(
+            'cart',
+          );
+        }}
+
+        onOrderSuccess={(
+          order,
+        ) => {
+          if (buyNowItems) {
+            setBuyNowItems(
+              null,
+            );
+          } else {
+            void clearCart();
+          }
+
+          window.alert(
+            `Order ${order.order_number} placed successfully!`,
           );
 
           setView(
-            'product-details',
+            'storefront',
           );
-
-          return;
-        }
-
-        /*
-         * Normal cart checkout.
-         */
-        setView(
-          'cart',
-        );
-      }}
-
-      onOrderSuccess={(
-        order,
-      ) => {
-        /*
-         * BUY NOW
-         *
-         * Do NOT clear the customer's
-         * normal saved cart.
-         */
-        if (buyNowItems) {
-          setBuyNowItems(
-            null,
-          );
-        } else {
-          /*
-           * NORMAL CART CHECKOUT
-           *
-           * Purchased cart should
-           * be cleared from Supabase.
-           */
-          void clearCart();
-        }
-
-        window.alert(
-          `Order ${order.order_number} placed successfully!`,
-        );
-
-        setView(
-          'storefront',
-        );
-      }}
-    />
-  );
-}
+        }}
+      />
+    );
+  }
 
   /*
    * =========================================
@@ -834,38 +818,39 @@ if (
     pendingProductId
   ) {
     return (
-<CustomerProductDetailsPage
-  productId={
-    pendingProductId
-  }
+      <CustomerProductDetailsPage
+        productId={
+          pendingProductId
+        }
 
-  user={user}
+        user={user}
 
-  onBack={() =>
-    setView(
-      'storefront',
-    )
-  }
+        onBack={() =>
+          setView(
+            'storefront',
+          )
+        }
 
-  onAddToCart={(
-    product,
-    quantity,
-  ) =>
-    void handleAddToCart(
-      product,
-      quantity,
-    )
-  }
-  onBuyNow={(
-  product,
-  quantity,
-) =>
-  handleBuyNow(
-    product,
-    quantity,
-  )
-}
-/>
+        onAddToCart={(
+          product,
+          quantity,
+        ) =>
+          void handleAddToCart(
+            product,
+            quantity,
+          )
+        }
+
+        onBuyNow={(
+          product,
+          quantity,
+        ) =>
+          handleBuyNow(
+            product,
+            quantity,
+          )
+        }
+      />
     );
   }
 
@@ -891,18 +876,11 @@ if (
       <PublicStorefront
         user={user}
 
-        /*
-         * Cart
-         */
         cartCount={
           cartCount
         }
 
         onCartClick={() => {
-          /*
-           * Customer cart belongs
-           * to their account.
-           */
           if (!user) {
             setLoginReturnView(
               'storefront',
@@ -920,9 +898,6 @@ if (
           );
         }}
 
-        /*
-         * Wishlist
-         */
         wishlistCount={
           wishlistCount
         }
@@ -955,9 +930,12 @@ if (
           handleOpenWishlist
         }
 
-        /*
-         * Login
-         */
+        onOrdersClick={() =>
+          setView(
+            'orders',
+          )
+        }
+
         onLogin={() => {
           setPendingProductId(
             null,

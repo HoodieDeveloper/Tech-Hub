@@ -21,7 +21,6 @@
 /* =========================================================
    TECHHUB CUSTOMER STOREFRONT
    ========================================================= */
-f
 .storefront-page {
   min-height: 100vh;
   background: #ffffff;
@@ -1359,3 +1358,571 @@ f
   font-size: 10px;
   font-weight: 700;
 }
+
+/* =========================================================
+   SCROLL REVEAL / FLOAT-UP ANIMATION
+   ========================================================= */
+
+/*
+ * Chrome and other modern browsers:
+ *
+ * Elements start slightly lower and transparent.
+ * As they enter the screen while scrolling,
+ * they smoothly float upward and fade in.
+ */
+
+@supports (animation-timeline: view()) {
+  .hero-slider,
+  .best-sales-heading,
+  .public-product-card,
+  .store-benefits,
+  .benefit-item,
+  .footer-brand,
+  .footer-column,
+  .footer-newsletter,
+  .footer-bottom {
+    animation-name: storefront-scroll-reveal;
+    animation-duration: 1ms;
+    animation-fill-mode: both;
+    animation-timing-function: ease-out;
+
+    animation-timeline: view();
+
+    animation-range:
+      entry 0%
+      entry 35%;
+  }
+
+  /*
+   * Product cards enter slightly
+   * more smoothly.
+   */
+  .public-product-card {
+    animation-range:
+      entry 0%
+      entry 30%;
+  }
+
+  /*
+   * Footer enters a little later,
+   * giving it a softer effect.
+   */
+  .footer-brand,
+  .footer-column,
+  .footer-newsletter {
+    animation-range:
+      entry 0%
+      entry 25%;
+  }
+}
+
+@keyframes storefront-scroll-reveal {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(35px)
+      scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0)
+      scale(1);
+  }
+}
+
+/* =========================================================
+   ACCESSIBILITY
+   ========================================================= */
+
+/*
+ * If a user disables animations
+ * on their device, do not animate.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .hero-slider,
+  .best-sales-heading,
+  .public-product-card,
+  .store-benefits,
+  .benefit-item,
+  .footer-brand,
+  .footer-column,
+  .footer-newsletter,
+  .footer-bottom {
+    animation: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}
+
+/* =========================================================
+   STOREFRONT HEADER ENTRANCE
+   ========================================================= */
+
+/*
+ * Slower, smoother entrance.
+ *
+ * Top bar appears first,
+ * then blue header,
+ * then navigation.
+ */
+
+.storefront-topbar {
+  opacity: 0;
+
+  transform:
+    translateY(30px);
+
+  animation:
+    storefront-navbar-enter
+    1s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    forwards;
+}
+
+.storefront-main-header {
+  opacity: 0;
+
+  transform:
+    translateY(36px);
+
+  animation:
+    storefront-navbar-enter
+    1.15s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    0.18s
+    forwards;
+}
+
+.store-navigation {
+  opacity: 0;
+
+  transform:
+    translateY(40px);
+
+  animation:
+    storefront-navbar-enter
+    1.25s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    0.36s
+    forwards;
+}
+
+@keyframes storefront-navbar-enter {
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(36px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0);
+  }
+}
+
+@media (
+  prefers-reduced-motion: reduce
+) {
+  .storefront-topbar,
+  .storefront-main-header,
+  .store-navigation {
+    opacity: 1;
+
+    transform: none;
+
+    animation: none;
+  }
+}
+
+/* =========================================================
+   STOREFRONT HEADER ENTRANCE
+   ========================================================= */
+
+.storefront-main-header {
+  opacity: 0;
+  transform: translateY(36px);
+
+  animation:
+    storefront-navbar-enter
+    1.15s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    0.1s
+    forwards;
+}
+
+.store-navigation {
+  opacity: 0;
+  transform: translateY(40px);
+
+  animation:
+    storefront-navbar-enter
+    1.25s
+    cubic-bezier(
+      0.22,
+      1,
+      0.36,
+      1
+    )
+    0.3s
+    forwards;
+}
+
+@keyframes storefront-navbar-enter {
+  from {
+    opacity: 0;
+    transform: translateY(36px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (
+  prefers-reduced-motion: reduce
+) {
+  .storefront-main-header,
+  .store-navigation {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* =========================================================
+   HEADER + NAVBAR - FRIEND REFERENCE UI
+   ========================================================= */
+
+/* BLUE HEADER */
+.storefront-page .storefront-main-header {
+  width: 100%;
+  background: #2455be;
+}
+
+/* HEADER CONTENT */
+.storefront-page .main-header-inner {
+  min-height: 90px;
+
+  display: grid;
+
+  grid-template-columns:
+    220px minmax(420px, 1fr) auto;
+
+  align-items: center;
+
+  gap: 28px;
+}
+
+/* BRAND */
+.storefront-page .store-brand {
+  display: flex;
+  align-items: center;
+
+  border: 0;
+  background: transparent;
+
+  padding: 0;
+
+  color: #ffffff !important;
+
+  text-align: left;
+
+  cursor: pointer;
+}
+
+.storefront-page .store-brand strong {
+  color: #ffffff;
+
+  font-size: 17px;
+  font-weight: 700;
+
+  white-space: nowrap;
+}
+
+/* SEARCH BAR */
+.storefront-page .store-search {
+  width: 100%;
+  height: 44px;
+
+  display: flex;
+
+  overflow: hidden;
+
+  border: 0;
+  border-radius: 4px;
+
+  background: #ffffff;
+}
+
+/* SEARCH INPUT */
+.storefront-page .search-input-wrap {
+  width: 100%;
+
+  display: flex;
+  align-items: center;
+
+  padding: 0 14px;
+
+  color: #2455be;
+}
+
+.storefront-page .search-input-wrap input {
+  width: 100%;
+  height: 100%;
+
+  border: 0;
+  outline: 0;
+
+  background: transparent;
+
+  color: #334155;
+
+  font-size: 13px;
+}
+
+.storefront-page .search-input-wrap input::placeholder {
+  color: #94a3b8;
+}
+
+/* HEADER RIGHT ACTIONS */
+.storefront-page .store-header-actions {
+  display: flex;
+  align-items: center;
+
+  justify-content: flex-end;
+
+  gap: 18px;
+
+  white-space: nowrap;
+}
+
+/* WISHLIST / ACCOUNT / CART / MY ORDERS */
+.storefront-page .header-icon-button {
+  position: relative;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 4px;
+
+  border: 0;
+  background: transparent;
+
+  padding: 3px 0;
+
+  color: #ffffff !important;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  cursor: pointer;
+}
+
+.storefront-page .header-icon-button svg {
+  color: #ffffff;
+  stroke: currentColor;
+}
+
+/* CART BADGE */
+.storefront-page .cart-count {
+  position: absolute;
+
+  top: -7px;
+  left: 12px;
+
+  min-width: 15px;
+  height: 15px;
+
+  border-radius: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 3px;
+
+  background: #ff5d5d;
+  color: #ffffff;
+
+  font-size: 8px;
+  font-weight: 700;
+}
+
+/* =========================================================
+   WHITE NAVIGATION
+   ========================================================= */
+
+.storefront-page .store-navigation {
+  width: 100%;
+
+  border: 0;
+  border-bottom: 1px solid #e5e7eb;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 2px 7px rgba(15, 23, 42, 0.07);
+}
+
+/* NAV CONTENT */
+.storefront-page .store-navigation-inner {
+  min-height: 52px;
+
+  display: flex;
+  align-items: center;
+
+  gap: 72px;
+
+  padding: 0;
+}
+
+/* NAV BUTTONS */
+.storefront-page .store-navigation-inner button {
+  min-height: 52px;
+
+  display: inline-flex;
+  align-items: center;
+
+  gap: 4px;
+
+  border: 0;
+
+  background: transparent;
+
+  padding: 0;
+
+  color: #111827;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  cursor: pointer;
+}
+
+/* REMOVE OLD EXTRA MARGIN */
+.storefront-page
+  .store-navigation-inner
+  button:nth-child(3) {
+  margin-left: 0;
+}
+
+/* ACTIVE / HOVER */
+.storefront-page
+  .store-navigation-inner
+  button:hover,
+.storefront-page
+  .store-navigation-inner
+  button.active {
+  color: #2455be;
+}
+
+/* LOGOUT STAYS ON RIGHT */
+.storefront-page
+  .store-navigation-inner
+  .nav-logout {
+  margin-left: auto;
+
+  color: #64748b;
+}
+
+/* =========================================================
+   HEADER/NAV RESPONSIVE OVERRIDES
+   ========================================================= */
+
+@media (max-width: 1000px) {
+  .storefront-page .main-header-inner {
+    grid-template-columns:
+      170px minmax(260px, 1fr) auto;
+
+    gap: 16px;
+  }
+
+  .storefront-page .store-header-actions {
+    gap: 10px;
+  }
+
+  .storefront-page .header-icon-button {
+    font-size: 10px;
+  }
+
+  .storefront-page .store-navigation-inner {
+    gap: 36px;
+  }
+}
+
+@media (max-width: 700px) {
+  .storefront-page .main-header-inner {
+    grid-template-columns: 1fr;
+
+    gap: 12px;
+
+    padding: 14px 0;
+  }
+
+  .storefront-page .store-brand {
+    justify-content: center;
+
+    text-align: center;
+  }
+
+  .storefront-page .store-search {
+    width: 100%;
+  }
+
+  .storefront-page .store-header-actions {
+    justify-content: center;
+
+    flex-wrap: wrap;
+
+    gap: 14px;
+  }
+
+  .storefront-page .store-navigation-inner {
+    min-height: 48px;
+
+    overflow-x: auto;
+
+    gap: 28px;
+
+    white-space: nowrap;
+  }
+
+  .storefront-page .store-navigation-inner button {
+    min-height: 48px;
+  }
+
+  .storefront-page
+    .store-navigation-inner
+    .nav-logout {
+    margin-left: 0;
+  }
+}
+

@@ -1,0 +1,401 @@
+.customer-orders-page {
+  min-height: 100vh;
+  padding: 32px 24px 60px;
+
+  background: #f5f7fb;
+  color: #0f172a;
+}
+
+.customer-orders-container {
+  width: 100%;
+  max-width: 1180px;
+
+  margin: 0 auto;
+}
+
+/* =========================
+   TOP BAR
+   ========================= */
+
+.customer-orders-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 16px;
+
+  margin-bottom: 28px;
+}
+
+.customer-orders-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 10px 15px;
+
+  border: 1px solid #dbe3ee;
+  border-radius: 9px;
+
+  background: #ffffff;
+  color: #1e3a8a;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.customer-orders-back:hover {
+  background: #eff6ff;
+  border-color: #93c5fd;
+}
+
+.customer-orders-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 10px 16px;
+
+  border: 0;
+  border-radius: 9px;
+
+  background: #1677dc;
+  color: #ffffff;
+
+  font-size: 14px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.customer-orders-refresh:hover {
+  background: #0f66c2;
+}
+
+.customer-orders-refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* =========================
+   HEADING
+   ========================= */
+
+.customer-orders-heading {
+  margin-bottom: 24px;
+}
+
+.customer-orders-heading h1 {
+  margin: 0 0 8px;
+
+  font-size: 30px;
+  color: #0f172a;
+}
+
+.customer-orders-heading p {
+  margin: 0;
+
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* =========================
+   ORDER LIST
+   ========================= */
+
+.customer-orders-list {
+  display: flex;
+  flex-direction: column;
+
+  gap: 18px;
+}
+
+/* =========================
+   ORDER CARD
+   ========================= */
+
+.customer-order-card {
+  overflow: hidden;
+
+  border: 1px solid #dfe6ef;
+  border-radius: 14px;
+
+  background: #ffffff;
+
+  box-shadow:
+    0 5px 18px
+    rgba(15, 23, 42, 0.05);
+}
+
+/* =========================
+   ORDER HEADER
+   ========================= */
+
+.customer-order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  gap: 20px;
+
+  padding: 18px 22px;
+
+  border-bottom: 1px solid #e5e7eb;
+
+  background: #f8fafc;
+}
+
+.customer-order-number {
+  display: flex;
+  flex-direction: column;
+
+  gap: 5px;
+}
+
+.customer-order-number span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.customer-order-number strong {
+  color: #1e3a8a;
+  font-size: 16px;
+}
+
+.customer-order-date {
+  color: #64748b;
+  font-size: 13px;
+}
+
+/* =========================
+   ORDER INFORMATION
+   ========================= */
+
+.customer-order-info {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+
+  gap: 16px;
+
+  padding: 20px 22px;
+}
+
+.customer-order-info-item {
+  display: flex;
+  flex-direction: column;
+
+  gap: 7px;
+}
+
+.customer-order-info-item > span:first-child {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.customer-order-total {
+  font-size: 17px;
+  font-weight: 700;
+
+  color: #0f172a;
+}
+
+/* =========================
+   STATUS
+   ========================= */
+
+.customer-order-status {
+  width: fit-content;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 6px 11px;
+
+  border-radius: 999px;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  text-transform: capitalize;
+}
+
+/* PAYMENT */
+
+.customer-order-status.paid {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.customer-order-status.unpaid {
+  background: #fff7d6;
+  color: #946200;
+}
+
+/* DELIVERY */
+
+.customer-order-status.pending {
+  background: #fff7d6;
+  color: #946200;
+}
+
+.customer-order-status.confirmed {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.customer-order-status.preparing {
+  background: #ede9fe;
+  color: #6d28d9;
+}
+
+.customer-order-status.shipped {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.customer-order-status.completed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.customer-order-status.cancelled {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+/* =========================
+   ITEMS
+   ========================= */
+
+.customer-order-items {
+  padding: 0 22px 22px;
+}
+
+.customer-order-items h3 {
+  margin: 0 0 12px;
+
+  font-size: 14px;
+  color: #334155;
+}
+
+.customer-order-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  gap: 16px;
+
+  padding: 12px 0;
+
+  border-top: 1px solid #edf0f4;
+}
+
+.customer-order-item-name {
+  display: flex;
+  flex-direction: column;
+
+  gap: 4px;
+}
+
+.customer-order-item-name strong {
+  color: #0f172a;
+  font-size: 14px;
+}
+
+.customer-order-item-name span {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.customer-order-item-total {
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* =========================
+   EMPTY STATE
+   ========================= */
+
+.customer-orders-empty {
+  min-height: 320px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+
+  gap: 12px;
+
+  border: 1px solid #dfe6ef;
+  border-radius: 14px;
+
+  background: #ffffff;
+
+  color: #64748b;
+  text-align: center;
+}
+
+.customer-orders-empty svg {
+  color: #94a3b8;
+}
+
+.customer-orders-empty p {
+  margin: 0;
+}
+
+/* =========================
+   ERROR
+   ========================= */
+
+.customer-orders-error {
+  margin-bottom: 20px;
+
+  padding: 12px 14px;
+
+  border: 1px solid #fecaca;
+  border-radius: 9px;
+
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+/* =========================
+   MOBILE
+   ========================= */
+
+@media (max-width: 768px) {
+  .customer-orders-page {
+    padding: 20px 14px 40px;
+  }
+
+  .customer-orders-top {
+    align-items: stretch;
+  }
+
+  .customer-order-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .customer-order-info {
+    grid-template-columns: 1fr;
+  }
+
+  .customer-order-item {
+    align-items: flex-start;
+  }
+
+  .customer-orders-heading h1 {
+    font-size: 25px;
+  }
+}
