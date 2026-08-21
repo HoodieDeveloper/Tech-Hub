@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
 } from 'react';
 
@@ -20,26 +21,50 @@ import {
   apiGet,
 } from '../../../core/api/client';
 
-import { ProductImage } from '../../products/ProductImage';
-import { DeleteProductModal } from './DeleteProductModal';
+import {
+  ProductImage,
+} from '../../products/ProductImage';
+
+import {
+  DeleteProductModal,
+} from './DeleteProductModal';
 
 import type {
   Category,
   Product,
 } from '../../products/types';
 
-import { AdminProductFormPage } from './AdminProductFormPage';
+import {
+  AdminProductFormPage,
+} from './AdminProductFormPage';
 
 import './ProductsPage.css';
+
+/*
+ * =========================================
+ * CACHE KEYS
+ * =========================================
+ */
+
+const PRODUCTS_CACHE_PREFIX =
+  'techhub_admin_products_cache:';
+
+const PRODUCTS_UI_CACHE_KEY =
+  'techhub_admin_products_ui';
+
+const CATEGORIES_CACHE_KEY =
+  'techhub_admin_categories_cache';
+
+/*
+ * =========================================
+ * TYPES
+ * =========================================
+ */
 
 type ProductView =
   | 'list'
   | 'add'
   | 'edit';
-
-type CategoryResponse = {
-  data: Category[];
-};
 
 type StatusFilter =
   | 'all'
@@ -48,14 +73,8 @@ type StatusFilter =
   | 'low_stock'
   | 'out_of_stock';
 
-type PaginatedProducts = {
-  current_page: number;
-  data: Product[];
-  from: number | null;
-  last_page: number;
-  per_page: number;
-  to: number | null;
-  total: number;
+type CategoryResponse = {
+  data: Category[];
 };
 
 type ProductSummary = {
@@ -65,81 +84,266 @@ type ProductSummary = {
   outOfStock: number;
 };
 
+type PaginatedProducts = {
+  current_page: number;
+  data: Product[];
+  from: number | null;
+  last_page: number;
+  per_page: number;
+  to: number | null;
+  total: number;
+  summary: ProductSummary;
+};
+
+type CachedProducts = {
+  response: PaginatedProducts;
+  loadedIn: number;
+};
+
+type ProductUiState = {
+  currentPage: number;
+  search: string;
+  categoryFilter: string;
+  statusFilter: StatusFilter;
+};
+
+/*
+ * =========================================
+ * CACHE HELPERS
+ * =========================================
+ */
+
+function readUiCache(): ProductUiState {
+  try {
+    const raw =
+      sessionStorage.getItem(
+        PRODUCTS_UI_CACHE_KEY,
+      );
+
+    if (!raw) {
+      throw new Error();
+    }
+
+    const parsed =
+      JSON.parse(
+        raw,
+      ) as ProductUiState;
+
+    return {
+      currentPage:
+        parsed.currentPage || 1,
+
+      search:
+        parsed.search || '',
+
+      categoryFilter:
+        parsed.categoryFilter ||
+        'all',
+
+      statusFilter:
+        parsed.statusFilter ||
+        'all',
+    };
+  } catch {
+    return {
+      currentPage: 1,
+      search: '',
+      categoryFilter: 'all',
+      statusFilter: 'all',
+    };
+  }
+}
+
+function saveUiCache(
+  state: ProductUiState,
+) {
+  sessionStorage.setItem(
+    PRODUCTS_UI_CACHE_KEY,
+    JSON.stringify(
+      state,
+    ),
+  );
+}
+
+function getProductsCache(
+  url: string,
+): CachedProducts | null {
+  try {
+    const raw =
+      sessionStorage.getItem(
+        PRODUCTS_CACHE_PREFIX +
+          url,
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(
+      raw,
+    ) as CachedProducts;
+  } catch {
+    return null;
+  }
+}
+
+function saveProductsCache(
+  url: string,
+  data: CachedProducts,
+) {
+  sessionStorage.setItem(
+    PRODUCTS_CACHE_PREFIX +
+      url,
+    JSON.stringify(
+      data,
+    ),
+  );
+}
+
+function clearProductsCache() {
+  const keys: string[] =
+    [];
+
+  for (
+    let index = 0;
+    index <
+    sessionStorage.length;
+    index += 1
+  ) {
+    const key =
+      sessionStorage.key(
+        index,
+      );
+
+    if (
+      key?.startsWith(
+        PRODUCTS_CACHE_PREFIX,
+      )
+    ) {
+      keys.push(
+        key,
+      );
+    }
+  }
+
+  keys.forEach(
+    (key) => {
+      sessionStorage.removeItem(
+        key,
+      );
+    },
+  );
+}
+
+function readCategoriesCache():
+  Category[] | null {
+  try {
+    const raw =
+      sessionStorage.getItem(
+        CATEGORIES_CACHE_KEY,
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(
+      raw,
+    ) as Category[];
+  } catch {
+    return null;
+  }
+}
+
+/*
+ * =========================================
+ * PAGE
+ * =========================================
+ */
+
 export function AdminProductsPage() {
-  const [view, setView] =
-    useState<ProductView>('list');
+  const initialUi =
+    useRef(
+      readUiCache(),
+    ).current;
+
+  const [
+    view,
+    setView,
+  ] =
+    useState<ProductView>(
+      'list',
+    );
 
   const [
     selectedProduct,
     setSelectedProduct,
-  ] = useState<Product | null>(null);
+  ] =
+    useState<Product | null>(
+      null,
+    );
 
   const [
     pendingDeleteProduct,
     setPendingDeleteProduct,
-  ] = useState<Product | null>(null);
+  ] =
+    useState<Product | null>(
+      null,
+    );
 
-  const [deleting, setDeleting] =
+  const [
+    deleting,
+    setDeleting,
+  ] =
     useState(false);
 
-  const [products, setProducts] =
-    useState<Product[]>([]);
+  /*
+   * =========================================
+   * FILTER STATE
+   * =========================================
+   */
 
-  const [categories, setCategories] =
-    useState<Category[]>([]);
-
-  const [search, setSearch] =
-    useState('');
+  const [
+    search,
+    setSearch,
+  ] =
+    useState(
+      initialUi.search,
+    );
 
   const [
     categoryFilter,
     setCategoryFilter,
-  ] = useState('all');
+  ] =
+    useState(
+      initialUi.categoryFilter,
+    );
 
   const [
     statusFilter,
     setStatusFilter,
-  ] = useState<StatusFilter>('all');
+  ] =
+    useState<StatusFilter>(
+      initialUi.statusFilter,
+    );
 
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState('');
-
-  const [success, setSuccess] =
-    useState('');
-
-  /*
-   * Pagination
-   */
-  const [currentPage, setCurrentPage] =
-    useState(1);
-
-  const [lastPage, setLastPage] =
-    useState(1);
-
-  const [totalResults, setTotalResults] =
-    useState(0);
+  const [
+    currentPage,
+    setCurrentPage,
+  ] =
+    useState(
+      initialUi.currentPage,
+    );
 
   /*
-   * Dashboard summary.
-   *
-   * We load these counts separately so that
-   * the cards still show totals for ALL
-   * products instead of only the current
-   * five products.
+   * Build initial URL before
+   * creating product state.
    */
-  const [summary, setSummary] =
-    useState<ProductSummary>({
-      total: 0,
-      active: 0,
-      lowStock: 0,
-      outOfStock: 0,
-    });
-
-  function buildProductsUrl(
+  function buildUrlFromValues(
     page: number,
+    searchValue: string,
+    categoryValue: string,
+    statusValue: StatusFilter,
   ) {
     const params =
       new URLSearchParams();
@@ -150,9 +354,11 @@ export function AdminProductsPage() {
     );
 
     const cleanSearch =
-      search.trim();
+      searchValue.trim();
 
-    if (cleanSearch !== '') {
+    if (
+      cleanSearch !== ''
+    ) {
       params.set(
         'search',
         cleanSearch,
@@ -160,52 +366,282 @@ export function AdminProductsPage() {
     }
 
     if (
-      categoryFilter !== 'all'
+      categoryValue !==
+      'all'
     ) {
       params.set(
         'category_id',
-        categoryFilter,
+        categoryValue,
       );
     }
 
     if (
-      statusFilter !== 'all'
+      statusValue !==
+      'all'
     ) {
       params.set(
         'status',
-        statusFilter,
+        statusValue,
       );
     }
 
     return `/admin/products?${params.toString()}`;
   }
 
+  const initialUrl =
+    useRef(
+      buildUrlFromValues(
+        initialUi.currentPage,
+        initialUi.search,
+        initialUi.categoryFilter,
+        initialUi.statusFilter,
+      ),
+    ).current;
+
+  const initialCache =
+    useRef(
+      getProductsCache(
+        initialUrl,
+      ),
+    ).current;
+
+  /*
+   * =========================================
+   * PRODUCT STATE
+   * =========================================
+   */
+
+  const [
+    products,
+    setProducts,
+  ] =
+    useState<Product[]>(
+      initialCache
+        ?.response.data ??
+        [],
+    );
+
+  const [
+    categories,
+    setCategories,
+  ] =
+    useState<Category[]>(
+      () =>
+        readCategoriesCache() ??
+        [],
+    );
+
+  const [
+    lastPage,
+    setLastPage,
+  ] =
+    useState(
+      initialCache
+        ?.response.last_page ??
+        1,
+    );
+
+  const [
+    totalResults,
+    setTotalResults,
+  ] =
+    useState(
+      initialCache
+        ?.response.total ??
+        0,
+    );
+
+  const [
+    summary,
+    setSummary,
+  ] =
+    useState<ProductSummary>(
+      initialCache
+        ?.response.summary ??
+        {
+          total: 0,
+          active: 0,
+          lowStock: 0,
+          outOfStock: 0,
+        },
+    );
+
+  const [
+    loadedIn,
+    setLoadedIn,
+  ] =
+    useState<number | null>(
+      initialCache
+        ?.loadedIn ??
+        null,
+    );
+
+  /*
+   * If cached data exists,
+   * don't show loading screen.
+   */
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(
+      initialCache === null,
+    );
+
+  const [
+    error,
+    setError,
+  ] =
+    useState('');
+
+  const [
+    success,
+    setSuccess,
+  ] =
+    useState('');
+
+  /*
+   * Prevent first useEffect
+   * from fetching again when
+   * cache already exists.
+   */
+  const skipInitialFetch =
+    useRef(
+      initialCache !== null,
+    );
+
+  /*
+   * =========================================
+   * URL
+   * =========================================
+   */
+
+  function buildProductsUrl(
+    page: number,
+  ) {
+    return buildUrlFromValues(
+      page,
+      search,
+      categoryFilter,
+      statusFilter,
+    );
+  }
+
+  /*
+   * =========================================
+   * APPLY PRODUCT RESPONSE
+   * =========================================
+   */
+
+  function applyProductData(
+    productData: PaginatedProducts,
+    loadSeconds: number,
+  ) {
+    setProducts(
+      productData.data,
+    );
+
+    setCurrentPage(
+      productData.current_page,
+    );
+
+    setLastPage(
+      productData.last_page,
+    );
+
+    setTotalResults(
+      productData.total,
+    );
+
+    setSummary(
+      productData.summary,
+    );
+
+    setLoadedIn(
+      loadSeconds,
+    );
+  }
+
+  /*
+   * =========================================
+   * LOAD PRODUCTS
+   * =========================================
+   */
+
   async function loadProducts(
     page = currentPage,
+    force = false,
   ) {
+    const url =
+      buildProductsUrl(
+        page,
+      );
+
+    /*
+     * IMPORTANT:
+     *
+     * If we already fetched this exact
+     * page/filter/search before,
+     * use sessionStorage instead.
+     */
+    if (!force) {
+      const cached =
+        getProductsCache(
+          url,
+        );
+
+      if (cached) {
+        applyProductData(
+          cached.response,
+          cached.loadedIn,
+        );
+
+        setLoading(
+          false,
+        );
+
+        return;
+      }
+    }
+
     setLoading(true);
     setError('');
+
+    const startedAt =
+      performance.now();
 
     try {
       const productData =
         await apiGet<PaginatedProducts>(
-          buildProductsUrl(page),
+          url,
         );
 
-      setProducts(
-        productData.data,
+      const seconds =
+        (
+          (
+            performance.now() -
+            startedAt
+          ) /
+          1000
+        );
+
+      applyProductData(
+        productData,
+        seconds,
       );
 
-      setCurrentPage(
-        productData.current_page,
-      );
+      /*
+       * Save this exact response.
+       */
+      saveProductsCache(
+        url,
+        {
+          response:
+            productData,
 
-      setLastPage(
-        productData.last_page,
-      );
-
-      setTotalResults(
-        productData.total,
+          loadedIn:
+            seconds,
+        },
       );
     } catch (err) {
       setError(
@@ -218,7 +654,28 @@ export function AdminProductsPage() {
     }
   }
 
-  async function loadCategories() {
+  /*
+   * =========================================
+   * LOAD CATEGORIES
+   * =========================================
+   */
+
+  async function loadCategories(
+    force = false,
+  ) {
+    if (!force) {
+      const cached =
+        readCategoriesCache();
+
+      if (cached) {
+        setCategories(
+          cached,
+        );
+
+        return;
+      }
+    }
+
     try {
       const categoryData =
         await apiGet<CategoryResponse>(
@@ -227,6 +684,13 @@ export function AdminProductsPage() {
 
       setCategories(
         categoryData.data,
+      );
+
+      sessionStorage.setItem(
+        CATEGORIES_CACHE_KEY,
+        JSON.stringify(
+          categoryData.data,
+        ),
       );
     } catch (err) {
       setError(
@@ -238,77 +702,74 @@ export function AdminProductsPage() {
   }
 
   /*
-   * Laravel pagination contains a "total"
-   * value.
-   *
-   * We use that value to get the numbers
-   * for the summary cards without loading
-   * every product into React.
+   * =========================================
+   * SAVE UI STATE
+   * =========================================
    */
-  async function loadSummary() {
-    try {
-      const [
-        allData,
-        activeData,
-        lowStockData,
-        outOfStockData,
-      ] = await Promise.all([
-        apiGet<PaginatedProducts>(
-          '/admin/products?page=1',
-        ),
 
-        apiGet<PaginatedProducts>(
-          '/admin/products?page=1&status=active',
-        ),
-
-        apiGet<PaginatedProducts>(
-          '/admin/products?page=1&status=low_stock',
-        ),
-
-        apiGet<PaginatedProducts>(
-          '/admin/products?page=1&status=out_of_stock',
-        ),
-      ]);
-
-      setSummary({
-        total: allData.total,
-        active: activeData.total,
-        lowStock:
-          lowStockData.total,
-        outOfStock:
-          outOfStockData.total,
-      });
-    } catch (err) {
-      console.error(
-        'Unable to load product summary.',
-        err,
-      );
-    }
-  }
+  useEffect(() => {
+    saveUiCache({
+      currentPage,
+      search,
+      categoryFilter,
+      statusFilter,
+    });
+  }, [
+    currentPage,
+    search,
+    categoryFilter,
+    statusFilter,
+  ]);
 
   /*
-   * Load categories and summary once.
+   * =========================================
+   * INITIAL CATEGORIES
+   * =========================================
    */
+
   useEffect(() => {
     void loadCategories();
-    void loadSummary();
   }, []);
 
   /*
-   * Reload products whenever the page
-   * or filters change.
-   *
-   * Search uses a small delay so Laravel
-   * is not called on every single
-   * keyboard press immediately.
+   * =========================================
+   * PRODUCT FETCH
+   * =========================================
    */
+
   useEffect(() => {
+    /*
+     * First mount after returning to
+     * Products:
+     *
+     * Cache exists → NO API REQUEST.
+     */
+    if (
+      skipInitialFetch.current
+    ) {
+      skipInitialFetch.current =
+        false;
+
+      return;
+    }
+
+    /*
+     * Search keeps 300ms debounce.
+     */
+    const delay =
+      search.trim() !== ''
+        ? 300
+        : 0;
+
     const timer =
-      window.setTimeout(() => {
-        void loadProducts(
-          currentPage,
-        );
-      }, 300);
+      window.setTimeout(
+        () => {
+          void loadProducts(
+            currentPage,
+          );
+        },
+        delay,
+      );
 
     return () => {
       window.clearTimeout(
@@ -322,6 +783,12 @@ export function AdminProductsPage() {
     statusFilter,
   ]);
 
+  /*
+   * =========================================
+   * PAGINATION
+   * =========================================
+   */
+
   function changePage(
     page: number,
   ) {
@@ -333,32 +800,31 @@ export function AdminProductsPage() {
       return;
     }
 
-    setCurrentPage(page);
+    setCurrentPage(
+      page,
+    );
   }
 
   function getPageNumbers() {
-    const pages: number[] = [];
+    const pages: number[] =
+      [];
 
-    /*
-     * Show maximum 5 page buttons.
-     *
-     * Example:
-     * Previous 1 2 3 4 5 Next
-     */
     let startPage =
       Math.max(
         1,
         currentPage - 2,
       );
 
-    let endPage =
+    const endPage =
       Math.min(
         lastPage,
         startPage + 4,
       );
 
     if (
-      endPage - startPage < 4
+      endPage -
+        startPage <
+      4
     ) {
       startPage =
         Math.max(
@@ -368,15 +834,24 @@ export function AdminProductsPage() {
     }
 
     for (
-      let page = startPage;
+      let page =
+        startPage;
       page <= endPage;
       page += 1
     ) {
-      pages.push(page);
+      pages.push(
+        page,
+      );
     }
 
     return pages;
   }
+
+  /*
+   * =========================================
+   * DELETE
+   * =========================================
+   */
 
   function openDeleteModal(
     product: Product,
@@ -400,7 +875,9 @@ export function AdminProductsPage() {
   }
 
   async function confirmDelete() {
-    if (!pendingDeleteProduct) {
+    if (
+      !pendingDeleteProduct
+    ) {
       return;
     }
 
@@ -427,12 +904,14 @@ export function AdminProductsPage() {
       );
 
       /*
-       * If the last product on this
-       * page was deleted, move back
-       * one page.
+       * Database changed.
+       * Old product cache is now stale.
        */
+      clearProductsCache();
+
       if (
-        products.length === 1 &&
+        products.length ===
+          1 &&
         currentPage > 1
       ) {
         setCurrentPage(
@@ -441,10 +920,9 @@ export function AdminProductsPage() {
       } else {
         await loadProducts(
           currentPage,
+          true,
         );
       }
-
-      await loadSummary();
     } catch (err) {
       setError(
         err instanceof Error
@@ -456,89 +934,175 @@ export function AdminProductsPage() {
     }
   }
 
+  /*
+   * =========================================
+   * ADD / EDIT
+   * =========================================
+   */
+
   function openAddPage() {
-    setSelectedProduct(null);
+    setSelectedProduct(
+      null,
+    );
+
     setError('');
     setSuccess('');
-    setView('add');
+
+    setView(
+      'add',
+    );
   }
 
   function openEditPage(
     product: Product,
   ) {
-    setSelectedProduct(product);
+    setSelectedProduct(
+      product,
+    );
+
     setError('');
     setSuccess('');
-    setView('edit');
+
+    setView(
+      'edit',
+    );
   }
 
   function handleSaved(
     savedProduct: Product,
   ) {
-    if (view === 'edit') {
+    /*
+     * Product changed in database,
+     * so invalidate old cache.
+     */
+    clearProductsCache();
+
+    if (
+      view === 'edit'
+    ) {
       setSuccess(
         `${savedProduct.name} was updated successfully.`,
       );
 
-      setSelectedProduct(null);
-      setView('list');
+      setSelectedProduct(
+        null,
+      );
+
+      setView(
+        'list',
+      );
 
       void loadProducts(
         currentPage,
-      );
-    } else {
-      setSuccess(
-        `${savedProduct.name} was created successfully.`,
+        true,
       );
 
-      setSelectedProduct(null);
-      setView('list');
-
-      /*
-       * New products are sorted newest
-       * first, so return to page 1.
-       */
-      if (currentPage === 1) {
-        void loadProducts(1);
-      } else {
-        setCurrentPage(1);
-      }
+      return;
     }
 
-    void loadSummary();
+    setSuccess(
+      `${savedProduct.name} was created successfully.`,
+    );
+
+    setSelectedProduct(
+      null,
+    );
+
+    setView(
+      'list',
+    );
+
+    if (
+      currentPage === 1
+    ) {
+      void loadProducts(
+        1,
+        true,
+      );
+    } else {
+      setCurrentPage(
+        1,
+      );
+    }
   }
 
   function returnToList() {
-    setSelectedProduct(null);
-    setView('list');
+    setSelectedProduct(
+      null,
+    );
+
+    setView(
+      'list',
+    );
   }
 
+  /*
+   * =========================================
+   * MANUAL REFRESH
+   * =========================================
+   */
+
   async function refreshPage() {
+    /*
+     * Refresh means:
+     * ignore cache and get fresh data.
+     */
+    clearProductsCache();
+
+    sessionStorage.removeItem(
+      CATEGORIES_CACHE_KEY,
+    );
+
     await Promise.all([
       loadProducts(
         currentPage,
+        true,
       ),
-      loadSummary(),
-      loadCategories(),
+
+      loadCategories(
+        true,
+      ),
     ]);
   }
+
+  /*
+   * =========================================
+   * ADD / EDIT PAGE
+   * =========================================
+   */
 
   if (
     view === 'add' ||
     view === 'edit'
   ) {
     return (
-      <AdminProductFormPage
-        product={
-          view === 'edit'
-            ? selectedProduct
-            : null
-        }
-        onBack={returnToList}
-        onSaved={handleSaved}
-      />
+    <AdminProductFormPage
+      product={
+        view === 'edit'
+          ? selectedProduct
+          : null
+      }
+
+      categories={
+        categories
+      }
+
+      onBack={
+        returnToList
+      }
+
+      onSaved={
+        handleSaved
+      }
+    />
     );
   }
+
+  /*
+   * =========================================
+   * LIST PAGE
+   * =========================================
+   */
 
   return (
     <section className="admin-products-page">
@@ -562,9 +1126,13 @@ export function AdminProductsPage() {
             onClick={() =>
               void refreshPage()
             }
-            disabled={loading}
+            disabled={
+              loading
+            }
           >
-            <RefreshCw size={18} />
+            <RefreshCw
+              size={18}
+            />
 
             {loading
               ? 'Refreshing...'
@@ -574,9 +1142,14 @@ export function AdminProductsPage() {
           <button
             type="button"
             className="products-primary-button"
-            onClick={openAddPage}
+            onClick={
+              openAddPage
+            }
           >
-            <Plus size={19} />
+            <Plus
+              size={19}
+            />
+
             Add Product
           </button>
         </div>
@@ -594,23 +1167,37 @@ export function AdminProductsPage() {
         </div>
       )}
 
+      {/* SUMMARY */}
+
       <div className="products-summary-grid">
         <SummaryCard
           label="Total Products"
-          value={summary.total}
-          icon={Package}
+          value={
+            summary.total
+          }
+          icon={
+            Package
+          }
         />
 
         <SummaryCard
           label="Active Products"
-          value={summary.active}
-          icon={CheckCircle2}
+          value={
+            summary.active
+          }
+          icon={
+            CheckCircle2
+          }
         />
 
         <SummaryCard
           label="Low Stock"
-          value={summary.lowStock}
-          icon={AlertTriangle}
+          value={
+            summary.lowStock
+          }
+          icon={
+            AlertTriangle
+          }
         />
 
         <SummaryCard
@@ -618,36 +1205,56 @@ export function AdminProductsPage() {
           value={
             summary.outOfStock
           }
-          icon={Boxes}
+          icon={
+            Boxes
+          }
         />
       </div>
+
+      {/* TABLE */}
 
       <section className="products-table-card">
         <div className="products-filters">
           <label className="products-search-box">
-            <Search size={18} />
+            <Search
+              size={18}
+            />
 
             <input
-              value={search}
-              onChange={(event) => {
+              value={
+                search
+              }
+              onChange={(
+                event,
+              ) => {
                 setSearch(
-                  event.target.value,
+                  event.target
+                    .value,
                 );
 
-                setCurrentPage(1);
+                setCurrentPage(
+                  1,
+                );
               }}
               placeholder="Search products..."
             />
           </label>
 
           <select
-            value={categoryFilter}
-            onChange={(event) => {
+            value={
+              categoryFilter
+            }
+            onChange={(
+              event,
+            ) => {
               setCategoryFilter(
-                event.target.value,
+                event.target
+                  .value,
               );
 
-              setCurrentPage(1);
+              setCurrentPage(
+                1,
+              );
             }}
           >
             <option value="all">
@@ -655,7 +1262,9 @@ export function AdminProductsPage() {
             </option>
 
             {categories.map(
-              (category) => (
+              (
+                category,
+              ) => (
                 <option
                   key={
                     category.id
@@ -664,21 +1273,29 @@ export function AdminProductsPage() {
                     category.id
                   }
                 >
-                  {category.name}
+                  {
+                    category.name
+                  }
                 </option>
               ),
             )}
           </select>
 
           <select
-            value={statusFilter}
-            onChange={(event) => {
+            value={
+              statusFilter
+            }
+            onChange={(
+              event,
+            ) => {
               setStatusFilter(
                 event.target
                   .value as StatusFilter,
               );
 
-              setCurrentPage(1);
+              setCurrentPage(
+                1,
+              );
             }}
           >
             <option value="all">
@@ -703,253 +1320,303 @@ export function AdminProductsPage() {
           </select>
         </div>
 
-        {loading && (
-          <div className="products-empty-state">
-            Loading products...
-          </div>
-        )}
-
-        {!loading &&
-          products.length === 0 && (
+        {loading &&
+          products.length ===
+            0 && (
             <div className="products-empty-state">
-              No products match your
-              filters.
+              Loading products...
             </div>
           )}
 
         {!loading &&
-          products.length > 0 && (
-            <>
-              <div className="products-table-wrapper">
-                <table className="products-table">
-                  <thead>
-                    <tr>
-                      <th>Product</th>
-                      <th>
-                        Category
-                      </th>
-                      <th>Price</th>
-                      <th>Stock</th>
-                      <th>Status</th>
-                      <th>Actions</th>
-                    </tr>
-                  </thead>
+          products.length ===
+            0 && (
+            <div className="products-empty-state">
+              No products match
+              your filters.
+            </div>
+          )}
 
-                  <tbody>
-                    {products.map(
-                      (product) => (
-                        <tr
-                          key={
-                            product.id
-                          }
-                        >
-                          <td>
-                            <div className="product-table-identity">
-                              <ProductImage
-                                imageUrl={
-                                  product.image_url
-                                }
-                                alt={
-                                  product.name
-                                }
-                              />
+        {products.length >
+          0 && (
+          <>
+            <div className="products-table-wrapper">
+              <table className="products-table">
+                <thead>
+                  <tr>
+                    <th>
+                      Product
+                    </th>
 
-                              <div>
-                                <strong>
-                                  {
-                                    product.name
-                                  }
-                                </strong>
+                    <th>
+                      Category
+                    </th>
 
-                                <span>
-                                  {product.description ||
-                                    'No description'}
-                                </span>
-                              </div>
-                            </div>
-                          </td>
+                    <th>
+                      Price
+                    </th>
 
-                          <td>
-                            <span className="product-category-badge">
-                              {product
-                                .category
-                                ?.name ??
-                                'Uncategorized'}
-                            </span>
-                          </td>
+                    <th>
+                      Stock
+                    </th>
 
-                          <td>
-                            <strong>
-                              $
-                              {Number(
-                                product.price,
-                              ).toFixed(
-                                2,
-                              )}
-                            </strong>
-                          </td>
+                    <th>
+                      Status
+                    </th>
 
-                          <td>
-                            <span
-                              className={`product-stock ${
-                                product.stock ===
-                                0
-                                  ? 'out'
-                                  : product.stock <=
-                                      5
-                                    ? 'low'
-                                    : 'available'
-                              }`}
-                            >
-                              {
-                                product.stock
-                              }
-                            </span>
-                          </td>
+                    <th>
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
 
-                          <td>
-                            <span
-                              className={`product-status ${
-                                product.is_active ===
-                                false
-                                  ? 'inactive'
-                                  : 'active'
-                              }`}
-                            >
-                              {product.is_active ===
-                              false
-                                ? 'Inactive'
-                                : 'Active'}
-                            </span>
-                          </td>
-
-                          <td>
-                            <div className="product-table-actions">
-                              <button
-                                type="button"
-                                className="product-edit-button"
-                                title="Edit product"
-                                onClick={() =>
-                                  openEditPage(
-                                    product,
-                                  )
-                                }
-                              >
-                                <Pencil
-                                  size={
-                                    21
-                                  }
-                                />
-                              </button>
-
-                              <button
-                                type="button"
-                                className="product-delete-button"
-                                title="Delete product"
-                                onClick={() =>
-                                  openDeleteModal(
-                                    product,
-                                  )
-                                }
-                              >
-                                <Trash2
-                                  size={
-                                    21
-                                  }
-                                />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ),
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination */}
-              <div className="products-pagination">
-                <div className="products-pagination-info">
-                  Showing{' '}
-                  {products.length}{' '}
-                  of{' '}
-                  {totalResults}{' '}
-                  matching products
-                </div>
-
-                <div className="products-pagination-buttons">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      changePage(
-                        currentPage -
-                          1,
-                      )
-                    }
-                    disabled={
-                      currentPage ===
-                        1 ||
-                      loading
-                    }
-                  >
-                    ← Previous
-                  </button>
-
-                  {getPageNumbers().map(
-                    (page) => (
-                      <button
-                        type="button"
-                        key={page}
-                        className={
-                          page ===
-                          currentPage
-                            ? 'active'
-                            : ''
-                        }
-                        onClick={() =>
-                          changePage(
-                            page,
-                          )
-                        }
-                        disabled={
-                          loading
+                <tbody>
+                  {products.map(
+                    (
+                      product,
+                    ) => (
+                      <tr
+                        key={
+                          product.id
                         }
                       >
-                        {page}
-                      </button>
+                        <td>
+                          <div className="product-table-identity">
+                            <ProductImage
+                              imageUrl={
+                                product.image_url
+                              }
+                              alt={
+                                product.name
+                              }
+                            />
+
+                            <div>
+                              <strong>
+                                {
+                                  product.name
+                                }
+                              </strong>
+
+                              <span>
+                                {product.description ||
+                                  'No description'}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td>
+                          <span className="product-category-badge">
+                            {product
+                              .category
+                              ?.name ??
+                              'Uncategorized'}
+                          </span>
+                        </td>
+
+                        <td>
+                          <strong>
+                            $
+                            {Number(
+                              product.price,
+                            ).toFixed(
+                              2,
+                            )}
+                          </strong>
+                        </td>
+
+                        <td>
+                          <span
+                            className={`product-stock ${
+                              product.stock ===
+                              0
+                                ? 'out'
+                                : product.stock <=
+                                    5
+                                  ? 'low'
+                                  : 'available'
+                            }`}
+                          >
+                            {
+                              product.stock
+                            }
+                          </span>
+                        </td>
+
+                        <td>
+                          <span
+                            className={`product-status ${
+                              product.is_active ===
+                              false
+                                ? 'inactive'
+                                : 'active'
+                            }`}
+                          >
+                            {product.is_active ===
+                            false
+                              ? 'Inactive'
+                              : 'Active'}
+                          </span>
+                        </td>
+
+                        <td>
+                          <div className="product-table-actions">
+                            <button
+                              type="button"
+                              className="product-edit-button"
+                              title="Edit product"
+                              onClick={() =>
+                                openEditPage(
+                                  product,
+                                )
+                              }
+                            >
+                              <Pencil
+                                size={
+                                  21
+                                }
+                              />
+                            </button>
+
+                            <button
+                              type="button"
+                              className="product-delete-button"
+                              title="Delete product"
+                              onClick={() =>
+                                openDeleteModal(
+                                  product,
+                                )
+                              }
+                            >
+                              <Trash2
+                                size={
+                                  21
+                                }
+                              />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
                     ),
                   )}
+                </tbody>
+              </table>
+            </div>
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      changePage(
-                        currentPage +
-                          1,
+            {/* PAGINATION */}
+
+            <div className="products-pagination">
+              <div className="products-pagination-info">
+                Showing{' '}
+                {
+                  products.length
+                }{' '}
+                of{' '}
+                {
+                  totalResults
+                }{' '}
+                matching products
+
+                {loadedIn !==
+                  null && (
+                  <>
+                    {' '}
+                    · Loaded in{' '}
+                    {
+                      loadedIn.toFixed(
+                        2,
                       )
                     }
-                    disabled={
-                      currentPage ===
-                        lastPage ||
-                      loading
-                    }
-                  >
-                    Next →
-                  </button>
-                </div>
+                    s
+                  </>
+                )}
               </div>
-            </>
-          )}
+
+              <div className="products-pagination-buttons">
+                <button
+                  type="button"
+                  onClick={() =>
+                    changePage(
+                      currentPage -
+                        1,
+                    )
+                  }
+                  disabled={
+                    currentPage ===
+                      1 ||
+                    loading
+                  }
+                >
+                  ← Previous
+                </button>
+
+                {getPageNumbers().map(
+                  (
+                    page,
+                  ) => (
+                    <button
+                      type="button"
+                      key={
+                        page
+                      }
+                      className={
+                        page ===
+                        currentPage
+                          ? 'active'
+                          : ''
+                      }
+                      onClick={() =>
+                        changePage(
+                          page,
+                        )
+                      }
+                      disabled={
+                        loading
+                      }
+                    >
+                      {
+                        page
+                      }
+                    </button>
+                  ),
+                )}
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    changePage(
+                      currentPage +
+                        1,
+                    )
+                  }
+                  disabled={
+                    currentPage ===
+                      lastPage ||
+                    loading
+                  }
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          </>
+        )}
 
         {pendingDeleteProduct && (
           <DeleteProductModal
             product={
               pendingDeleteProduct
             }
-            deleting={deleting}
+
+            deleting={
+              deleting
+            }
+
             onCancel={
               closeDeleteModal
             }
+
             onConfirm={() =>
               void confirmDelete()
             }
@@ -959,6 +1626,12 @@ export function AdminProductsPage() {
     </section>
   );
 }
+
+/*
+ * =========================================
+ * SUMMARY CARD
+ * =========================================
+ */
 
 function SummaryCard({
   label,
@@ -972,12 +1645,19 @@ function SummaryCard({
   return (
     <article className="products-summary-card">
       <span className="products-summary-icon">
-        <Icon size={23} />
+        <Icon
+          size={23}
+        />
       </span>
 
       <div>
-        <span>{label}</span>
-        <strong>{value}</strong>
+        <span>
+          {label}
+        </span>
+
+        <strong>
+          {value}
+        </strong>
       </div>
     </article>
   );

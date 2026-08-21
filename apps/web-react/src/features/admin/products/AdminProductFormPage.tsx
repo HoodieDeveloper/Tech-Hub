@@ -15,7 +15,6 @@ import {
 } from 'lucide-react';
 
 import {
-  apiGet,
   apiPostForm,
   apiUpdateForm,
 } from '../../../core/api/client';
@@ -29,12 +28,12 @@ import type {
 
 type Props = {
   product?: Product | null;
+  categories: Category[];
   onBack: () => void;
-  onSaved: (product: Product) => void;
-};
-
-type CategoryResponse = {
-  data: Category[];
+  onSaved: (
+    product: Product,
+    saveDurationMs: number,
+  ) => void;
 };
 
 type ProductForm = {
@@ -56,6 +55,7 @@ const ALLOWED_IMAGE_TYPES = [
 
 export function AdminProductFormPage({
   product = null,
+  categories,
   onBack,
   onSaved,
 }: Props) {
@@ -77,17 +77,11 @@ export function AdminProductFormPage({
       product?.is_active !== false,
   });
 
-  const [categories, setCategories] =
-    useState<Category[]>([]);
-
   const [image, setImage] =
     useState<File | null>(null);
 
   const [previewUrl, setPreviewUrl] =
     useState(product?.image_url ?? '');
-
-  const [loadingCategories, setLoadingCategories] =
-    useState(true);
 
   const [saving, setSaving] =
     useState(false);
@@ -95,27 +89,11 @@ export function AdminProductFormPage({
   const [error, setError] =
     useState('');
 
-  useEffect(() => {
-    apiGet<CategoryResponse>('/admin/categories')
-      .then((response) => {
-        setCategories(
-          response.data.filter(
-            (category) =>
-              category.is_active !== false,
-          ),
-        );
-      })
-      .catch((err: unknown) => {
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Unable to load categories.',
-        );
-      })
-      .finally(() => {
-        setLoadingCategories(false);
-      });
-  }, []);
+  const activeCategories =
+    categories.filter(
+      (category) =>
+        category.is_active !== false,
+    );
 
   useEffect(() => {
     return () => {
@@ -220,6 +198,9 @@ export function AdminProductFormPage({
     setSaving(true);
     setError('');
 
+    const saveStartedAt =
+      performance.now();
+
     const data = new FormData();
 
     data.append(
@@ -260,7 +241,11 @@ export function AdminProductFormPage({
             data,
           );
 
-      onSaved(savedProduct);
+      onSaved(
+        savedProduct,
+        performance.now() -
+          saveStartedAt,
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -354,16 +339,20 @@ export function AdminProductFormPage({
                   name="categoryId"
                   value={form.categoryId}
                   onChange={handleChange}
-                  disabled={loadingCategories}
+                  disabled={
+                    activeCategories.length ===
+                    0
+                  }
                   required
                 >
                   <option value="">
-                    {loadingCategories
-                      ? 'Loading categories...'
+                    {activeCategories.length ===
+                    0
+                      ? 'No categories available'
                       : 'Select category'}
                   </option>
 
-                  {categories.map((category) => (
+                  {activeCategories.map((category) => (
                     <option
                       key={category.id}
                       value={category.id}
@@ -484,8 +473,7 @@ export function AdminProductFormPage({
               type="submit"
               className="products-primary-button"
               disabled={
-                saving ||
-                loadingCategories
+                saving
               }
             >
               <Save size={18} />

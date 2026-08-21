@@ -155,6 +155,58 @@ const navigation: Array<{
   },
 ];
 
+
+const ADMIN_SECTION_STORAGE_KEY =
+  'techhub_admin_section';
+
+const ADMIN_LOGO_STORAGE_KEY =
+  'techhub_admin_logo_url';
+
+const adminSections: AdminSection[] = [
+  'dashboard',
+  'products',
+  'orders',
+  'vendors',
+  'users',
+  'reports',
+  'ratings',
+  'settings',
+];
+
+function getInitialAdminSection(): AdminSection {
+  const savedSection =
+    window.sessionStorage.getItem(
+      ADMIN_SECTION_STORAGE_KEY,
+    );
+
+  if (
+    savedSection &&
+    adminSections.includes(
+      savedSection as AdminSection,
+    )
+  ) {
+    return savedSection as AdminSection;
+  }
+
+  return 'dashboard';
+}
+
+function getInitialStoreLogo(): string | null {
+  const savedLogo =
+    window.sessionStorage.getItem(
+      ADMIN_LOGO_STORAGE_KEY,
+    );
+
+  if (
+    savedLogo === null ||
+    savedLogo === ''
+  ) {
+    return null;
+  }
+
+  return savedLogo;
+}
+
 export function AdminDashboard({
   onStorefront,
   onLogout,
@@ -164,7 +216,7 @@ export function AdminDashboard({
     setSection,
   ] =
     useState<AdminSection>(
-      'dashboard',
+      getInitialAdminSection,
     );
 
   const [
@@ -186,7 +238,7 @@ export function AdminDashboard({
     setStoreLogo,
   ] =
     useState<string | null>(
-      null,
+      getInitialStoreLogo,
     );
 
   const [
@@ -200,6 +252,17 @@ export function AdminDashboard({
     setError,
   ] =
     useState('');
+
+  /*
+   * Keep the current admin page after
+   * a normal browser refresh.
+   */
+  useEffect(() => {
+    window.sessionStorage.setItem(
+      ADMIN_SECTION_STORAGE_KEY,
+      section,
+    );
+  }, [section]);
 
   /*
    * Load / refresh dashboard
@@ -246,16 +309,37 @@ export function AdminDashboard({
 
   /*
    * Load dynamic shop logo.
+   *
+   * Cache it in sessionStorage so a page
+   * refresh does not need another settings
+   * API request every time.
    */
   useEffect(() => {
+    const cachedLogo =
+      window.sessionStorage.getItem(
+        ADMIN_LOGO_STORAGE_KEY,
+      );
+
+    if (cachedLogo !== null) {
+      return;
+    }
+
     apiGet<SettingsResponse>(
       '/admin/settings',
     )
       .then(
         (response) => {
-          setStoreLogo(
+          const logoUrl =
             response.settings
-              .logo_url,
+              .logo_url;
+
+          setStoreLogo(
+            logoUrl,
+          );
+
+          window.sessionStorage.setItem(
+            ADMIN_LOGO_STORAGE_KEY,
+            logoUrl ?? '',
           );
         },
       )
@@ -285,10 +369,18 @@ export function AdminDashboard({
             | null;
         }>;
 
-      setStoreLogo(
+      const logoUrl =
         logoEvent.detail
           ?.logoUrl ??
-          null,
+        null;
+
+      setStoreLogo(
+        logoUrl,
+      );
+
+      window.sessionStorage.setItem(
+        ADMIN_LOGO_STORAGE_KEY,
+        logoUrl ?? '',
       );
     }
 
@@ -398,9 +490,17 @@ export function AdminDashboard({
                 ? undefined
                 : 'Logout'
             }
-            onClick={
-              onLogout
-            }
+            onClick={() => {
+              window.sessionStorage.removeItem(
+                ADMIN_SECTION_STORAGE_KEY,
+              );
+
+              window.sessionStorage.removeItem(
+                ADMIN_LOGO_STORAGE_KEY,
+              );
+
+              onLogout();
+            }}
           >
             <LogOut
               size={18}

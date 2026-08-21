@@ -21,7 +21,7 @@ class OrderController extends Controller
     {
         $orders = Order::query()
             ->where('user_id', $request->user()->id)
-            ->with('items')
+            ->with('items.product:id,image_url')
             ->latest()
             ->get();
 
@@ -38,10 +38,15 @@ class OrderController extends Controller
         Order $order
     ): JsonResponse {
         if ($order->user_id !== $request->user()->id) {
-            abort(403, 'You cannot view this order.');
+            abort(
+                403,
+                'You cannot view this order.'
+            );
         }
 
-        $order->load('items');
+        $order->load(
+            'items.product:id,image_url'
+        );
 
         return response()->json([
             'order' => $order,
@@ -51,64 +56,66 @@ class OrderController extends Controller
     /**
      * Customer places a new order.
      */
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'customer_name' => [
-                'required',
-                'string',
-                'max:255',
-            ],
+    public function store(
+        Request $request
+    ): JsonResponse {
+        $validated =
+            $request->validate([
+                'customer_name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                ],
 
-            'customer_email' => [
-                'required',
-                'email',
-                'max:255',
-            ],
+                'customer_email' => [
+                    'required',
+                    'email',
+                    'max:255',
+                ],
 
-            'customer_phone' => [
-                'required',
-                'string',
-                'max:50',
-            ],
+                'customer_phone' => [
+                    'required',
+                    'string',
+                    'max:50',
+                ],
 
-            'shipping_address' => [
-                'required',
-                'string',
-                'max:2000',
-            ],
+                'shipping_address' => [
+                    'required',
+                    'string',
+                    'max:2000',
+                ],
 
-            'payment_method' => [
-                'nullable',
-                'string',
-                'max:100',
-            ],
+                'payment_method' => [
+                    'nullable',
+                    'string',
+                    'max:100',
+                ],
 
-            'notes' => [
-                'nullable',
-                'string',
-                'max:2000',
-            ],
+                'notes' => [
+                    'nullable',
+                    'string',
+                    'max:2000',
+                ],
 
-            'items' => [
-                'required',
-                'array',
-                'min:1',
-            ],
+                'items' => [
+                    'required',
+                    'array',
+                    'min:1',
+                ],
 
-            'items.*.product_id' => [
-                'required',
-                'integer',
-                'exists:products,id',
-            ],
+                'items.*.product_id' => [
+                    'required',
+                    'integer',
+                    'exists:products,id',
+                ],
 
-            'items.*.quantity' => [
-                'required',
-                'integer',
-                'min:1',
-                'max:999',
-            ],
-        ]);
+                'items.*.quantity' => [
+                    'required',
+                    'integer',
+                    'min:1',
+                    'max:999',
+                ],
+            ]);
 
         $order = DB::transaction(
             function () use (
@@ -125,17 +132,28 @@ class OrderController extends Controller
                  * This prevents two customers from buying
                  * the same final item at the same time.
                  */
-                foreach ($validated['items'] as $item) {
-                    $product = Product::query()
-                        ->lockForUpdate()
-                        ->findOrFail(
-                            $item['product_id']
-                        );
+                foreach (
+                    $validated['items']
+                    as $item
+                ) {
+                    $product =
+                        Product::query()
+                            ->lockForUpdate()
+                            ->findOrFail(
+                                $item[
+                                    'product_id'
+                                ]
+                            );
 
                     $quantity =
-                        (int) $item['quantity'];
+                        (int) $item[
+                            'quantity'
+                        ];
 
-                    if ($product->stock < $quantity) {
+                    if (
+                        $product->stock <
+                        $quantity
+                    ) {
                         throw ValidationException::withMessages([
                             'items' => [
                                 sprintf(
@@ -158,22 +176,34 @@ class OrderController extends Controller
 
                     $lineTotal =
                         round(
-                            $unitPrice * $quantity,
+                            $unitPrice *
+                                $quantity,
                             2
                         );
 
-                    $subtotal += $lineTotal;
+                    $subtotal +=
+                        $lineTotal;
 
                     $preparedItems[] = [
-                        'product' => $product,
-                        'quantity' => $quantity,
-                        'unit_price' => $unitPrice,
-                        'line_total' => $lineTotal,
+                        'product' =>
+                            $product,
+
+                        'quantity' =>
+                            $quantity,
+
+                        'unit_price' =>
+                            $unitPrice,
+
+                        'line_total' =>
+                            $lineTotal,
                     ];
                 }
 
                 $subtotal =
-                    round($subtotal, 2);
+                    round(
+                        $subtotal,
+                        2
+                    );
 
                 /*
                  * Delivery fee is zero for now.
@@ -183,7 +213,8 @@ class OrderController extends Controller
 
                 $total =
                     round(
-                        $subtotal + $deliveryFee,
+                        $subtotal +
+                            $deliveryFee,
                         2
                     );
 
@@ -192,82 +223,114 @@ class OrderController extends Controller
                  */
                 $currency =
                     SiteSetting::query()
-                        ->value('currency')
+                        ->value(
+                            'currency'
+                        )
                     ?? 'USD';
 
-                $order = Order::query()->create([
-                    'order_number' =>
-                        $this->generateOrderNumber(),
+                $order =
+                    Order::query()
+                        ->create([
+                            'order_number' =>
+                                $this
+                                    ->generateOrderNumber(),
 
-                    'user_id' =>
-                        $request->user()->id,
+                            'user_id' =>
+                                $request
+                                    ->user()
+                                    ->id,
 
-                    'customer_name' =>
-                        $validated['customer_name'],
+                            'customer_name' =>
+                                $validated[
+                                    'customer_name'
+                                ],
 
-                    'customer_email' =>
-                        $validated['customer_email'],
+                            'customer_email' =>
+                                $validated[
+                                    'customer_email'
+                                ],
 
-                    'customer_phone' =>
-                        $validated['customer_phone'],
+                            'customer_phone' =>
+                                $validated[
+                                    'customer_phone'
+                                ],
 
-                    'shipping_address' =>
-                        $validated['shipping_address'],
+                            'shipping_address' =>
+                                $validated[
+                                    'shipping_address'
+                                ],
 
-                    'status' =>
-                        Order::STATUS_PENDING,
+                            'status' =>
+                                Order::STATUS_PENDING,
 
-                    'payment_status' =>
-                        Order::PAYMENT_UNPAID,
+                            'payment_status' =>
+                                Order::PAYMENT_UNPAID,
 
-                    'payment_method' =>
-                        $validated['payment_method']
-                        ?? null,
+                            'payment_method' =>
+                                $validated[
+                                    'payment_method'
+                                ] ?? null,
 
-                    'subtotal' =>
-                        $subtotal,
+                            'subtotal' =>
+                                $subtotal,
 
-                    'delivery_fee' =>
-                        $deliveryFee,
+                            'delivery_fee' =>
+                                $deliveryFee,
 
-                    'total' =>
-                        $total,
+                            'total' =>
+                                $total,
 
-                    'currency' =>
-                        $currency,
+                            'currency' =>
+                                $currency,
 
-                    'notes' =>
-                        $validated['notes']
-                        ?? null,
-                ]);
+                            'notes' =>
+                                $validated[
+                                    'notes'
+                                ] ?? null,
+                        ]);
 
-                foreach ($preparedItems as $item) {
+                foreach (
+                    $preparedItems
+                    as $item
+                ) {
                     $product =
-                        $item['product'];
+                        $item[
+                            'product'
+                        ];
 
-                    $order->items()->create([
-                        'product_id' =>
-                            $product->id,
+                    $order
+                        ->items()
+                        ->create([
+                            'product_id' =>
+                                $product->id,
 
-                        'product_name' =>
-                            $product->name,
+                            'product_name' =>
+                                $product->name,
 
-                        'unit_price' =>
-                            $item['unit_price'],
+                            'unit_price' =>
+                                $item[
+                                    'unit_price'
+                                ],
 
-                        'quantity' =>
-                            $item['quantity'],
+                            'quantity' =>
+                                $item[
+                                    'quantity'
+                                ],
 
-                        'line_total' =>
-                            $item['line_total'],
-                    ]);
+                            'line_total' =>
+                                $item[
+                                    'line_total'
+                                ],
+                        ]);
 
                     /*
                      * Reduce product stock after purchase.
                      */
                     $product->decrement(
                         'stock',
-                        $item['quantity']
+                        $item[
+                            'quantity'
+                        ]
                     );
                 }
 
@@ -275,13 +338,20 @@ class OrderController extends Controller
             }
         );
 
-        $order->load('items');
+        /*
+         * Load order items together with
+         * each product image.
+         */
+        $order->load(
+            'items.product:id,image_url'
+        );
 
         return response()->json([
             'message' =>
                 'Order placed successfully.',
 
-            'order' => $order,
+            'order' =>
+                $order,
         ], 201);
     }
 
@@ -294,13 +364,18 @@ class OrderController extends Controller
     private function generateOrderNumber(): string
     {
         do {
-            $orderNumber = sprintf(
-                'TH-%s-%s',
-                now()->format('Ymd'),
-                strtoupper(
-                    Str::random(6)
-                )
-            );
+            $orderNumber =
+                sprintf(
+                    'TH-%s-%s',
+                    now()->format(
+                        'Ymd'
+                    ),
+                    strtoupper(
+                        Str::random(
+                            6
+                        )
+                    )
+                );
         } while (
             Order::query()
                 ->where(

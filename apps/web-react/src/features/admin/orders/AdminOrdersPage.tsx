@@ -1,4 +1,9 @@
-import { useEffect, useState } from 'react';
+import {
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+
 import {
   CheckCircle2,
   Clock3,
@@ -15,6 +20,27 @@ import {
 
 import './OrdersPage.css';
 
+/*
+ * =========================================
+ * CACHE
+ * =========================================
+ */
+
+const ORDERS_CACHE_PREFIX =
+  'techhub_admin_orders_cache:';
+
+const ORDERS_UI_CACHE_KEY =
+  'techhub_admin_orders_ui';
+
+const ORDER_HISTORY_CACHE_PREFIX =
+  'techhub_admin_order_history:';
+
+/*
+ * =========================================
+ * TYPES
+ * =========================================
+ */
+
 type OrderStatus =
   | 'pending'
   | 'confirmed'
@@ -26,6 +52,15 @@ type OrderStatus =
 type PaymentStatus =
   | 'unpaid'
   | 'paid';
+
+type OrderItem = {
+  id: number;
+  product_id: number;
+  product_name: string;
+  unit_price: string;
+  quantity: number;
+  line_total: string;
+};
 
 type AdminOrder = {
   id: number;
@@ -39,9 +74,7 @@ type AdminOrder = {
   shipping_address: string;
 
   status: OrderStatus;
-
   payment_status: PaymentStatus;
-
   payment_method: string | null;
 
   subtotal: string;
@@ -51,20 +84,33 @@ type AdminOrder = {
 
   notes: string | null;
   created_at: string;
+
+  items?: OrderItem[];
+};
+
+type OrderSummary = {
+  total: number;
+  pending: number;
+  confirmed: number;
+  preparing: number;
+  shipped: number;
+  completed: number;
+  cancelled: number;
+};
+
+type OrderPagination = {
+  current_page: number;
+  last_page: number;
+  per_page: number;
+  total: number;
+  from: number | null;
+  to: number | null;
 };
 
 type OrdersResponse = {
   orders: AdminOrder[];
-
-  summary: {
-    total: number;
-    pending: number;
-    confirmed: number;
-    preparing: number;
-    shipped: number;
-    completed: number;
-    cancelled: number;
-  };
+  summary: OrderSummary;
+  pagination: OrderPagination;
 };
 
 type CustomerHistoryResponse = {
@@ -82,32 +128,256 @@ type UpdateOrderResponse = {
   order: AdminOrder;
 };
 
+type OrdersUiState = {
+  currentPage: number;
+  search: string;
+};
+
+/*
+ * =========================================
+ * CACHE HELPERS
+ * =========================================
+ */
+
+function getOrdersCache(
+  page: number,
+): OrdersResponse | null {
+  try {
+    const raw =
+      sessionStorage.getItem(
+        `${ORDERS_CACHE_PREFIX}${page}`,
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(
+      raw,
+    ) as OrdersResponse;
+  } catch {
+    return null;
+  }
+}
+
+function saveOrdersCache(
+  page: number,
+  data: OrdersResponse,
+) {
+  sessionStorage.setItem(
+    `${ORDERS_CACHE_PREFIX}${page}`,
+    JSON.stringify(
+      data,
+    ),
+  );
+}
+
+function clearOrdersCache() {
+  const keys: string[] = [];
+
+  for (
+    let index = 0;
+    index < sessionStorage.length;
+    index += 1
+  ) {
+    const key =
+      sessionStorage.key(
+        index,
+      );
+
+    if (
+      key?.startsWith(
+        ORDERS_CACHE_PREFIX,
+      )
+    ) {
+      keys.push(key);
+    }
+  }
+
+  keys.forEach(
+    (key) => {
+      sessionStorage.removeItem(
+        key,
+      );
+    },
+  );
+}
+
+function readOrdersUi(): OrdersUiState {
+  try {
+    const raw =
+      sessionStorage.getItem(
+        ORDERS_UI_CACHE_KEY,
+      );
+
+    if (!raw) {
+      throw new Error();
+    }
+
+    const parsed =
+      JSON.parse(
+        raw,
+      ) as OrdersUiState;
+
+    return {
+      currentPage:
+        parsed.currentPage || 1,
+
+      search:
+        parsed.search || '',
+    };
+  } catch {
+    return {
+      currentPage: 1,
+      search: '',
+    };
+  }
+}
+
+function saveOrdersUi(
+  state: OrdersUiState,
+) {
+  sessionStorage.setItem(
+    ORDERS_UI_CACHE_KEY,
+    JSON.stringify(
+      state,
+    ),
+  );
+}
+
+function getHistoryCache(
+  userId: number,
+): CustomerHistoryResponse | null {
+  try {
+    const raw =
+      sessionStorage.getItem(
+        `${ORDER_HISTORY_CACHE_PREFIX}${userId}`,
+      );
+
+    if (!raw) {
+      return null;
+    }
+
+    return JSON.parse(
+      raw,
+    ) as CustomerHistoryResponse;
+  } catch {
+    return null;
+  }
+}
+
+function saveHistoryCache(
+  userId: number,
+  history: CustomerHistoryResponse,
+) {
+  sessionStorage.setItem(
+    `${ORDER_HISTORY_CACHE_PREFIX}${userId}`,
+    JSON.stringify(
+      history,
+    ),
+  );
+}
+
+function clearHistoryCache(
+  userId: number,
+) {
+  sessionStorage.removeItem(
+    `${ORDER_HISTORY_CACHE_PREFIX}${userId}`,
+  );
+}
+
+/*
+ * =========================================
+ * SEARCH
+ * =========================================
+ */
+
+function getOrderProductSearchText(
+  order: AdminOrder,
+) {
+  return (
+    order.items ?? []
+  )
+    .map(
+      (item) =>
+        item.product_name,
+    )
+    .join(' ')
+    .toLowerCase();
+}
+
+/*
+ * =========================================
+ * PAGE
+ * =========================================
+ */
+
 export function AdminOrdersPage() {
-  const [data, setData] =
-    useState<OrdersResponse | null>(
-      null,
+  const initialUi =
+    useRef(
+      readOrdersUi(),
+    ).current;
+
+  const [
+    currentPage,
+    setCurrentPage,
+  ] =
+    useState(
+      initialUi.currentPage,
     );
 
-  const [loading, setLoading] =
-    useState(true);
+  const initialCache =
+    useRef(
+      getOrdersCache(
+        initialUi.currentPage,
+      ),
+    ).current;
 
-  const [error, setError] =
+  const [
+    data,
+    setData,
+  ] =
+    useState<OrdersResponse | null>(
+      initialCache,
+    );
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(
+      initialCache === null,
+    );
+
+  const [
+    error,
+    setError,
+  ] =
     useState('');
 
-  const [search, setSearch] =
-    useState('');
+  const [
+    search,
+    setSearch,
+  ] =
+    useState(
+      initialUi.search,
+    );
 
   const [
     updatingOrderId,
     setUpdatingOrderId,
   ] =
-    useState<number | null>(null);
+    useState<number | null>(
+      null,
+    );
 
   const [
     updatingPaymentId,
     setUpdatingPaymentId,
   ] =
-    useState<number | null>(null);
+    useState<number | null>(
+      null,
+    );
 
   const [
     customerHistory,
@@ -120,89 +390,427 @@ export function AdminOrdersPage() {
   const [
     historyLoading,
     setHistoryLoading,
-  ] = useState(false);
+  ] =
+    useState(false);
 
-  function loadOrders() {
+  const skipInitialFetch =
+    useRef(
+      initialCache !== null,
+    );
+
+  /*
+   * =========================================
+   * SAVE UI STATE
+   * =========================================
+   */
+
+  useEffect(() => {
+    saveOrdersUi({
+      currentPage,
+      search,
+    });
+  }, [
+    currentPage,
+    search,
+  ]);
+
+  /*
+   * =========================================
+   * LOAD ORDERS
+   * =========================================
+   */
+
+  async function loadOrders(
+    page = currentPage,
+    force = false,
+  ) {
+    if (!force) {
+      const cached =
+        getOrdersCache(
+          page,
+        );
+
+      if (cached) {
+        setData(
+          cached,
+        );
+
+        setLoading(
+          false,
+        );
+
+        return;
+      }
+    }
+
     setLoading(true);
     setError('');
 
-    apiGet<OrdersResponse>(
-      '/admin/orders',
-    )
-      .then(setData)
-      .catch((err: unknown) => {
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'Unable to load orders.',
+    try {
+      const response =
+        await apiGet<OrdersResponse>(
+          `/admin/orders?page=${page}`,
         );
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+
+      setData(
+        response,
+      );
+
+      setCurrentPage(
+        response.pagination
+          .current_page,
+      );
+
+      saveOrdersCache(
+        response.pagination
+          .current_page,
+        response,
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Unable to load orders.',
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
   }
 
+  /*
+   * =========================================
+   * PAGE CHANGE
+   * =========================================
+   */
+
   useEffect(() => {
-    loadOrders();
-  }, []);
+    if (
+      skipInitialFetch.current
+    ) {
+      skipInitialFetch.current =
+        false;
+
+      return;
+    }
+
+    void loadOrders(
+      currentPage,
+    );
+  }, [currentPage]);
+
+  function changePage(
+    page: number,
+  ) {
+    if (
+      page < 1 ||
+      page >
+        (data?.pagination
+          .last_page ?? 1) ||
+      page === currentPage
+    ) {
+      return;
+    }
+
+    setCurrentPage(
+      page,
+    );
+  }
+
+  function getPageNumbers() {
+    const lastPage =
+      data?.pagination
+        .last_page ?? 1;
+
+    const pages: number[] =
+      [];
+
+    let startPage =
+      Math.max(
+        1,
+        currentPage - 2,
+      );
+
+    const endPage =
+      Math.min(
+        lastPage,
+        startPage + 4,
+      );
+
+    if (
+      endPage -
+        startPage <
+      4
+    ) {
+      startPage =
+        Math.max(
+          1,
+          endPage - 4,
+        );
+    }
+
+    for (
+      let page =
+        startPage;
+      page <= endPage;
+      page += 1
+    ) {
+      pages.push(
+        page,
+      );
+    }
+
+    return pages;
+  }
+
+  /*
+   * =========================================
+   * DELIVERY STATUS
+   * =========================================
+   */
 
   async function updateOrderStatus(
     orderId: number,
     status: OrderStatus,
   ) {
-    setUpdatingOrderId(orderId);
+    setUpdatingOrderId(
+      orderId,
+    );
+
+    const userId =
+      data?.orders.find(
+        (order) =>
+          order.id === orderId,
+      )?.user_id;
 
     try {
-      await apiPatch<UpdateOrderResponse>(
-        `/admin/orders/${orderId}/status`,
-        {
-          status,
-        },
-      );
+      const response =
+        await apiPatch<UpdateOrderResponse>(
+          `/admin/orders/${orderId}/status`,
+          {
+            status,
+          },
+        );
 
-      loadOrders();
+      setData((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const previousOrder =
+          current.orders.find(
+            (order) =>
+              order.id ===
+              orderId,
+          );
+
+        const summary = {
+          ...current.summary,
+        };
+
+        if (
+          previousOrder &&
+          previousOrder.status !==
+            response.order.status
+        ) {
+          summary[
+            previousOrder.status
+          ] = Math.max(
+            0,
+            summary[
+              previousOrder.status
+            ] - 1,
+          );
+
+          summary[
+            response.order.status
+          ] += 1;
+        }
+
+        const updatedData: OrdersResponse =
+          {
+            ...current,
+
+            summary,
+
+            orders:
+              current.orders.map(
+                (order) => {
+                  if (
+                    order.id !==
+                    orderId
+                  ) {
+                    return order;
+                  }
+
+                  return {
+                    ...order,
+                    ...response.order,
+
+                    items:
+                      response.order
+                        .items ??
+                      order.items,
+                  };
+                },
+              ),
+          };
+
+        /*
+         * Database changed.
+         *
+         * Keep current page cached,
+         * but remove other pages so
+         * stale summaries aren't reused.
+         */
+        clearOrdersCache();
+
+        saveOrdersCache(
+          currentPage,
+          updatedData,
+        );
+
+        return updatedData;
+      });
+
+      if (
+        userId !== undefined
+      ) {
+        clearHistoryCache(
+          userId,
+        );
+      }
     } catch (err) {
-      alert(
+      window.alert(
         err instanceof Error
           ? err.message
           : 'Unable to update order status.',
       );
     } finally {
-      setUpdatingOrderId(null);
+      setUpdatingOrderId(
+        null,
+      );
     }
   }
+
+  /*
+   * =========================================
+   * PAYMENT STATUS
+   * =========================================
+   */
 
   async function updatePaymentStatus(
     orderId: number,
     paymentStatus: PaymentStatus,
   ) {
-    setUpdatingPaymentId(orderId);
+    setUpdatingPaymentId(
+      orderId,
+    );
+
+    const userId =
+      data?.orders.find(
+        (order) =>
+          order.id === orderId,
+      )?.user_id;
 
     try {
-      await apiPatch<UpdateOrderResponse>(
-        `/admin/orders/${orderId}/payment-status`,
-        {
-          payment_status:
-            paymentStatus,
-        },
-      );
+      const response =
+        await apiPatch<UpdateOrderResponse>(
+          `/admin/orders/${orderId}/payment-status`,
+          {
+            payment_status:
+              paymentStatus,
+          },
+        );
 
-      loadOrders();
+      setData((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const updatedData: OrdersResponse =
+          {
+            ...current,
+
+            orders:
+              current.orders.map(
+                (order) => {
+                  if (
+                    order.id !==
+                    orderId
+                  ) {
+                    return order;
+                  }
+
+                  return {
+                    ...order,
+                    ...response.order,
+
+                    items:
+                      response.order
+                        .items ??
+                      order.items,
+                  };
+                },
+              ),
+          };
+
+        clearOrdersCache();
+
+        saveOrdersCache(
+          currentPage,
+          updatedData,
+        );
+
+        return updatedData;
+      });
+
+      if (
+        userId !== undefined
+      ) {
+        clearHistoryCache(
+          userId,
+        );
+      }
     } catch (err) {
-      alert(
+      window.alert(
         err instanceof Error
           ? err.message
           : 'Unable to update payment status.',
       );
     } finally {
-      setUpdatingPaymentId(null);
+      setUpdatingPaymentId(
+        null,
+      );
     }
   }
+
+  /*
+   * =========================================
+   * CUSTOMER HISTORY
+   * =========================================
+   */
 
   async function viewCustomerHistory(
     userId: number,
   ) {
-    setHistoryLoading(true);
+    const cached =
+      getHistoryCache(
+        userId,
+      );
+
+    if (cached) {
+      setCustomerHistory(
+        cached,
+      );
+
+      return;
+    }
+
+    setHistoryLoading(
+      true,
+    );
 
     try {
       const history =
@@ -210,47 +818,93 @@ export function AdminOrdersPage() {
           `/admin/customers/${userId}/orders`,
         );
 
-      setCustomerHistory(history);
+      setCustomerHistory(
+        history,
+      );
+
+      saveHistoryCache(
+        userId,
+        history,
+      );
     } catch (err) {
-      alert(
+      window.alert(
         err instanceof Error
           ? err.message
           : 'Unable to load order history.',
       );
     } finally {
-      setHistoryLoading(false);
+      setHistoryLoading(
+        false,
+      );
     }
   }
 
   function closeHistory() {
-    setCustomerHistory(null);
+    setCustomerHistory(
+      null,
+    );
   }
 
+  /*
+   * =========================================
+   * REFRESH
+   * =========================================
+   */
+
+  async function refreshOrders() {
+    clearOrdersCache();
+
+    await loadOrders(
+      currentPage,
+      true,
+    );
+  }
+
+  /*
+   * =========================================
+   * FILTER
+   * =========================================
+   */
+
   const filteredOrders =
-    data?.orders.filter((order) => {
-      const keyword =
-        search
-          .trim()
-          .toLowerCase();
+    data?.orders.filter(
+      (order) => {
+        const keyword =
+          search
+            .trim()
+            .toLowerCase();
 
-      if (!keyword) {
-        return true;
-      }
+        if (!keyword) {
+          return true;
+        }
 
-      return (
-        order.order_number
-          .toLowerCase()
-          .includes(keyword) ||
-        order.customer_name
-          .toLowerCase()
-          .includes(keyword) ||
-        order.customer_email
-          .toLowerCase()
-          .includes(keyword)
-      );
-    }) ?? [];
+        return (
+          order.order_number
+            .toLowerCase()
+            .includes(keyword) ||
+          order.customer_name
+            .toLowerCase()
+            .includes(keyword) ||
+          order.customer_email
+            .toLowerCase()
+            .includes(keyword) ||
+          getOrderProductSearchText(
+            order,
+          ).includes(keyword)
+        );
+      },
+    ) ?? [];
 
-  if (loading && !data) {
+  /*
+   * =========================================
+   * LOADING
+   * =========================================
+   */
+
+  if (
+    loading &&
+    !data
+  ) {
     return (
       <section className="admin-info-card">
         <p>
@@ -260,7 +914,10 @@ export function AdminOrdersPage() {
     );
   }
 
-  if (error && !data) {
+  if (
+    error &&
+    !data
+  ) {
     return (
       <section className="admin-info-card">
         <div className="alert error">
@@ -269,7 +926,12 @@ export function AdminOrdersPage() {
 
         <button
           type="button"
-          onClick={loadOrders}
+          onClick={() =>
+            void loadOrders(
+              currentPage,
+              true,
+            )
+          }
         >
           Try again
         </button>
@@ -277,16 +939,31 @@ export function AdminOrdersPage() {
     );
   }
 
+  /*
+   * =========================================
+   * PAGE
+   * =========================================
+   */
+
   return (
     <>
-      <section className="admin-orders-page">
+          <section className="admin-orders-page">
 
+      <div className="admin-page-heading">
+        <h1>Order Management</h1>
+
+        <p>
+          Track and manage customer orders,
+          payments, and delivery status.
+        </p>
+      </div>
+        
         <div className="stat-grid">
-
           <OrderStatCard
             label="Pending Orders"
             value={
-              data?.summary.pending ?? 0
+              data?.summary
+                .pending ?? 0
             }
             icon={Clock3}
           />
@@ -294,9 +971,12 @@ export function AdminOrdersPage() {
           <OrderStatCard
             label="Processing Orders"
             value={
-              (data?.summary.confirmed ?? 0) +
-              (data?.summary.preparing ?? 0) +
-              (data?.summary.shipped ?? 0)
+              (data?.summary
+                .confirmed ?? 0) +
+              (data?.summary
+                .preparing ?? 0) +
+              (data?.summary
+                .shipped ?? 0)
             }
             icon={RefreshCw}
           />
@@ -304,17 +984,17 @@ export function AdminOrdersPage() {
           <OrderStatCard
             label="Completed Orders"
             value={
-              data?.summary.completed ?? 0
+              data?.summary
+                .completed ?? 0
             }
-            icon={CheckCircle2}
+            icon={
+              CheckCircle2
+            }
           />
-
         </div>
 
         <div className="admin-info-card">
-
           <div className="admin-orders-header">
-
             <div>
               <h2>
                 Customer Orders
@@ -328,257 +1008,381 @@ export function AdminOrdersPage() {
 
             <button
               type="button"
-              onClick={loadOrders}
-              disabled={loading}
+              onClick={() =>
+                void refreshOrders()
+              }
+              disabled={
+                loading
+              }
             >
-              <RefreshCw size={17} />
+              <RefreshCw
+                size={17}
+              />
 
               {loading
                 ? 'Loading...'
                 : 'Refresh'}
             </button>
-
           </div>
 
           <div className="orders-search-box">
-
-            <Search size={18} />
+            <Search
+              size={18}
+            />
 
             <input
               type="text"
-              placeholder="Search order ID, customer name or email..."
-              value={search}
-              onChange={(event) =>
+              placeholder="Search current page..."
+              value={
+                search
+              }
+              onChange={(
+                event,
+              ) =>
                 setSearch(
-                  event.target.value,
+                  event.target
+                    .value,
                 )
               }
             />
-
           </div>
 
-          {filteredOrders.length === 0 ? (
-
+          {filteredOrders.length ===
+          0 ? (
             <div className="admin-orders-empty">
-
-              <Package size={40} />
+              <Package
+                size={40}
+              />
 
               <p>
-                No matching orders found.
+                No matching orders
+                found.
               </p>
-
             </div>
-
           ) : (
+            <>
+              <div className="admin-table-wrapper">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>
+                        Order ID
+                      </th>
 
-            <div className="admin-table-wrapper">
+                      <th>
+                        Customer
+                      </th>
 
-              <table className="admin-table">
+                      <th>
+                        Product
+                      </th>
 
-                <thead>
-                  <tr>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Date</th>
-                    <th>Amount</th>
+                      <th>
+                        Date
+                      </th>
 
-                    <th>
-                      Payment Status
-                    </th>
+                      <th>
+                        Amount
+                      </th>
 
-                    <th>
-                      Delivery Status
-                    </th>
+                      <th>
+                        Payment Status
+                      </th>
 
-                    <th>
-                      History
-                    </th>
-                  </tr>
-                </thead>
+                      <th>
+                        Delivery Status
+                      </th>
 
-                <tbody>
+                      <th>
+                        History
+                      </th>
+                    </tr>
+                  </thead>
 
-                  {filteredOrders.map(
-                    (order) => (
-
-                      <tr key={order.id}>
-
-                        <td>
-                          <strong>
-                            {
-                              order.order_number
-                            }
-                          </strong>
-                        </td>
-
-                        <td>
-                          <div>
+                  <tbody>
+                    {filteredOrders.map(
+                      (
+                        order,
+                      ) => (
+                        <tr
+                          key={
+                            order.id
+                          }
+                        >
+                          <td>
                             <strong>
                               {
-                                order.customer_name
+                                order.order_number
                               }
                             </strong>
+                          </td>
 
-                            <br />
+                          <td>
+                            <div>
+                              <strong>
+                                {
+                                  order.customer_name
+                                }
+                              </strong>
 
-                            <small>
-                              {
-                                order.customer_email
+                              <br />
+
+                              <small>
+                                {
+                                  order.customer_email
+                                }
+                              </small>
+                            </div>
+                          </td>
+
+                          <td>
+                            <OrderProducts
+                              order={
+                                order
                               }
-                            </small>
-                          </div>
-                        </td>
+                            />
+                          </td>
 
-                        <td>
-                          {new Date(
-                            order.created_at,
-                          ).toLocaleDateString(
-                            undefined,
-                            {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric',
-                            },
-                          )}
-                        </td>
+                          <td>
+                            {new Date(
+                              order.created_at,
+                            ).toLocaleDateString(
+                              undefined,
+                              {
+                                year:
+                                  'numeric',
 
-                        <td>
-                          {order.currency ===
-                          'USD'
-                            ? '$'
-                            : `${order.currency} `}
+                                month:
+                                  'short',
 
-                          {Number(
-                            order.total,
-                          ).toFixed(2)}
-                        </td>
+                                day:
+                                  'numeric',
+                              },
+                            )}
+                          </td>
 
-                        <td>
-                          <select
-                            className={`order-status-select ${order.payment_status}`}
-                            value={
-                              order.payment_status
-                            }
-                            disabled={
-                              updatingPaymentId ===
-                              order.id
-                            }
-                            onChange={(
-                              event,
-                            ) =>
-                              updatePaymentStatus(
-                                order.id,
-                                event.target
-                                  .value as PaymentStatus,
-                              )
-                            }
-                          >
-                            <option value="unpaid">
-                              Unpaid
-                            </option>
+                          <td>
+                            {order.currency ===
+                            'USD'
+                              ? '$'
+                              : `${order.currency} `}
 
-                            <option value="paid">
-                              Paid
-                            </option>
-                          </select>
-                        </td>
+                            {Number(
+                              order.total,
+                            ).toFixed(
+                              2,
+                            )}
+                          </td>
 
-                        <td>
-                          <select
-                            className={`order-status-select ${order.status}`}
-                            value={
-                              order.status
-                            }
-                            disabled={
-                              updatingOrderId ===
-                              order.id
-                            }
-                            onChange={(
-                              event,
-                            ) =>
-                              updateOrderStatus(
-                                order.id,
-                                event.target
-                                  .value as OrderStatus,
-                              )
-                            }
-                          >
-                            <option value="pending">
-                              Pending
-                            </option>
+                          <td>
+                            <select
+                              className={`order-status-select ${order.payment_status}`}
+                              value={
+                                order.payment_status
+                              }
+                              disabled={
+                                updatingPaymentId ===
+                                order.id
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                void updatePaymentStatus(
+                                  order.id,
+                                  event.target
+                                    .value as PaymentStatus,
+                                )
+                              }
+                            >
+                              <option value="unpaid">
+                                Unpaid
+                              </option>
 
-                            <option value="confirmed">
-                              Confirmed
-                            </option>
+                              <option value="paid">
+                                Paid
+                              </option>
+                            </select>
+                          </td>
 
-                            <option value="preparing">
-                              Preparing
-                            </option>
+                          <td>
+                            <select
+                              className={`order-status-select ${order.status}`}
+                              value={
+                                order.status
+                              }
+                              disabled={
+                                updatingOrderId ===
+                                order.id
+                              }
+                              onChange={(
+                                event,
+                              ) =>
+                                void updateOrderStatus(
+                                  order.id,
+                                  event.target
+                                    .value as OrderStatus,
+                                )
+                              }
+                            >
+                              <option value="pending">
+                                Pending
+                              </option>
 
-                            <option value="shipped">
-                              Shipped
-                            </option>
+                              <option value="confirmed">
+                                Confirmed
+                              </option>
 
-                            <option value="completed">
-                              Completed
-                            </option>
+                              <option value="preparing">
+                                Preparing
+                              </option>
 
-                            <option value="cancelled">
-                              Cancelled
-                            </option>
-                          </select>
-                        </td>
+                              <option value="shipped">
+                                Shipped
+                              </option>
 
-                        <td>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              viewCustomerHistory(
-                                order.user_id,
-                              )
-                            }
-                            disabled={
-                              historyLoading
-                            }
-                          >
-                            View History
-                          </button>
-                        </td>
+                              <option value="completed">
+                                Completed
+                              </option>
 
-                      </tr>
+                              <option value="cancelled">
+                                Cancelled
+                              </option>
+                            </select>
+                          </td>
+
+                          <td>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void viewCustomerHistory(
+                                  order.user_id,
+                                )
+                              }
+                              disabled={
+                                historyLoading
+                              }
+                            >
+                              View History
+                            </button>
+                          </td>
+                        </tr>
+                      ),
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* PAGINATION */}
+
+              <div className="products-pagination">
+                <div className="products-pagination-info">
+                  Showing{' '}
+                  {data?.pagination
+                    .from ?? 0}
+                  {' - '}
+                  {data?.pagination
+                    .to ?? 0}
+                  {' of '}
+                  {data?.pagination
+                    .total ?? 0}
+                  {' orders'}
+                </div>
+
+                <div className="products-pagination-buttons">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      changePage(
+                        currentPage -
+                          1,
+                      )
+                    }
+                    disabled={
+                      currentPage ===
+                        1 ||
+                      loading
+                    }
+                  >
+                    ← Previous
+                  </button>
+
+                  {getPageNumbers().map(
+                    (
+                      page,
+                    ) => (
+                      <button
+                        type="button"
+                        key={
+                          page
+                        }
+                        className={
+                          page ===
+                          currentPage
+                            ? 'active'
+                            : ''
+                        }
+                        onClick={() =>
+                          changePage(
+                            page,
+                          )
+                        }
+                        disabled={
+                          loading
+                        }
+                      >
+                        {
+                          page
+                        }
+                      </button>
                     ),
                   )}
 
-                </tbody>
-
-              </table>
-
-            </div>
-
+                  <button
+                    type="button"
+                    onClick={() =>
+                      changePage(
+                        currentPage +
+                          1,
+                      )
+                    }
+                    disabled={
+                      currentPage ===
+                        (data
+                          ?.pagination
+                          .last_page ??
+                          1) ||
+                      loading
+                    }
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            </>
           )}
-
         </div>
-
       </section>
 
       {customerHistory && (
         <div
           className="order-history-overlay"
-          onClick={closeHistory}
+          onClick={
+            closeHistory
+          }
         >
-
           <div
             className="order-history-modal"
-            onClick={(event) =>
+            onClick={(
+              event,
+            ) =>
               event.stopPropagation()
             }
           >
-
             <div className="order-history-header">
-
               <div>
                 <h2>
-                  Customer Order History
+                  Customer Order
+                  History
                 </h2>
 
                 <strong>
@@ -599,15 +1403,17 @@ export function AdminOrdersPage() {
               <button
                 type="button"
                 className="order-history-close"
-                onClick={closeHistory}
+                onClick={
+                  closeHistory
+                }
               >
-                <X size={20} />
+                <X
+                  size={20}
+                />
               </button>
-
             </div>
 
             <div className="order-history-content">
-
               <p>
                 Total Orders:{' '}
 
@@ -620,32 +1426,59 @@ export function AdminOrdersPage() {
               </p>
 
               <div className="admin-table-wrapper">
-
                 <table className="admin-table">
-
                   <thead>
                     <tr>
-                      <th>Order ID</th>
-                      <th>Date</th>
-                      <th>Amount</th>
-                      <th>Payment</th>
-                      <th>Status</th>
+                      <th>
+                        Order ID
+                      </th>
+
+                      <th>
+                        Product
+                      </th>
+
+                      <th>
+                        Date
+                      </th>
+
+                      <th>
+                        Amount
+                      </th>
+
+                      <th>
+                        Payment
+                      </th>
+
+                      <th>
+                        Status
+                      </th>
                     </tr>
                   </thead>
 
                   <tbody>
-
                     {customerHistory.orders.map(
-                      (order) => (
-
-                        <tr key={order.id}>
-
+                      (
+                        order,
+                      ) => (
+                        <tr
+                          key={
+                            order.id
+                          }
+                        >
                           <td>
                             <strong>
                               {
                                 order.order_number
                               }
                             </strong>
+                          </td>
+
+                          <td>
+                            <OrderProducts
+                              order={
+                                order
+                              }
+                            />
                           </td>
 
                           <td>
@@ -656,8 +1489,10 @@ export function AdminOrdersPage() {
                               {
                                 year:
                                   'numeric',
+
                                 month:
                                   'short',
+
                                 day:
                                   'numeric',
                               },
@@ -672,7 +1507,9 @@ export function AdminOrdersPage() {
 
                             {Number(
                               order.total,
-                            ).toFixed(2)}
+                            ).toFixed(
+                              2,
+                            )}
                           </td>
 
                           <td>
@@ -694,25 +1531,78 @@ export function AdminOrdersPage() {
                               }
                             </span>
                           </td>
-
                         </tr>
                       ),
                     )}
-
                   </tbody>
-
                 </table>
-
               </div>
-
             </div>
-
           </div>
         </div>
       )}
     </>
   );
 }
+
+/*
+ * =========================================
+ * PRODUCT NAMES
+ * =========================================
+ */
+
+function OrderProducts({
+  order,
+}: {
+  order: AdminOrder;
+}) {
+  const items =
+    order.items ?? [];
+
+  if (
+    items.length === 0
+  ) {
+    return (
+      <span className="order-product-empty">
+        —
+      </span>
+    );
+  }
+
+  return (
+    <div className="order-products-cell">
+      {items.map(
+        (item) => (
+          <div
+            key={
+              item.id
+            }
+            className="order-product-line"
+          >
+            <strong>
+              {
+                item.product_name
+              }
+            </strong>
+
+            <small>
+              ×{' '}
+              {
+                item.quantity
+              }
+            </small>
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
+/*
+ * =========================================
+ * STAT CARD
+ * =========================================
+ */
 
 function OrderStatCard({
   label,
@@ -725,9 +1615,10 @@ function OrderStatCard({
 }) {
   return (
     <article className="stat-card">
-
       <span className="admin-order-stat-icon">
-        <Icon size={22} />
+        <Icon
+          size={22}
+        />
       </span>
 
       <div>
@@ -739,7 +1630,6 @@ function OrderStatCard({
           {value}
         </strong>
       </div>
-
     </article>
   );
 }
