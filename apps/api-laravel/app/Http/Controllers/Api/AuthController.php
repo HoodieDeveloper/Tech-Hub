@@ -227,6 +227,43 @@ class AuthController extends Controller
         ]);
     }
 
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'avatar' => [
+                'required',
+                'file',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
+        ]);
+
+        $user = $request->user();
+        $uploadedAvatar = $this->storage->uploadUserAvatar($validated['avatar']);
+        $oldAvatarPath = $user->avatar_path;
+
+        $user->update([
+            'avatar_url' => $uploadedAvatar['url'],
+            'avatar_path' => $uploadedAvatar['path'],
+        ]);
+
+        if ($oldAvatarPath !== null) {
+            try {
+                $this->storage->delete($oldAvatarPath);
+            } catch (Throwable $exception) {
+                Log::warning('Failed to delete previous user avatar.', [
+                    'path' => $oldAvatarPath,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        return response()->json([
+            'user' => $this->userData($user->fresh()),
+        ]);
+    }
+
     public function logout(Request $request): JsonResponse
     {
         $request->user()

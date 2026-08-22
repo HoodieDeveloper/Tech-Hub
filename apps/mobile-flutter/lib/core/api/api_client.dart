@@ -95,6 +95,48 @@ class ApiClient {
     }
   }
 
+  static Future<dynamic> postMultipart(
+    String path,
+    Map<String, String> fields, {
+    List<int>? fileBytes,
+    String fileName = 'upload.jpg',
+    String fileField = 'avatar',
+    bool auth = true,
+  }) async {
+    try {
+      final request = http.MultipartRequest('POST', _buildUri(path));
+      request.headers['Accept'] = 'application/json';
+      final currentToken = token;
+      if (auth && currentToken != null && currentToken.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $currentToken';
+      }
+      request.fields.addAll(fields);
+      if (fileBytes != null) {
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            fileField,
+            fileBytes,
+            filename: fileName,
+          ),
+        );
+      }
+
+      final response = await http.Response.fromStream(
+        await request.send().timeout(_timeout),
+      );
+      return _handleResponse(response);
+    } on http.ClientException {
+      throw ApiException(
+        'Cannot connect to Laravel at $baseUrl. Check the selected API URL.',
+      );
+    } on FormatException {
+      throw const ApiException('The API returned invalid JSON data.');
+    } catch (error) {
+      if (error is ApiException) rethrow;
+      throw ApiException('Network request failed: $error');
+    }
+  }
+
   static Future<dynamic> delete(String path, {bool auth = true}) async {
     try {
       final headers = Map<String, String>.from(_headers);
