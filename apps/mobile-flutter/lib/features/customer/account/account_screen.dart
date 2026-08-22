@@ -47,6 +47,12 @@ class _CustomerAccountScreenState extends State<CustomerAccountScreen> {
     return 'customer';
   }
 
+  String? get _avatarUrl {
+    final value = (ApiClient.currentUser ?? const {})['avatar_url'];
+    final url = value?.toString().trim();
+    return url == null || url.isEmpty ? null : url;
+  }
+
   Future<void> _logout() async {
     final shouldLogout = await showDialog<bool>(
       context: context,
@@ -169,16 +175,21 @@ class _CustomerAccountScreenState extends State<CustomerAccountScreen> {
                     CircleAvatar(
                       radius: 32,
                       backgroundColor: const Color(0xFF4A6CF7),
-                      child: Text(
-                        _displayName.isNotEmpty
-                            ? _displayName.substring(0, 1).toUpperCase()
-                            : 'C',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 26,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
+                      backgroundImage: _avatarUrl == null
+                          ? null
+                          : NetworkImage(_avatarUrl!),
+                      child: _avatarUrl == null
+                          ? Text(
+                              _displayName.isNotEmpty
+                                  ? _displayName.substring(0, 1).toUpperCase()
+                                  : 'C',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            )
+                          : null,
                     ),
                     const SizedBox(width: 16),
                     Expanded(

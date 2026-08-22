@@ -1,4 +1,7 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/api_client.dart';
 import '../login/login_screen.dart';
@@ -19,6 +22,25 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool obscurePassword = true;
   bool obscureConfirmPassword = true;
   String message = '';
+  XFile? avatar;
+  Uint8List? avatarBytes;
+
+  Future<void> _pickAvatar() async {
+    final selected = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 85,
+      maxWidth: 800,
+    );
+    if (selected != null && mounted) {
+      final bytes = await selected.readAsBytes();
+      if (mounted) {
+        setState(() {
+          avatar = selected;
+          avatarBytes = bytes;
+        });
+      }
+    }
+  }
 
   Future<void> register() async {
     setState(() {
@@ -27,15 +49,41 @@ class _SignUpScreenState extends State<SignUpScreen> {
     });
 
     try {
-      final dynamic response = await ApiClient.post('/register', {
-        'name': nameController.text.trim(),
-        'email': emailController.text.trim(),
-        'password': passwordController.text,
-        'password_confirmation': confirmPasswordController.text,
-      }, auth: false);
+      final dynamic response = await ApiClient.postMultipart(
+        '/register',
+        {
+          'name': nameController.text.trim(),
+          'email': emailController.text.trim(),
+          'password': passwordController.text,
+          'password_confirmation': confirmPasswordController.text,
+        },
+        fileBytes: avatarBytes,
+        fileName: avatar?.name ?? 'avatar.jpg',
+        auth: false,
+      );
 
       if (response is Map<String, dynamic> || response is Map) {
-        setState(() => message = 'Account created. You can log in now.');
+        if (!mounted) return;
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (dialogContext) {
+            Future<void>.delayed(const Duration(seconds: 1), () {
+              if (dialogContext.mounted) {
+                Navigator.of(dialogContext).pop();
+              }
+            });
+            return const AlertDialog(
+              title: Text('Account created'),
+              content: Text('Your account was created successfully.'),
+            );
+          },
+        );
+        if (!mounted) return;
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute<void>(builder: (_) => const LoginScreen()),
+        );
       }
     } catch (error) {
       if (!mounted) return;
@@ -102,6 +150,39 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 style: TextStyle(fontSize: 14, color: Color(0xFF718096)),
               ),
               const SizedBox(height: 32),
+              Center(
+                child: Column(
+                  children: [
+                    GestureDetector(
+                      onTap: loading ? null : _pickAvatar,
+                      child: CircleAvatar(
+                        radius: 42,
+                        backgroundColor: const Color(0xFFEAF2FF),
+                        backgroundImage: avatar == null
+                            ? null
+                            : MemoryImage(avatarBytes!),
+                        child: avatar == null
+                            ? const Icon(
+                                Icons.add_a_photo_outlined,
+                                color: primary,
+                                size: 28,
+                              )
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    TextButton(
+                      onPressed: loading ? null : _pickAvatar,
+                      child: Text(
+                        avatar == null
+                            ? 'Add profile picture (optional)'
+                            : 'Change profile picture',
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               TextField(
                 controller: nameController,
                 decoration: InputDecoration(

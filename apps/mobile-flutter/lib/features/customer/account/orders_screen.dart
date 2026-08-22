@@ -20,7 +20,7 @@ class _CustomerOrdersScreenState extends State<CustomerOrdersScreen> {
   }
 
   Future<void> _refreshOrders() async {
-    final future = OrderHistoryApi.getOrders();
+    final future = OrderHistoryApi.getOrders(forceRefresh: true);
     setState(() => _ordersFuture = future);
     await future;
   }

@@ -24,7 +24,7 @@ class _ProductListPageState extends State<ProductListPage> {
   }
 
   Future<void> _refreshProducts() async {
-    final future = ProductApi.getProducts();
+    final future = ProductApi.getProducts(forceRefresh: true);
     setState(() => _productsFuture = future);
     await future;
   }
@@ -40,7 +40,9 @@ class _ProductListPageState extends State<ProductListPage> {
               if (user['role'] == 'admin') {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Admin account recognized. Use the web admin dashboard for management.'),
+                    content: Text(
+                      'Admin account recognized. Use the web admin dashboard for management.',
+                    ),
                   ),
                 );
                 return;
@@ -57,7 +59,9 @@ class _ProductListPageState extends State<ProductListPage> {
     if (ApiClient.currentRole == 'admin') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Admin controls are available in the TechHub web dashboard.'),
+          content: Text(
+            'Admin controls are available in the TechHub web dashboard.',
+          ),
         ),
       );
       return;
@@ -139,12 +143,13 @@ class _ProductListPageState extends State<ProductListPage> {
                   child: GridView.builder(
                     padding: const EdgeInsets.all(16),
                     physics: const AlwaysScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                      maxCrossAxisExtent: 420,
-                      mainAxisExtent: 345,
-                      crossAxisSpacing: 14,
-                      mainAxisSpacing: 14,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithMaxCrossAxisExtent(
+                          maxCrossAxisExtent: 420,
+                          mainAxisExtent: 345,
+                          crossAxisSpacing: 14,
+                          mainAxisSpacing: 14,
+                        ),
                     itemCount: products.length,
                     itemBuilder: (context, index) {
                       final product = products[index];
@@ -189,8 +194,8 @@ class _ProductCard extends StatelessWidget {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
@@ -205,7 +210,8 @@ class _ProductCard extends StatelessWidget {
                     children: [
                       Text(
                         '\$${product.price.toStringAsFixed(2)}',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
                               fontWeight: FontWeight.w800,
                               color: Theme.of(context).colorScheme.primary,
                             ),

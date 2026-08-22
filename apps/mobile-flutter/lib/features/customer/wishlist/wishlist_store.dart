@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../../core/api/api_client.dart';
 
 class CustomerWishlist {
@@ -6,6 +8,8 @@ class CustomerWishlist {
   static final CustomerWishlist instance = CustomerWishlist._();
 
   final Set<int> _productIds = <int>{};
+  final Map<int, bool> _desiredStates = <int, bool>{};
+  final Set<int> _syncInProgress = <int>{};
 
   Set<int> get productIds => Set<int>.unmodifiable(_productIds);
 
@@ -23,7 +27,6 @@ class CustomerWishlist {
         ..clear()
         ..addAll(ids);
     } catch (_) {
-      _productIds.clear();
       if (!suppressErrors) {
         rethrow;
       }
@@ -37,21 +40,49 @@ class CustomerWishlist {
       return;
     }
 
-    final isSaved = _productIds.contains(productId);
+    final shouldBeSaved = !_productIds.contains(productId);
+    _setLocalState(productId, shouldBeSaved);
+    _desiredStates[productId] = shouldBeSaved;
 
-    try {
-      if (isSaved) {
-        await WishlistApi.removeProduct(productId);
-      } else {
-        await WishlistApi.addProduct(productId);
+    if (_syncInProgress.add(productId)) {
+      unawaited(_syncProductState(productId));
+    }
+  }
+
+  Future<void> _syncProductState(int productId) async {
+    while (true) {
+      final desired = _desiredStates[productId];
+      if (desired == null) {
+        _syncInProgress.remove(productId);
+        return;
       }
-      await load();
-    } catch (_) {
-      if (isSaved) {
-        _productIds.add(productId);
-      } else {
-        _productIds.remove(productId);
+
+      try {
+        if (desired) {
+          await WishlistApi.addProduct(productId);
+        } else {
+          await WishlistApi.removeProduct(productId);
+        }
+
+        if (_desiredStates[productId] == desired) {
+          _desiredStates.remove(productId);
+          _syncInProgress.remove(productId);
+          return;
+        }
+      } catch (_) {
+        _desiredStates.remove(productId);
+        _syncInProgress.remove(productId);
+        _setLocalState(productId, !desired);
+        return;
       }
+    }
+  }
+
+  void _setLocalState(int productId, bool isSaved) {
+    if (isSaved) {
+      _productIds.add(productId);
+    } else {
+      _productIds.remove(productId);
     }
   }
 

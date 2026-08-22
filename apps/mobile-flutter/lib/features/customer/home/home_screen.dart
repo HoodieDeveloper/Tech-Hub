@@ -89,7 +89,7 @@ class _CustomerHomeScreenState extends State<CustomerHomeScreen> {
   }
 
   Future<void> _refreshProducts() async {
-    final future = ProductApi.getProducts();
+    final future = ProductApi.getProducts(forceRefresh: true);
     setState(() => _productsFuture = future);
     await future;
   }

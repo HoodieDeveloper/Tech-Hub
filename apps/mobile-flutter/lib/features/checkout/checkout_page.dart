@@ -442,7 +442,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       child: DropdownButton<String>(
                         value: country,
                         isExpanded: true,
-                        underline: SizedBox(),
+                        underline: const SizedBox(),
                         items: const [
                           DropdownMenuItem(
                             value: 'United States',
@@ -544,7 +544,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 ),
               ),
               child: isSelected
-                  ? const Center(
+                  ? Center(
                       child: Container(
                         width: 10,
                         height: 10,
