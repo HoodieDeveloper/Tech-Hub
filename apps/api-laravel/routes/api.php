@@ -58,7 +58,7 @@ Route::get(
 Route::get('/products/{product}', [
     ProductController::class,
     'show',
-]);
+])->whereNumber('product');
 
 Route::get('/categories', [
     CategoryController::class,
