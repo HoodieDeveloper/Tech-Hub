@@ -94,10 +94,15 @@ Route::middleware('auth:sanctum')->group(function (): void {
         'me',
     ]);
 
-    Route::post('/me/profile', [
-        AuthController::class,
-        'updateProfile',
-    ]);
+Route::post('/profile', [
+    AuthController::class,
+    'updateProfile',
+]);
+
+Route::post('/me/profile', [
+    AuthController::class,
+    'updateProfile',
+]);
 
     Route::post('/logout', [
         AuthController::class,

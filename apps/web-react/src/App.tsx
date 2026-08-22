@@ -42,6 +42,10 @@ import {
 } from './features/customer/orders/CustomerOrdersPage';
 
 import {
+  CustomerProfilePage,
+} from './features/customer/profile/CustomerProfilePage';
+
+import {
   CustomerProductDetailsPage,
 } from './features/customer/CustomerProductDetailsPage';
 
@@ -61,6 +65,12 @@ import type {
   Product,
 } from './features/products/types';
 
+/*
+ * =========================================
+ * APP VIEWS
+ * =========================================
+ */
+
 type View =
   | 'storefront'
   | 'catalog'
@@ -68,6 +78,7 @@ type View =
   | 'checkout'
   | 'wishlist'
   | 'orders'
+  | 'profile'
   | 'login'
   | 'product-details'
   | 'admin';
@@ -79,14 +90,33 @@ type LoginReturnView =
   | 'product-details';
 
 export default function App() {
-  const [user, setUser] =
+  /*
+   * =========================================
+   * LOGGED-IN USER
+   * =========================================
+   */
+
+  const [
+    user,
+    setUser,
+  ] =
     useState<AuthUser | null>(
       () => getStoredUser(),
     );
 
-  const [view, setView] =
+  /*
+   * =========================================
+   * CURRENT PAGE
+   * =========================================
+   */
+
+  const [
+    view,
+    setView,
+  ] =
     useState<View>(() =>
-      getStoredUser()?.role === 'admin'
+      getStoredUser()?.role ===
+      'admin'
         ? 'admin'
         : 'storefront',
     );
@@ -120,6 +150,7 @@ export default function App() {
    * DATABASE CART
    * =========================================
    */
+
   const {
     cartItems,
     cartCount,
@@ -128,13 +159,16 @@ export default function App() {
     updateCartQuantity,
     removeFromCart,
     clearCart,
-  } = useCart(user);
+  } = useCart(
+    user,
+  );
 
   /*
    * =========================================
    * WISHLIST
    * =========================================
    */
+
   const {
     wishlistProducts,
     wishlistCount,
@@ -142,13 +176,16 @@ export default function App() {
     wishlistError,
     isWishlisted,
     toggleWishlist,
-  } = useWishlist(user);
+  } = useWishlist(
+    user,
+  );
 
   /*
    * =========================================
    * PRODUCT DETAILS
    * =========================================
    */
+
   function handleProductClick(
     product: Product,
   ) {
@@ -169,7 +206,8 @@ export default function App() {
     }
 
     if (
-      user.role === 'admin'
+      user.role ===
+      'admin'
     ) {
       setView(
         'admin',
@@ -188,6 +226,7 @@ export default function App() {
    * ADD TO DATABASE CART
    * =========================================
    */
+
   async function handleAddToCart(
     product: Product,
     quantity = 1,
@@ -211,7 +250,8 @@ export default function App() {
     }
 
     if (
-      user.role !== 'customer'
+      user.role !==
+      'customer'
     ) {
       setView(
         'admin',
@@ -231,6 +271,7 @@ export default function App() {
    * INCREASE CART QUANTITY
    * =========================================
    */
+
   async function handleIncreaseCartItem(
     productId: number,
   ) {
@@ -263,6 +304,7 @@ export default function App() {
    * DECREASE CART QUANTITY
    * =========================================
    */
+
   async function handleDecreaseCartItem(
     productId: number,
   ) {
@@ -298,6 +340,7 @@ export default function App() {
    * REMOVE FROM CART
    * =========================================
    */
+
   async function handleRemoveCartItem(
     productId: number,
   ) {
@@ -311,6 +354,7 @@ export default function App() {
    * CHECKOUT
    * =========================================
    */
+
   function handleCheckout() {
     if (
       cartItems.length === 0
@@ -331,7 +375,8 @@ export default function App() {
     }
 
     if (
-      user.role === 'admin'
+      user.role ===
+      'admin'
     ) {
       setView(
         'admin',
@@ -350,12 +395,14 @@ export default function App() {
    * WISHLIST
    * =========================================
    */
+
   async function handleToggleWishlist(
     productId: number,
   ) {
     if (
       !user ||
-      user.role !== 'customer'
+      user.role !==
+        'customer'
     ) {
       return;
     }
@@ -379,7 +426,8 @@ export default function App() {
     }
 
     if (
-      user.role === 'admin'
+      user.role ===
+      'admin'
     ) {
       setView(
         'admin',
@@ -398,13 +446,15 @@ export default function App() {
    * BUY NOW
    * =========================================
    */
+
   function handleBuyNow(
     product: Product,
     quantity: number,
   ) {
     if (
       !user ||
-      user.role !== 'customer'
+      user.role !==
+        'customer'
     ) {
       return;
     }
@@ -426,6 +476,7 @@ export default function App() {
    * LOGIN SUCCESS
    * =========================================
    */
+
   function handleLoginSuccess(
     authenticatedUser: AuthUser,
   ) {
@@ -497,6 +548,7 @@ export default function App() {
    * LOGOUT
    * =========================================
    */
+
   async function handleLogout() {
     try {
       await apiPost(
@@ -504,8 +556,10 @@ export default function App() {
         {},
       );
     } catch {
-      // Local session will
-      // still be cleared.
+      /*
+       * Even if API logout fails,
+       * local session is cleared.
+       */
     }
 
     clearAuthSession();
@@ -532,8 +586,10 @@ export default function App() {
    * LOGIN PAGE
    * =========================================
    */
+
   if (
-    view === 'login'
+    view ===
+    'login'
   ) {
     return (
       <LoginPage
@@ -555,13 +611,18 @@ export default function App() {
    * ADMIN
    * =========================================
    */
+
   if (
-    view === 'admin' &&
-    user?.role === 'admin'
+    view ===
+      'admin' &&
+    user?.role ===
+      'admin'
   ) {
     return (
       <AdminDashboard
-        user={user}
+        user={
+          user
+        }
 
         onStorefront={() =>
           setView(
@@ -578,12 +639,54 @@ export default function App() {
 
   /*
    * =========================================
+   * CUSTOMER PROFILE
+   * =========================================
+   */
+
+  if (
+    view ===
+      'profile' &&
+    user?.role ===
+      'customer'
+  ) {
+    return (
+      <CustomerProfilePage
+        user={
+          user
+        }
+
+        onBack={() =>
+          setView(
+            'storefront',
+          )
+        }
+
+        onUserUpdated={(
+          updatedUser,
+        ) => {
+          setUser(
+            updatedUser,
+          );
+        }}
+
+        onLogout={() =>
+          void handleLogout()
+        }
+      />
+    );
+  }
+
+  /*
+   * =========================================
    * CUSTOMER ORDERS
    * =========================================
    */
+
   if (
-    view === 'orders' &&
-    user?.role === 'customer'
+    view ===
+      'orders' &&
+    user?.role ===
+      'customer'
   ) {
     return (
       <CustomerOrdersPage
@@ -601,9 +704,12 @@ export default function App() {
    * WISHLIST PAGE
    * =========================================
    */
+
   if (
-    view === 'wishlist' &&
-    user?.role === 'customer'
+    view ===
+      'wishlist' &&
+    user?.role ===
+      'customer'
   ) {
     return (
       <CustomerWishlistPage
@@ -645,8 +751,10 @@ export default function App() {
    * CART PAGE
    * =========================================
    */
+
   if (
-    view === 'cart'
+    view ===
+    'cart'
   ) {
     return (
       <CustomerCartPage
@@ -696,14 +804,19 @@ export default function App() {
    * CHECKOUT
    * =========================================
    */
+
   if (
-    view === 'checkout' &&
+    view ===
+      'checkout' &&
     user &&
-    user.role === 'customer'
+    user.role ===
+      'customer'
   ) {
     return (
       <CustomerCheckoutPage
-        user={user}
+        user={
+          user
+        }
 
         cartItems={
           buyNowItems ??
@@ -711,7 +824,9 @@ export default function App() {
         }
 
         onBack={() => {
-          if (buyNowItems) {
+          if (
+            buyNowItems
+          ) {
             setBuyNowItems(
               null,
             );
@@ -731,7 +846,9 @@ export default function App() {
         onOrderSuccess={(
           order,
         ) => {
-          if (buyNowItems) {
+          if (
+            buyNowItems
+          ) {
             setBuyNowItems(
               null,
             );
@@ -756,8 +873,10 @@ export default function App() {
    * CATALOG
    * =========================================
    */
+
   if (
-    view === 'catalog'
+    view ===
+    'catalog'
   ) {
     return (
       <CustomerCatalogPage
@@ -811,6 +930,7 @@ export default function App() {
    * PRODUCT DETAILS
    * =========================================
    */
+
   if (
     view ===
       'product-details' &&
@@ -823,7 +943,9 @@ export default function App() {
           pendingProductId
         }
 
-        user={user}
+        user={
+          user
+        }
 
         onBack={() =>
           setView(
@@ -859,22 +981,70 @@ export default function App() {
    * CUSTOMER HOME
    * =========================================
    */
+
   return (
     <>
       {cartError && (
         <div className="alert error">
-          {cartError}
+          {
+            cartError
+          }
         </div>
       )}
 
       {wishlistError && (
         <div className="alert error">
-          {wishlistError}
+          {
+            wishlistError
+          }
         </div>
       )}
 
       <PublicStorefront
-        user={user}
+        user={
+          user
+        }
+
+        /*
+         * =================================
+         * PROFILE
+         * =================================
+         */
+
+        onProfileClick={() => {
+          if (!user) {
+            setLoginReturnView(
+              'storefront',
+            );
+
+            setView(
+              'login',
+            );
+
+            return;
+          }
+
+          if (
+            user.role ===
+            'admin'
+          ) {
+            setView(
+              'admin',
+            );
+
+            return;
+          }
+
+          setView(
+            'profile',
+          );
+        }}
+
+        /*
+         * =================================
+         * CART
+         * =================================
+         */
 
         cartCount={
           cartCount
@@ -897,6 +1067,12 @@ export default function App() {
             'cart',
           );
         }}
+
+        /*
+         * =================================
+         * WISHLIST
+         * =================================
+         */
 
         wishlistCount={
           wishlistCount
@@ -930,11 +1106,23 @@ export default function App() {
           handleOpenWishlist
         }
 
+        /*
+         * =================================
+         * ORDERS
+         * =================================
+         */
+
         onOrdersClick={() =>
           setView(
             'orders',
           )
         }
+
+        /*
+         * =================================
+         * LOGIN
+         * =================================
+         */
 
         onLogin={() => {
           setPendingProductId(
@@ -950,19 +1138,43 @@ export default function App() {
           );
         }}
 
+        /*
+         * =================================
+         * ADMIN
+         * =================================
+         */
+
         onAdminDashboard={() =>
           setView(
             'admin',
           )
         }
 
+        /*
+         * =================================
+         * PRODUCT
+         * =================================
+         */
+
         onProductClick={
           handleProductClick
         }
 
+        /*
+         * =================================
+         * LOGOUT
+         * =================================
+         */
+
         onLogout={() =>
           void handleLogout()
         }
+
+        /*
+         * =================================
+         * CATALOG
+         * =================================
+         */
 
         onViewAll={() =>
           setView(
@@ -974,7 +1186,8 @@ export default function App() {
       {loadingWishlist && (
         <div
           style={{
-            display: 'none',
+            display:
+              'none',
           }}
         >
           Loading wishlist...

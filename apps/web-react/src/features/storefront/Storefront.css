@@ -2156,3 +2156,545 @@
   }
 }
 
+/* =========================================================
+   FOOTER - REFERENCE DESIGN
+   ========================================================= */
+
+.storefront-page .store-footer {
+  width: 100%;
+  background: #ffffff;
+  color: #111827;
+}
+
+/* =========================
+   MAIN FOOTER GRID
+   ========================= */
+
+.storefront-page .footer-grid {
+  display: grid;
+
+  grid-template-columns:
+    1.35fr
+    0.7fr
+    0.95fr
+    0.7fr
+    1.65fr;
+
+  gap: 46px;
+
+  align-items: start;
+
+  padding-top: 17px;
+  padding-bottom: 5px;
+}
+
+/* =========================
+   HEADINGS
+   ========================= */
+
+.storefront-page .footer-brand h3,
+.storefront-page .footer-column h4,
+.storefront-page .footer-newsletter h4 {
+  margin: 0 0 8px;
+
+  color: #161616;
+
+  font-size: 16px;
+  font-weight: 750;
+
+  line-height: 1.15;
+}
+
+/* =========================
+   BRAND
+   ========================= */
+
+.storefront-page .footer-brand p {
+  max-width: 260px;
+
+  margin: 0 0 4px;
+
+  color: #333333;
+
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+/* =========================
+   FOOTER LINKS
+   ========================= */
+
+.storefront-page .footer-column {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+
+  gap: 0;
+}
+
+.storefront-page .footer-column button {
+  min-height: 0;
+
+  border: 0;
+
+  background: transparent;
+
+  padding: 0;
+
+  color: #222222;
+
+  font-size: 9px;
+  font-weight: 400;
+
+  line-height: 1.25;
+
+  cursor: pointer;
+}
+
+.storefront-page .footer-column button:hover {
+  color: #2455be;
+  text-decoration: underline;
+}
+
+/* =========================
+   SOCIAL ICONS
+   ========================= */
+
+.storefront-page .social-links {
+  display: flex;
+  align-items: center;
+
+  gap: 7px;
+
+  margin-top: 15px;
+}
+
+.storefront-page .social-links button {
+  width: 20px;
+  height: 20px;
+
+  border: 0;
+  border-radius: 50%;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  color: #ffffff;
+
+  font-size: 9px;
+  font-weight: 800;
+
+  cursor: pointer;
+
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.storefront-page .social-links button:hover {
+  transform: translateY(-2px);
+  opacity: 0.85;
+}
+
+.storefront-page .social-instagram {
+  background:
+    linear-gradient(
+      135deg,
+      #feda75,
+      #d62976,
+      #4f5bd5
+    ) !important;
+}
+
+.storefront-page .social-telegram {
+  background: #2aabee !important;
+}
+
+.storefront-page .social-facebook {
+  background: #1877f2 !important;
+
+  font-family: Arial, sans-serif;
+  font-size: 13px !important;
+}
+
+.storefront-page .social-x {
+  background: #000000 !important;
+}
+
+/* =========================
+   NEWSLETTER
+   ========================= */
+
+.storefront-page .footer-newsletter p {
+  margin: 0;
+
+  color: #333333;
+
+  font-size: 9px;
+  line-height: 1.35;
+}
+
+.storefront-page .newsletter-form {
+  width: 100%;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    80px;
+
+  gap: 6px;
+
+  margin-top: 12px;
+}
+
+.storefront-page .newsletter-form input {
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+
+  border: 1px solid #dedede;
+  border-radius: 4px;
+
+  outline: none;
+
+  background: #ffffff;
+
+  padding: 0 12px;
+
+  color: #111827;
+
+  font-size: 9px;
+}
+
+.storefront-page
+  .newsletter-form
+  input::placeholder {
+  color: #c4c4c4;
+}
+
+.storefront-page .newsletter-form input:focus {
+  border-color: #7aa6f4;
+}
+
+.storefront-page .newsletter-form button {
+  width: 80px;
+  height: 32px;
+
+  border: 0;
+  border-radius: 4px;
+
+  background: #7da9f5 !important;
+  color: #ffffff !important;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  font-size: 9px;
+  font-weight: 600;
+
+  cursor: pointer;
+}
+
+.storefront-page
+  .newsletter-form
+  button:hover {
+  background: #5e91eb !important;
+}
+
+/* =========================
+   PAYMENT METHODS
+   ========================= */
+
+.storefront-page .payment-methods {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+
+  gap: 7px;
+
+  margin-top: 15px;
+}
+
+.storefront-page .payment-methods span {
+  min-width: 0;
+  height: 21px;
+
+  border-radius: 3px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0 7px;
+
+  font-size: 8px;
+  font-weight: 800;
+
+  white-space: nowrap;
+}
+
+/* VISA */
+
+.storefront-page .payment-visa {
+  background: #1769aa !important;
+  color: #ffffff !important;
+}
+
+/* MASTERCARD */
+
+.storefront-page .payment-mastercard {
+  background: #f26b21 !important;
+  color: #ffffff !important;
+}
+
+/* PAYPAL */
+
+.storefront-page .payment-paypal {
+  min-width: 67px !important;
+
+  background: #e8eef8 !important;
+  color: #1267a9 !important;
+
+  font-size: 10px !important;
+}
+
+/* WING */
+
+.storefront-page .payment-wing {
+  min-width: 70px !important;
+
+  background: #72be44 !important;
+  color: #ffffff !important;
+}
+
+/* ABA */
+
+.storefront-page .payment-aba {
+  min-width: 50px !important;
+
+  background: #16859e !important;
+  color: #ffffff !important;
+}
+
+/* =========================
+   COPYRIGHT
+   ========================= */
+
+.storefront-page .footer-bottom {
+  min-height: 38px;
+
+  border-top: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+
+  padding-top: 2px;
+  padding-bottom: 12px;
+
+  color: #161616;
+
+  font-size: 11px;
+}
+
+/* =========================================================
+   FOOTER RESPONSIVE
+   ========================================================= */
+
+@media (max-width: 1000px) {
+  .storefront-page .footer-grid {
+    grid-template-columns:
+      repeat(3, minmax(0, 1fr));
+
+    gap: 28px;
+  }
+
+  .storefront-page .footer-newsletter {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 700px) {
+  .storefront-page .footer-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+
+    gap: 25px;
+  }
+
+  .storefront-page .footer-newsletter {
+    grid-column: 1 / -1;
+  }
+
+  .storefront-page .payment-methods {
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 460px) {
+  .storefront-page .footer-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .storefront-page .footer-newsletter {
+    grid-column: auto;
+  }
+
+  .storefront-page .newsletter-form {
+    grid-template-columns:
+      minmax(0, 1fr)
+      80px;
+  }
+}
+
+/* =========================================================
+   FOOTER REAL LOGO IMAGE SIZES
+   ========================================================= */
+
+/* =========================
+   SOCIAL LOGOS
+   ========================= */
+
+.storefront-page .social-links {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.storefront-page .social-links button {
+  width: 26px !important;
+  height: 26px !important;
+
+  flex: 0 0 26px;
+
+  display: flex !important;
+  align-items: center;
+  justify-content: center !important;
+
+  overflow: hidden;
+
+  border: 0 !important;
+  border-radius: 50% !important;
+
+  background: transparent !important;
+
+  padding: 0 !important;
+
+  cursor: pointer;
+}
+
+.storefront-page .social-links button img {
+  display: block;
+
+  width: 24px !important;
+  height: 24px !important;
+
+  max-width: 24px !important;
+  max-height: 24px !important;
+
+  object-fit: contain;
+}
+
+/* =========================
+   PAYMENT LOGOS
+   ========================= */
+
+.storefront-page .payment-methods {
+  display: flex;
+  align-items: center;
+
+  gap: 10px;
+
+  margin-top: 15px;
+
+  flex-wrap: wrap;
+}
+
+.storefront-page .payment-methods img {
+  display: block;
+
+  width: auto !important;
+  height: 27px !important;
+
+  max-width: 75px !important;
+  max-height: 27px !important;
+
+  object-fit: contain;
+}
+
+/* Mastercard is naturally more square */
+
+.storefront-page
+  .payment-methods
+  img[alt="Mastercard"] {
+  max-width: 45px !important;
+}
+
+/* PayPal is wider */
+
+.storefront-page
+  .payment-methods
+  img[alt="PayPal"] {
+  max-width: 78px !important;
+}
+
+/* Wing Bank */
+
+.storefront-page
+  .payment-methods
+  img[alt="Wing Bank"] {
+  max-width: 80px !important;
+}
+
+/* ABA */
+
+.storefront-page
+  .payment-methods
+  img[alt="ABA Bank"] {
+  max-width: 65px !important;
+}
+
+/* =========================================================
+   FIXED / STICKY STOREFRONT HEADER
+   ========================================================= */
+
+.storefront-page .storefront-header-stack {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
+  width: 100%;
+}
+
+/* =========================================================
+   NAVBAR ACCOUNT AVATAR
+   ========================================================= */
+
+.storefront-page .header-account-avatar {
+  width: 24px !important;
+  height: 24px !important;
+
+  min-width: 24px;
+  min-height: 24px;
+
+  max-width: 24px !important;
+  max-height: 24px !important;
+
+  border-radius: 50%;
+
+  object-fit: cover;
+
+  display: block;
+
+  flex-shrink: 0;
+
+  border: 1px solid rgba(255, 255, 255, 0.7);
+}
