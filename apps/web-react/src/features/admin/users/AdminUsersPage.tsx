@@ -5,7 +5,10 @@ import {
   Users,
 } from 'lucide-react';
 
-import { apiGet } from '../../../core/api/client';
+import {
+  apiGet,
+  resolveMediaUrl,
+} from '../../../core/api/client';
 import './UsersPage.css';
 type AdminUser = {
   id: number;
@@ -157,7 +160,13 @@ export function AdminUsersPage() {
 
               <tbody>
                 {data?.users.map(
-                  (account) => (
+                  (account) => {
+                    const accountAvatarUrl =
+                      resolveMediaUrl(
+                        account.avatar_url,
+                      );
+
+                    return (
                     <tr
                       key={
                         account.id
@@ -166,10 +175,10 @@ export function AdminUsersPage() {
                       <td>
                         <div className="admin-user-identity">
                           <div className="admin-user-avatar">
-                            {account.avatar_url ? (
+                            {accountAvatarUrl ? (
                               <img
                                 src={
-                                  account.avatar_url
+                                  accountAvatarUrl
                                 }
                                 alt={`${account.name} profile`}
                               />
@@ -225,7 +234,8 @@ export function AdminUsersPage() {
                         )}
                       </td>
                     </tr>
-                  ),
+                    );
+                  },
                 )}
               </tbody>
             </table>

@@ -21,6 +21,7 @@ import {
 
 import {
   apiGet,
+  resolveMediaUrl,
   type AuthUser,
 } from '../../core/api/client';
 
@@ -163,6 +164,11 @@ export function PublicStorefront({
   isWishlisted,
   onToggleWishlist,
 }: Props) {
+  const accountAvatarUrl =
+    resolveMediaUrl(
+      user?.avatar_url,
+    );
+
   /*
    * =========================================
    * SHARED PRODUCTS
@@ -597,10 +603,10 @@ export function PublicStorefront({
                     onProfileClick
                   }
                 >
-                  {user.avatar_url ? (
+                  {accountAvatarUrl ? (
                     <img
                       src={
-                        user.avatar_url
+                        accountAvatarUrl
                       }
                       alt={
                         user.name
