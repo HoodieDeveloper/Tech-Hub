@@ -2,15 +2,13 @@ import {
   ArrowLeft,
   Heart,
   Search,
-  ShoppingCart,
   Truck,
-  Trash2,
   UserRound,
 } from 'lucide-react';
 
 import {
-  ProductImage,
-} from '../../products/ProductImage';
+  CustomerProductCard,
+} from '../layout/CustomerProductCard';
 
 import type {
   Product,
@@ -92,98 +90,16 @@ export function CustomerWishlistPage({
           <div className="wishlist-product-grid">
             {products.map(
               (product) => (
-                <article
+                <CustomerProductCard
                   key={product.id}
-                  className="wishlist-product-card"
-                >
-                  <button
-                    type="button"
-                    className="wishlist-product-main"
-                    onClick={() =>
-                      onProductClick(
-                        product,
-                      )
-                    }
-                  >
-                    <div className="wishlist-product-image">
-                      <ProductImage
-                        imageUrl={
-                          product.image_url
-                        }
-                        alt={
-                          product.name
-                        }
-                      />
-                    </div>
-
-                    <div className="wishlist-product-info">
-                      <span className="wishlist-category">
-                        {product.category
-                          ?.name ??
-                          'Product'}
-                      </span>
-
-                      <h3>
-                        {product.name}
-                      </h3>
-
-                      <strong className="wishlist-price">
-                        $
-                        {Number(
-                          product.price,
-                        ).toFixed(2)}
-                      </strong>
-
-                      <span
-                        className={
-                          product.stock > 0
-                            ? 'wishlist-stock in-stock'
-                            : 'wishlist-stock out-of-stock'
-                        }
-                      >
-                        {product.stock > 0
-                          ? `${product.stock} available`
-                          : 'Out of stock'}
-                      </span>
-                    </div>
-                  </button>
-
-                  <div className="wishlist-card-actions">
-                    <button
-                      type="button"
-                      className="wishlist-add-cart"
-                      disabled={
-                        product.stock <= 0
-                      }
-                      onClick={() =>
-                        onAddToCart(
-                          product,
-                        )
-                      }
-                    >
-                      <ShoppingCart
-                        size={17}
-                      />
-
-                      Add to Cart
-                    </button>
-
-                    <button
-                      type="button"
-                      className="wishlist-remove"
-                      title="Remove from wishlist"
-                      onClick={() =>
-                        onRemove(
-                          product.id,
-                        )
-                      }
-                    >
-                      <Trash2
-                        size={17}
-                      />
-                    </button>
-                  </div>
-                </article>
+                  product={product}
+                  onProductClick={onProductClick}
+                  isWishlisted
+                  onAddToCart={onAddToCart}
+                  onRemove={onRemove}
+                  showCategoryLabel
+                  imageHeight={225}
+                />
               ),
             )}
           </div>

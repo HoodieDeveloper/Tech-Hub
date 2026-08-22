@@ -269,7 +269,8 @@ export function CustomerCartPage({
                       }
                     >
                       <Trash2
-                        size={18}
+                        size={25}
+                        strokeWidth={2.4}
                       />
                     </button>
                   </article>

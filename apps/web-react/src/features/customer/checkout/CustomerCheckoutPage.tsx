@@ -90,7 +90,27 @@ export function CustomerCheckoutPage({
   const [
     paymentMethod,
     setPaymentMethod,
-  ] = useState('cash_on_delivery');
+  ] = useState('bank_transfer');
+
+  const [
+    cardNumber,
+    setCardNumber,
+  ] = useState('');
+
+  const [
+    cardName,
+    setCardName,
+  ] = useState('');
+
+  const [
+    cardExpiry,
+    setCardExpiry,
+  ] = useState('');
+
+  const [
+    cardCvv,
+    setCardCvv,
+  ] = useState('');
 
   const [
     notes,
@@ -134,6 +154,24 @@ export function CustomerCheckoutPage({
       [cartItems],
     );
 
+  function handlePaymentMethodChange(
+    nextPaymentMethod: string,
+  ) {
+    setPaymentMethod(
+      nextPaymentMethod,
+    );
+
+    if (
+      nextPaymentMethod ===
+      'cash_on_delivery'
+    ) {
+      setCardNumber('');
+      setCardName('');
+      setCardExpiry('');
+      setCardCvv('');
+    }
+  }
+
   async function handleSubmit(
     event: FormEvent,
   ) {
@@ -147,6 +185,81 @@ export function CustomerCheckoutPage({
       );
 
       return;
+    }
+
+    if (
+      paymentMethod ===
+      'bank_transfer'
+    ) {
+      const normalizedCardNumber =
+        cardNumber.replace(
+          /\s+/g,
+          '',
+        );
+
+      if (
+        !/^\d{16}$/.test(
+          normalizedCardNumber,
+        )
+      ) {
+        setError(
+          'Card number must be exactly 16 digits.',
+        );
+
+        return;
+      }
+
+      if (
+        cardName
+          .trim()
+          .length < 2
+      ) {
+        setError(
+          'Please enter the cardholder name.',
+        );
+
+        return;
+      }
+
+      const expiryMatch =
+        cardExpiry.match(
+          /^(\d{2})\/(\d{2})$/,
+        );
+
+      if (!expiryMatch) {
+        setError(
+          'Expiry date must be in MM/YY format.',
+        );
+
+        return;
+      }
+
+      const expiryMonth = Number(
+        expiryMatch[1],
+      );
+
+      if (
+        expiryMonth < 1 ||
+        expiryMonth > 12
+      ) {
+        setError(
+          'Expiry month must be between 01 and 12.',
+        );
+
+        return;
+      }
+
+      if (
+        !/^\d{3,4}$/.test(
+          cardCvv,
+        )
+      ) {
+        setError(
+          'CVV must be 3 or 4 digits.',
+        );
+
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -382,13 +495,41 @@ export function CustomerCheckoutPage({
                 <input
                   type="radio"
                   name="payment"
+                  value="bank_transfer"
+                  checked={
+                    paymentMethod ===
+                    'bank_transfer'
+                  }
+                  onChange={(event) =>
+                    handlePaymentMethodChange(
+                      event.target.value,
+                    )
+                  }
+                />
+
+                <div>
+                  <strong>
+                    Credit / Debit Card
+                  </strong>
+
+                  <span>
+                    Pay securely
+                    with your card.
+                  </span>
+                </div>
+              </label>
+
+              <label>
+                <input
+                  type="radio"
+                  name="payment"
                   value="cash_on_delivery"
                   checked={
                     paymentMethod ===
                     'cash_on_delivery'
                   }
                   onChange={(event) =>
-                    setPaymentMethod(
+                    handlePaymentMethodChange(
                       event.target.value,
                     )
                   }
@@ -405,35 +546,142 @@ export function CustomerCheckoutPage({
                   </span>
                 </div>
               </label>
-
-              <label>
-                <input
-                  type="radio"
-                  name="payment"
-                  value="bank_transfer"
-                  checked={
-                    paymentMethod ===
-                    'bank_transfer'
-                  }
-                  onChange={(event) =>
-                    setPaymentMethod(
-                      event.target.value,
-                    )
-                  }
-                />
-
-                <div>
-                  <strong>
-                    Bank Transfer
-                  </strong>
-
-                  <span>
-                    Payment confirmation
-                    can be handled later.
-                  </span>
-                </div>
-              </label>
             </div>
+
+            {paymentMethod ===
+              'bank_transfer' && (
+              <div className="checkout-card-form">
+                <label>
+                  <span>
+                    Card Number
+                  </span>
+
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="cc-number"
+                    value={
+                      cardNumber
+                    }
+                    onChange={(event) => {
+                      const digits =
+                        event.target.value
+                          .replace(
+                            /\D/g,
+                            '',
+                          )
+                          .slice(
+                            0,
+                            16,
+                          );
+
+                      const grouped =
+                        digits.replace(
+                          /(\d{4})(?=\d)/g,
+                          '$1 ',
+                        );
+
+                      setCardNumber(
+                        grouped,
+                      );
+                    }}
+                    placeholder="1234 5678 9012 3456"
+                    required
+                  />
+                </label>
+
+                <label>
+                  <span>
+                    Name on Card
+                  </span>
+
+                  <input
+                    type="text"
+                    autoComplete="cc-name"
+                    value={
+                      cardName
+                    }
+                    onChange={(event) =>
+                      setCardName(
+                        event.target.value,
+                      )
+                    }
+                    placeholder="Cardholder name"
+                    required
+                  />
+                </label>
+
+                <div className="checkout-card-form-row">
+                  <label>
+                    <span>
+                      Expiry Date
+                    </span>
+
+                    <input
+                      type="text"
+                      autoComplete="cc-exp"
+                      inputMode="numeric"
+                      value={
+                        cardExpiry
+                      }
+                      onChange={(event) => {
+                        const digits =
+                          event.target.value
+                            .replace(
+                              /\D/g,
+                              '',
+                            )
+                            .slice(
+                              0,
+                              4,
+                            );
+
+                        const formattedExpiry =
+                          digits.length >
+                          2
+                            ? `${digits.slice(0, 2)}/${digits.slice(2)}`
+                            : digits;
+
+                        setCardExpiry(
+                          formattedExpiry,
+                        );
+                      }}
+                      maxLength={5}
+                      placeholder="MM/YY"
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    <span>
+                      CVV
+                    </span>
+
+                    <input
+                      type="password"
+                      inputMode="numeric"
+                      autoComplete="cc-csc"
+                      value={cardCvv}
+                      onChange={(event) =>
+                        setCardCvv(
+                          event.target.value
+                            .replace(
+                              /\D/g,
+                              '',
+                            )
+                            .slice(
+                              0,
+                              4,
+                            ),
+                        )
+                      }
+                      placeholder="123"
+                      required
+                    />
+                  </label>
+                </div>
+              </div>
+            )}
           </section>
 
           {/* Note */}

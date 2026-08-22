@@ -194,6 +194,21 @@
   font-size: 12px;
 }
 
+.checkout-card-form {
+  margin-top: 14px;
+  border-top: 1px solid #edf2f7;
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.checkout-card-form-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .checkout-summary {
   position: sticky;
   top: 20px;
@@ -337,5 +352,9 @@
 
   .checkout-form-grid .full-width {
     grid-column: auto;
+  }
+
+  .checkout-card-form-row {
+    grid-template-columns: 1fr;
   }
 }

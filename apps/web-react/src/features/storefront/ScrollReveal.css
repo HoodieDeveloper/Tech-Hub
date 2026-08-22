@@ -11,21 +11,16 @@
  * before it is revealed.
  */
 .scroll-reveal {
-  opacity: 0;
-  visibility: hidden;
+  opacity: 1;
+  visibility: visible;
 
-  transform: translateY(45px);
+  transform: none;
 
-  transition:
-    opacity 0.65s ease,
-    transform 0.65s ease,
-    visibility 0s linear 0.65s;
+  transition: none;
 
-  will-change:
-    opacity,
-    transform;
+  will-change: auto;
 
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 /*
@@ -35,12 +30,9 @@
   opacity: 1;
   visibility: visible;
 
-  transform: translateY(0);
+  transform: none;
 
-  transition:
-    opacity 0.65s ease,
-    transform 0.65s ease,
-    visibility 0s linear 0s;
+  transition: none;
 
   pointer-events: auto;
 }
@@ -69,9 +61,6 @@
 ) {
   .scroll-reveal {
     transform: none;
-
-    transition:
-      opacity 0.01ms linear,
-      visibility 0s linear;
+    transition: none;
   }
 }

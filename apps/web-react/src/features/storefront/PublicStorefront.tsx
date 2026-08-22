@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  Heart,
   RotateCcw,
   ShieldCheck,
   Truck,
@@ -28,8 +27,8 @@ import {
 } from '../customer/layout/CustomerHeader';
 
 import {
-  ProductImage,
-} from '../products/ProductImage';
+  CustomerProductCard,
+} from '../customer/layout/CustomerProductCard';
 
 import type {
   Product,
@@ -729,89 +728,23 @@ export function PublicStorefront({
                           index * 120
                         }
                       >
-                        <article className="public-product-card">
-
-                          <button
-                            type="button"
-                            className="product-click-area"
-                            onClick={() =>
-                              onProductClick(
-                                product,
-                              )
-                            }
-                          >
-                            {/* IMAGE */}
-
-                            <div className="product-image-area">
-
-                              <span className="product-badge">
-                                BEST
-                              </span>
-
-                              <ProductImage
-                                imageUrl={
-                                  product.image_url
-                                }
-                                alt={
-                                  product.name
-                                }
-                              />
-                            </div>
-
-                            {/* BODY */}
-
-                            <div className="public-product-body">
-
-                              <h3>
-                                {
-                                  product.name
-                                }
-                              </h3>
-
-                              <div className="product-stars">
-                                {
-                                  product.sold_quantity
-                                }{' '}
-                                sold
-                              </div>
-
-                              <div className="product-price-row">
-
-                                <strong>
-                                  $
-                                  {Number(
-                                    product.price,
-                                  ).toFixed(
-                                    2,
-                                  )}
-                                </strong>
-
-                                <Heart
-                                  size={20}
-                                  className={
-                                    wishlisted
-                                      ? 'product-heart wishlisted'
-                                      : 'product-heart'
-                                  }
-                                  fill={
-                                    wishlisted
-                                      ? 'currentColor'
-                                      : 'none'
-                                  }
-                                  onClick={(
-                                    event,
-                                  ) => {
-                                    event.stopPropagation();
-
-                                    handleWishlistClick(
-                                      product.id,
-                                    );
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </button>
-                        </article>
+                        <CustomerProductCard
+                          product={
+                            product
+                          }
+                          onProductClick={
+                            onProductClick
+                          }
+                          isWishlisted={
+                            wishlisted
+                          }
+                          onToggleWishlist={
+                            handleWishlistClick
+                          }
+                          showCategoryLabel
+                          imageHeight={225}
+                          cardClassName="storefront-product-card"
+                        />
                       </ScrollReveal>
                     );
                   },
@@ -894,82 +827,23 @@ export function PublicStorefront({
                           index * 120
                         }
                       >
-                        <article className="public-product-card">
-
-                          <button
-                            type="button"
-                            className="product-click-area"
-                            onClick={() =>
-                              onProductClick(
-                                product,
-                              )
-                            }
-                          >
-                            {/* IMAGE */}
-
-                            <div className="product-image-area">
-
-                              <span className="product-badge">
-                                NEW
-                              </span>
-
-                              <ProductImage
-                                imageUrl={
-                                  product.image_url
-                                }
-                                alt={
-                                  product.name
-                                }
-                              />
-                            </div>
-
-                            {/* BODY */}
-
-                            <div className="public-product-body">
-
-                              <h3>
-                                {
-                                  product.name
-                                }
-                              </h3>
-
-                              <div className="product-price-row">
-
-                                <strong>
-                                  $
-                                  {Number(
-                                    product.price,
-                                  ).toFixed(
-                                    2,
-                                  )}
-                                </strong>
-
-                                <Heart
-                                  size={20}
-                                  className={
-                                    wishlisted
-                                      ? 'product-heart wishlisted'
-                                      : 'product-heart'
-                                  }
-                                  fill={
-                                    wishlisted
-                                      ? 'currentColor'
-                                      : 'none'
-                                  }
-                                  onClick={(
-                                    event,
-                                  ) => {
-                                    event.stopPropagation();
-
-                                    handleWishlistClick(
-                                      product.id,
-                                    );
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </button>
-                        </article>
+                        <CustomerProductCard
+                          product={
+                            product
+                          }
+                          onProductClick={
+                            onProductClick
+                          }
+                          isWishlisted={
+                            wishlisted
+                          }
+                          onToggleWishlist={
+                            handleWishlistClick
+                          }
+                          showCategoryLabel
+                          imageHeight={225}
+                          cardClassName="storefront-product-card"
+                        />
                       </ScrollReveal>
                     );
                   },

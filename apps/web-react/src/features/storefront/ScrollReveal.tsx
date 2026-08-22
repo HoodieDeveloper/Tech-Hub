@@ -150,10 +150,7 @@ export function ScrollReveal({
         .filter(Boolean)
         .join(' ')}
       style={{
-        transitionDelay:
-          visible
-            ? `${delay}ms`
-            : '0ms',
+        transitionDelay: '0ms',
       }}
     >
       {children}
