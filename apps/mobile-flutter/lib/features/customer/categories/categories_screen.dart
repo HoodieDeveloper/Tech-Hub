@@ -37,7 +37,7 @@ class _CategoriesScreenState extends State<CategoriesScreen> {
   }
 
   Future<void> _refreshProducts() async {
-    final futureProducts = ProductApi.getProducts();
+    final futureProducts = ProductApi.getProducts(forceRefresh: true);
     final futureCategories = CategoryApi.getCategories();
 
     setState(() {

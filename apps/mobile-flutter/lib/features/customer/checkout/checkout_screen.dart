@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -680,10 +682,12 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             .toList(),
       });
 
-      await CustomerWishlist.instance.removePurchasedProducts(
-        widget.cartItems
-            .map((item) => int.tryParse(item.product.id))
-            .whereType<int>(),
+      unawaited(
+        CustomerWishlist.instance.removePurchasedProducts(
+          widget.cartItems
+              .map((item) => int.tryParse(item.product.id))
+              .whereType<int>(),
+        ),
       );
 
       if (widget.clearCartOnSuccess) {

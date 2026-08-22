@@ -1,9 +1,85 @@
+import 'dart:async';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
 import '../../../core/api/api_client.dart';
 
-class CustomerSettingsScreen extends StatelessWidget {
+class CustomerSettingsScreen extends StatefulWidget {
   const CustomerSettingsScreen({super.key});
+
+  @override
+  State<CustomerSettingsScreen> createState() => _CustomerSettingsScreenState();
+}
+
+class _CustomerSettingsScreenState extends State<CustomerSettingsScreen> {
+  XFile? _avatar;
+  Uint8List? _avatarBytes;
+  bool _saving = false;
+
+  Future<void> _changeAvatar() async {
+    XFile? selected;
+    try {
+      selected = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 800,
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open photo gallery: $error')),
+        );
+      }
+      return;
+    }
+    if (selected == null || !mounted) return;
+    final bytes = await selected.readAsBytes();
+
+    setState(() {
+      _avatar = selected;
+      _avatarBytes = bytes;
+      _saving = true;
+    });
+    unawaited(_uploadAvatarInBackground(selected, bytes));
+  }
+
+  Future<void> _uploadAvatarInBackground(
+    XFile selected,
+    Uint8List bytes,
+  ) async {
+    try {
+      final response = await ApiClient.postMultipart(
+        '/me/profile',
+        const {},
+        fileBytes: bytes,
+        fileName: selected.name,
+      );
+      if (response is Map && response['user'] is Map) {
+        ApiClient.currentUser = Map<String, dynamic>.from(response['user']);
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile picture updated.')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        setState(() {
+          _avatar = null;
+          _avatarBytes = null;
+        });
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.toString())));
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _saving = false);
+      }
+    }
+  }
 
   String _readCurrentName() {
     final user = ApiClient.currentUser ?? const {};
@@ -25,6 +101,8 @@ class CustomerSettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatarUrl = (ApiClient.currentUser ?? const {})['avatar_url']
+        ?.toString();
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
@@ -45,6 +123,35 @@ class CustomerSettingsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Center(
+                  child: GestureDetector(
+                    onTap: _saving ? null : _changeAvatar,
+                    child: CircleAvatar(
+                      radius: 44,
+                      backgroundColor: const Color(0xFFEAF2FF),
+                      backgroundImage: _avatar != null
+                          ? MemoryImage(_avatarBytes!)
+                          : (avatarUrl == null || avatarUrl.isEmpty
+                                ? null
+                                : NetworkImage(avatarUrl)),
+                      child:
+                          _avatar == null &&
+                              (avatarUrl == null || avatarUrl.isEmpty)
+                          ? const Icon(Icons.add_a_photo_outlined, size: 28)
+                          : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Center(
+                  child: TextButton(
+                    onPressed: _saving ? null : _changeAvatar,
+                    child: Text(
+                      _saving ? 'Uploading...' : 'Change profile picture',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
                 const Text(
                   'Account details',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),

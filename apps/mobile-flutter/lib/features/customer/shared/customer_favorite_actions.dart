@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 Future<void> handleFavoriteToggle({
@@ -19,7 +21,7 @@ Future<void> handleFavoriteToggle({
     return;
   }
 
-  await toggleFavorite(productId);
+  unawaited(toggleFavorite(productId));
 
   if (!context.mounted) {
     return;
