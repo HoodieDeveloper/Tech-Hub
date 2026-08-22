@@ -4,22 +4,18 @@ import {
 } from 'react';
 
 import {
-  ChevronDown,
+  ArrowLeft,
   Clock3,
-  Heart,
   Minus,
   Plus,
   RotateCcw,
-  Search,
   ShieldCheck,
   ShoppingCart,
   Truck,
-  UserRound,
 } from 'lucide-react';
 
 import {
   apiGet,
-  type AuthUser,
 } from '../../core/api/client';
 
 import {
@@ -32,8 +28,6 @@ import type {
 
 type Props = {
   productId: number;
-
-  user: AuthUser;
 
   onBack: () => void;
 
@@ -64,7 +58,6 @@ const storageOptions = [
 
 export function CustomerProductDetailsPage({
   productId,
-  user,
   onBack,
   onAddToCart,
   onBuyNow,
@@ -135,119 +128,17 @@ export function CustomerProductDetailsPage({
   }
 
   return (
-    <div className="storefront-page product-detail-page">
-      <div className="storefront-header-stack">
-        <header className="storefront-main-header">
-          <div className="storefront-container main-header-inner">
-            <button
-              type="button"
-              className="store-brand"
-              onClick={onBack}
-            >
-              <strong>
-                DCS Computer Shop
-              </strong>
-            </button>
-
-            <div className="store-search">
-              <div className="search-input-wrap">
-                <input
-                  type="search"
-                  placeholder="Search for product, brands or categories..."
-                  aria-label="Search products"
-                />
-
-                <Search
-                  size={18}
-                />
-              </div>
-            </div>
-
-            <div className="store-header-actions">
-              <button
-                type="button"
-                className="header-icon-button"
-              >
-                <Heart
-                  size={19}
-                  fill="none"
-                />
-
-                <span>
-                  Wishlist
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="header-icon-button"
-              >
-                <UserRound
-                  size={19}
-                />
-
-                <span>
-                  {user.name}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="header-icon-button cart-header-button"
-              >
-                <ShoppingCart
-                  size={20}
-                />
-
-                <span className="cart-count">
-                  0
-                </span>
-
-                <span>
-                  Cart
-                </span>
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <nav className="store-navigation">
-          <div className="storefront-container store-navigation-inner">
-            <button
-              type="button"
-              className="active"
-              onClick={onBack}
-            >
-              Home
-            </button>
-
-            <button
-              type="button"
-              onClick={onBack}
-            >
-              Shop by Category
-
-              <ChevronDown
-                size={14}
-              />
-            </button>
-
-            <button
-              type="button"
-            >
-              About
-            </button>
-
-            <button
-              type="button"
-            >
-              Partnership
-            </button>
-          </div>
-        </nav>
-      </div>
-
+    <div className="product-detail-page">
       <main className="storefront-container product-detail-main">
+        <button
+          type="button"
+          className="product-detail-back"
+          onClick={onBack}
+        >
+          <ArrowLeft size={17} />
+          Back to products
+        </button>
+
         {error && (
           <div className="alert error">
             {error}
@@ -402,71 +293,6 @@ export function CustomerProductDetailsPage({
           </div>
         </div>
       </div>
-
-      <footer className="store-footer">
-        <div className="storefront-container footer-grid">
-          <div className="footer-brand">
-            <h3>DCS Computer Shop</h3>
-            <p>
-              Your trusted destination for the latest tech, quality products and
-              better experiences.
-            </p>
-            <div className="social-links">
-              <button type="button" aria-label="Website">
-                <Search size={15} />
-              </button>
-              <button type="button" aria-label="Messages">
-                <Heart size={15} />
-              </button>
-              <button type="button" aria-label="Support">
-                <UserRound size={15} />
-              </button>
-            </div>
-          </div>
-
-          <div className="footer-column">
-            <h4>Shop</h4>
-            <button type="button">All Categories</button>
-            <button type="button">Best Sellers</button>
-            <button type="button">New Arrivals</button>
-            <button type="button">Deals</button>
-          </div>
-
-          <div className="footer-column">
-            <h4>Customer Care</h4>
-            <button type="button">Contact Us</button>
-            <button type="button">Track Order</button>
-            <button type="button">Returns &amp; Refunds</button>
-            <button type="button">Shipping Info</button>
-            <button type="button">FAQ</button>
-          </div>
-
-          <div className="footer-column">
-            <h4>Company</h4>
-            <button type="button">About DCS</button>
-            <button type="button">Careers</button>
-            <button type="button">Press</button>
-            <button type="button">Sustainability</button>
-          </div>
-
-          <div className="footer-newsletter">
-            <h4>Stay in the loop</h4>
-            <p>Subscribe for exclusive deals and updates.</p>
-            <div className="newsletter-form">
-              <input type="email" placeholder="Enter Your Email" aria-label="Email address" />
-              <button type="button">Subscribe</button>
-            </div>
-
-            <div className="payment-methods">
-              <span>VISA</span>
-              <span>PayPal</span>
-              <span>Mastercard</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="storefront-container footer-bottom">© 2026 DCS, All rights reserved.</div>
-      </footer>
     </div>
   );
 }

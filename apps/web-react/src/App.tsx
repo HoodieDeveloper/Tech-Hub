@@ -1,5 +1,6 @@
 import {
   useState,
+  type ReactNode,
 } from 'react';
 
 import type {
@@ -36,6 +37,10 @@ import {
 import {
   CustomerCheckoutPage,
 } from './features/customer/checkout/CustomerCheckoutPage';
+
+import {
+  CustomerLayout,
+} from './features/customer/layout/CustomerLayout';
 
 import {
   CustomerOrdersPage,
@@ -583,6 +588,72 @@ export default function App() {
 
   /*
    * =========================================
+   * SHARED CUSTOMER LAYOUT
+   * =========================================
+   */
+
+  function renderCustomerLayout(
+    content: ReactNode,
+  ) {
+    return (
+      <CustomerLayout
+        user={user}
+        cartCount={cartCount}
+        wishlistCount={wishlistCount}
+        onHomeClick={() => setView('storefront')}
+        onViewAll={() => setView('catalog')}
+        onWishlistClick={handleOpenWishlist}
+        onOrdersClick={() => {
+          if (!user) {
+            setLoginReturnView('storefront');
+            setView('login');
+            return;
+          }
+
+          if (user.role === 'admin') {
+            setView('admin');
+            return;
+          }
+
+          setView('orders');
+        }}
+        onProfileClick={() => {
+          if (!user) {
+            setLoginReturnView('storefront');
+            setView('login');
+            return;
+          }
+
+          if (user.role === 'admin') {
+            setView('admin');
+            return;
+          }
+
+          setView('profile');
+        }}
+        onCartClick={() => {
+          if (!user) {
+            setLoginReturnView('storefront');
+            setView('login');
+            return;
+          }
+
+          setView('cart');
+        }}
+        onLogin={() => {
+          setPendingProductId(null);
+          setLoginReturnView('storefront');
+          setView('login');
+        }}
+        onAdminDashboard={() => setView('admin')}
+      >
+        {content}
+      </CustomerLayout>
+    );
+  }
+
+  /*
+   * =========================================
    * LOGIN PAGE
    * =========================================
    */
@@ -644,35 +715,18 @@ export default function App() {
    */
 
   if (
-    view ===
-      'profile' &&
-    user?.role ===
-      'customer'
+    view === 'profile' &&
+    user?.role === 'customer'
   ) {
-    return (
+    return renderCustomerLayout(
       <CustomerProfilePage
-        user={
-          user
-        }
-
-        onBack={() =>
-          setView(
-            'storefront',
-          )
-        }
-
-        onUserUpdated={(
-          updatedUser,
-        ) => {
-          setUser(
-            updatedUser,
-          );
+        user={user}
+        onBack={() => setView('storefront')}
+        onUserUpdated={(updatedUser) => {
+          setUser(updatedUser);
         }}
-
-        onLogout={() =>
-          void handleLogout()
-        }
-      />
+        onLogout={() => void handleLogout()}
+      />,
     );
   }
 
@@ -683,19 +737,13 @@ export default function App() {
    */
 
   if (
-    view ===
-      'orders' &&
-    user?.role ===
-      'customer'
+    view === 'orders' &&
+    user?.role === 'customer'
   ) {
-    return (
+    return renderCustomerLayout(
       <CustomerOrdersPage
-        onBack={() =>
-          setView(
-            'storefront',
-          )
-        }
-      />
+        onBack={() => setView('storefront')}
+      />,
     );
   }
 
@@ -706,43 +754,21 @@ export default function App() {
    */
 
   if (
-    view ===
-      'wishlist' &&
-    user?.role ===
-      'customer'
+    view === 'wishlist' &&
+    user?.role === 'customer'
   ) {
-    return (
+    return renderCustomerLayout(
       <CustomerWishlistPage
-        products={
-          wishlistProducts
+        products={wishlistProducts}
+        onBack={() => setView('storefront')}
+        onProductClick={handleProductClick}
+        onAddToCart={(product) =>
+          void handleAddToCart(product)
         }
-
-        onBack={() =>
-          setView(
-            'storefront',
-          )
+        onRemove={(productId) =>
+          void handleToggleWishlist(productId)
         }
-
-        onProductClick={
-          handleProductClick
-        }
-
-        onAddToCart={(
-          product,
-        ) =>
-          void handleAddToCart(
-            product,
-          )
-        }
-
-        onRemove={(
-          productId,
-        ) =>
-          void handleToggleWishlist(
-            productId,
-          )
-        }
-      />
+      />,
     );
   }
 
@@ -752,50 +778,22 @@ export default function App() {
    * =========================================
    */
 
-  if (
-    view ===
-    'cart'
-  ) {
-    return (
+  if (view === 'cart') {
+    return renderCustomerLayout(
       <CustomerCartPage
-        cartItems={
-          cartItems
+        cartItems={cartItems}
+        onBack={() => setView('storefront')}
+        onIncrease={(productId) =>
+          void handleIncreaseCartItem(productId)
         }
-
-        onBack={() =>
-          setView(
-            'storefront',
-          )
+        onDecrease={(productId) =>
+          void handleDecreaseCartItem(productId)
         }
-
-        onIncrease={(
-          productId,
-        ) =>
-          void handleIncreaseCartItem(
-            productId,
-          )
+        onRemove={(productId) =>
+          void handleRemoveCartItem(productId)
         }
-
-        onDecrease={(
-          productId,
-        ) =>
-          void handleDecreaseCartItem(
-            productId,
-          )
-        }
-
-        onRemove={(
-          productId,
-        ) =>
-          void handleRemoveCartItem(
-            productId,
-          )
-        }
-
-        onCheckout={
-          handleCheckout
-        }
-      />
+        onCheckout={handleCheckout}
+      />,
     );
   }
 
@@ -806,52 +804,26 @@ export default function App() {
    */
 
   if (
-    view ===
-      'checkout' &&
+    view === 'checkout' &&
     user &&
-    user.role ===
-      'customer'
+    user.role === 'customer'
   ) {
-    return (
+    return renderCustomerLayout(
       <CustomerCheckoutPage
-        user={
-          user
-        }
-
-        cartItems={
-          buyNowItems ??
-          cartItems
-        }
-
+        user={user}
+        cartItems={buyNowItems ?? cartItems}
         onBack={() => {
-          if (
-            buyNowItems
-          ) {
-            setBuyNowItems(
-              null,
-            );
-
-            setView(
-              'product-details',
-            );
-
+          if (buyNowItems) {
+            setBuyNowItems(null);
+            setView('product-details');
             return;
           }
 
-          setView(
-            'cart',
-          );
+          setView('cart');
         }}
-
-        onOrderSuccess={(
-          order,
-        ) => {
-          if (
-            buyNowItems
-          ) {
-            setBuyNowItems(
-              null,
-            );
+        onOrderSuccess={(order) => {
+          if (buyNowItems) {
+            setBuyNowItems(null);
           } else {
             void clearCart();
           }
@@ -860,11 +832,9 @@ export default function App() {
             `Order ${order.order_number} placed successfully!`,
           );
 
-          setView(
-            'storefront',
-          );
+          setView('storefront');
         }}
-      />
+      />,
     );
   }
 
@@ -874,54 +844,25 @@ export default function App() {
    * =========================================
    */
 
-  if (
-    view ===
-    'catalog'
-  ) {
-    return (
+  if (view === 'catalog') {
+    return renderCustomerLayout(
       <CustomerCatalogPage
-        onBack={() =>
-          setView(
-            'storefront',
-          )
+        onBack={() => setView('storefront')}
+        onProductClick={handleProductClick}
+        onAddToCart={(product) =>
+          void handleAddToCart(product)
         }
-
-        onProductClick={
-          handleProductClick
-        }
-
-        onAddToCart={(
-          product,
-        ) =>
-          void handleAddToCart(
-            product,
-          )
-        }
-
-        isWishlisted={
-          isWishlisted
-        }
-
-        onToggleWishlist={(
-          productId,
-        ) => {
+        isWishlisted={isWishlisted}
+        onToggleWishlist={(productId) => {
           if (!user) {
-            setLoginReturnView(
-              'storefront',
-            );
-
-            setView(
-              'login',
-            );
-
+            setLoginReturnView('storefront');
+            setView('login');
             return;
           }
 
-          void handleToggleWishlist(
-            productId,
-          );
+          void handleToggleWishlist(productId);
         }}
-      />
+      />,
     );
   }
 
@@ -932,47 +873,21 @@ export default function App() {
    */
 
   if (
-    view ===
-      'product-details' &&
+    view === 'product-details' &&
     user &&
     pendingProductId
   ) {
-    return (
+    return renderCustomerLayout(
       <CustomerProductDetailsPage
-        productId={
-          pendingProductId
+        productId={pendingProductId}
+        onBack={() => setView('storefront')}
+        onAddToCart={(product, quantity) =>
+          void handleAddToCart(product, quantity)
         }
-
-        user={
-          user
+        onBuyNow={(product, quantity) =>
+          handleBuyNow(product, quantity)
         }
-
-        onBack={() =>
-          setView(
-            'storefront',
-          )
-        }
-
-        onAddToCart={(
-          product,
-          quantity,
-        ) =>
-          void handleAddToCart(
-            product,
-            quantity,
-          )
-        }
-
-        onBuyNow={(
-          product,
-          quantity,
-        ) =>
-          handleBuyNow(
-            product,
-            quantity,
-          )
-        }
-      />
+      />,
     );
   }
 
