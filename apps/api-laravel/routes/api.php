@@ -3,11 +3,13 @@
 use App\Http\Controllers\Api\Admin\CategoryController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\AdminOrderController;
+use App\Http\Controllers\Api\AdminReportController;
 use App\Http\Controllers\Api\AdminSettingController;
 use App\Http\Controllers\Api\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\OrderController;
+use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\WishlistController;
 use App\Services\SupabaseStorageService;
@@ -24,22 +26,25 @@ Route::get('/test', fn () => response()->json([
     'message' => 'API is working',
 ]));
 
-Route::get('/health', function (SupabaseStorageService $storage) {
-    try {
-        DB::select('select 1');
+Route::get(
+    '/health',
+    function (SupabaseStorageService $storage) {
+        try {
+            DB::select('select 1');
 
-        $database = 'connected';
-    } catch (\Throwable) {
-        $database = 'failed';
+            $database = 'connected';
+        } catch (\Throwable) {
+            $database = 'failed';
+        }
+
+        return response()->json([
+            'status' => 'ok',
+            'environment' => app()->environment(),
+            'database' => $database,
+            'storage' => $storage->diagnostics(),
+        ]);
     }
-
-    return response()->json([
-        'status' => 'ok',
-        'environment' => app()->environment(),
-        'database' => $database,
-        'storage' => $storage->diagnostics(),
-    ]);
-});
+);
 
 /*
 |--------------------------------------------------------------------------
@@ -51,10 +56,15 @@ Route::get('/products', [
     ProductController::class,
     'index',
 ]);
+
 Route::get(
     '/products/best-sellers',
-    [ProductController::class, 'bestSellers']
+    [
+        ProductController::class,
+        'bestSellers',
+    ]
 );
+
 Route::get('/products/{product}', [
     ProductController::class,
     'show',
@@ -81,244 +91,291 @@ Route::post('/login', [
 |--------------------------------------------------------------------------
 */
 
-Route::middleware('auth:sanctum')->group(function (): void {
+Route::middleware('auth:sanctum')
+    ->group(function (): void {
 
-    /*
-    |--------------------------------------------------------------------------
-    | Current User
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Current User
+        |--------------------------------------------------------------------------
+        */
 
-    Route::get('/me', [
-        AuthController::class,
-        'me',
-    ]);
+        Route::get('/me', [
+            AuthController::class,
+            'me',
+        ]);
 
-Route::post('/profile', [
-    AuthController::class,
-    'updateProfile',
-]);
+        Route::post('/profile', [
+            AuthController::class,
+            'updateProfile',
+        ]);
 
-Route::post('/me/profile', [
-    AuthController::class,
-    'updateProfile',
-]);
+        Route::post('/me/profile', [
+            AuthController::class,
+            'updateProfile',
+        ]);
 
-    Route::post('/logout', [
-        AuthController::class,
-        'logout',
-    ]);
+        Route::post('/logout', [
+            AuthController::class,
+            'logout',
+        ]);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Customer Orders
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Customer Orders
+        |--------------------------------------------------------------------------
+        */
 
-    Route::get('/orders', [
-        OrderController::class,
-        'index',
-    ]);
+        Route::get('/orders', [
+            OrderController::class,
+            'index',
+        ]);
 
-    Route::post('/orders', [
-        OrderController::class,
-        'store',
-    ]);
+        Route::post('/orders', [
+            OrderController::class,
+            'store',
+        ]);
 
-    Route::get('/orders/{order}', [
-        OrderController::class,
-        'show',
-    ]);
+        Route::get('/orders/{order}', [
+            OrderController::class,
+            'show',
+        ]);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Customer Wishlist
-    |--------------------------------------------------------------------------
-    */
+        /*
+        |--------------------------------------------------------------------------
+        | Customer Payment
+        |--------------------------------------------------------------------------
+        |
+        | Returns the customer's latest successful
+        | reusable DEMO card metadata.
+        |
+        | It never returns:
+        | - full card number
+        | - CVV
+        |--------------------------------------------------------------------------
+        */
 
-    Route::get('/wishlist', [
-        WishlistController::class,
-        'index',
-    ]);
+        Route::get('/payments/saved-card', [
+            PaymentController::class,
+            'savedCard',
+        ]);
 
-    Route::post('/wishlist/{product}', [
-        WishlistController::class,
-        'store',
-    ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Customer Wishlist
+        |--------------------------------------------------------------------------
+        */
 
-    Route::delete('/wishlist/{product}', [
-        WishlistController::class,
-        'destroy',
-    ]);
+        Route::get('/wishlist', [
+            WishlistController::class,
+            'index',
+        ]);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Customer Cart
-    |--------------------------------------------------------------------------
-    */
+        Route::post('/wishlist/{product}', [
+            WishlistController::class,
+            'store',
+        ]);
 
-    Route::get('/cart', [
-        CartController::class,
-        'index',
-    ]);
+        Route::delete('/wishlist/{product}', [
+            WishlistController::class,
+            'destroy',
+        ]);
 
-    Route::post('/cart/{product}', [
-        CartController::class,
-        'store',
-    ]);
+        /*
+        |--------------------------------------------------------------------------
+        | Customer Cart
+        |--------------------------------------------------------------------------
+        */
 
-    Route::put('/cart/{product}', [
-        CartController::class,
-        'update',
-    ]);
+        Route::get('/cart', [
+            CartController::class,
+            'index',
+        ]);
 
-    Route::delete('/cart/{product}', [
-        CartController::class,
-        'destroy',
-    ]);
+        Route::post('/cart/{product}', [
+            CartController::class,
+            'store',
+        ]);
 
-    Route::delete('/cart', [
-        CartController::class,
-        'clear',
-    ]);
+        Route::put('/cart/{product}', [
+            CartController::class,
+            'update',
+        ]);
 
-    /*
-    |--------------------------------------------------------------------------
-    | Admin-only Routes
-    |--------------------------------------------------------------------------
-    */
+        Route::delete('/cart/{product}', [
+            CartController::class,
+            'destroy',
+        ]);
 
-    Route::middleware('admin')
-        ->prefix('admin')
-        ->group(function (): void {
+        Route::delete('/cart', [
+            CartController::class,
+            'clear',
+        ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Admin Dashboard
-            |--------------------------------------------------------------------------
-            */
+        /*
+        |--------------------------------------------------------------------------
+        | Admin-only Routes
+        |--------------------------------------------------------------------------
+        */
 
-            Route::get(
-                '/dashboard',
-                AdminDashboardController::class
-            );
+        Route::middleware('admin')
+            ->prefix('admin')
+            ->group(function (): void {
 
-            /*
-            |--------------------------------------------------------------------------
-            | Admin Users
-            |--------------------------------------------------------------------------
-            */
+                /*
+                |--------------------------------------------------------------------------
+                | Admin Dashboard
+                |--------------------------------------------------------------------------
+                */
 
-            Route::get('/users', [
-                AdminUserController::class,
-                'index',
-            ]);
+                Route::get(
+                    '/dashboard',
+                    AdminDashboardController::class
+                );
 
-            /*
-            |--------------------------------------------------------------------------
-            | Admin Settings
-            |--------------------------------------------------------------------------
-            */
+                /*
+                |--------------------------------------------------------------------------
+                | Admin Users
+                |--------------------------------------------------------------------------
+                */
 
-            Route::get('/settings', [
-                AdminSettingController::class,
-                'index',
-            ]);
+                Route::get('/users', [
+                    AdminUserController::class,
+                    'index',
+                ]);
 
-            Route::put('/settings', [
-                AdminSettingController::class,
-                'update',
-            ]);
+                /*
+                |--------------------------------------------------------------------------
+                | Admin Settings
+                |--------------------------------------------------------------------------
+                */
 
-            Route::post('/settings/logo', [
-                AdminSettingController::class,
-                'uploadLogo',
-            ]);
+                Route::get('/settings', [
+                    AdminSettingController::class,
+                    'index',
+                ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Admin Categories
-            |--------------------------------------------------------------------------
-            */
-
-            Route::get('/categories', [
-                CategoryController::class,
-                'index',
-            ]);
-
-            Route::post('/categories', [
-                CategoryController::class,
-                'store',
-            ]);
-
-            Route::patch('/categories/{category}', [
-                CategoryController::class,
-                'update',
-            ]);
-
-            Route::delete('/categories/{category}', [
-                CategoryController::class,
-                'destroy',
-            ]);
-
-            /*
-            |--------------------------------------------------------------------------
-            | Admin Products
-            |--------------------------------------------------------------------------
-            */
-
-            Route::get('/products', [
-                ProductController::class,
-                'adminIndex',
-            ]);
-
-            Route::post('/products', [
-                ProductController::class,
-                'store',
-            ]);
-
-            Route::match(
-                [
-                    'put',
-                    'patch',
-                    'post',
-                ],
-                '/products/{product}',
-                [
-                    ProductController::class,
+                Route::put('/settings', [
+                    AdminSettingController::class,
                     'update',
-                ]
-            );
+                ]);
 
-            Route::delete('/products/{product}', [
-                ProductController::class,
-                'destroy',
-            ]);
+                Route::post('/settings/logo', [
+                    AdminSettingController::class,
+                    'uploadLogo',
+                ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Admin Orders
-            |--------------------------------------------------------------------------
-            */
+                /*
+                |--------------------------------------------------------------------------
+                | Admin Categories
+                |--------------------------------------------------------------------------
+                */
 
-            Route::get('/orders', [
-                AdminOrderController::class,
-                'index',
-            ]);
+                Route::get('/categories', [
+                    CategoryController::class,
+                    'index',
+                ]);
 
-            Route::get('/customers/{user}/orders', [
-                AdminOrderController::class,
-                'customerHistory',
-            ]);
+                Route::post('/categories', [
+                    CategoryController::class,
+                    'store',
+                ]);
 
-            Route::patch('/orders/{order}/status', [
-                AdminOrderController::class,
-                'updateStatus',
-            ]);
+                Route::patch('/categories/{category}', [
+                    CategoryController::class,
+                    'update',
+                ]);
 
-            Route::patch('/orders/{order}/payment-status', [
-                AdminOrderController::class,
-                'updatePaymentStatus',
-            ]);
-        });
-});
+                Route::delete('/categories/{category}', [
+                    CategoryController::class,
+                    'destroy',
+                ]);
+
+                /*
+                |--------------------------------------------------------------------------
+                | Admin Products
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get('/products', [
+                    ProductController::class,
+                    'adminIndex',
+                ]);
+
+                Route::post('/products', [
+                    ProductController::class,
+                    'store',
+                ]);
+
+                Route::match(
+                    [
+                        'put',
+                        'patch',
+                        'post',
+                    ],
+                    '/products/{product}',
+                    [
+                        ProductController::class,
+                        'update',
+                    ]
+                );
+
+                Route::delete('/products/{product}', [
+                    ProductController::class,
+                    'destroy',
+                ]);
+
+                /*
+                |--------------------------------------------------------------------------
+                | Admin Orders
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get('/orders', [
+                    AdminOrderController::class,
+                    'index',
+                ]);
+
+                Route::get(
+                    '/customers/{user}/orders',
+                    [
+                        AdminOrderController::class,
+                        'customerHistory',
+                    ]
+                );
+
+                Route::patch(
+                    '/orders/{order}/status',
+                    [
+                        AdminOrderController::class,
+                        'updateStatus',
+                    ]
+                );
+
+                Route::patch(
+                    '/orders/{order}/payment-status',
+                    [
+                        AdminOrderController::class,
+                        'updatePaymentStatus',
+                    ]
+                );
+
+                /*
+                |--------------------------------------------------------------------------
+                | Admin Reports
+                |--------------------------------------------------------------------------
+                |
+                | Examples:
+                |
+                | /api/admin/reports/sales?mode=daily&date=2026-08-22
+                |
+                | /api/admin/reports/sales?mode=monthly&month=2026-08
+                |--------------------------------------------------------------------------
+                */
+
+                Route::get('/reports/sales', [
+                    AdminReportController::class,
+                    'sales',
+                ]);
+            });
+    });
