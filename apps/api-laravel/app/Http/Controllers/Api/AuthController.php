@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -20,6 +21,12 @@ class AuthController extends Controller
         private readonly SupabaseStorageService $storage
     ) {
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Register
+    |--------------------------------------------------------------------------
+    */
 
     public function register(Request $request): JsonResponse
     {
@@ -64,8 +71,8 @@ class AuthController extends Controller
         $uploadedAvatar = null;
 
         /*
-         * Upload profile picture to Supabase Storage
-         * when the customer selected one.
+         * Upload profile picture to
+         * Supabase Storage if selected.
          */
         if ($request->hasFile('avatar')) {
             try {
@@ -140,9 +147,8 @@ class AuthController extends Controller
             );
         } catch (Throwable $exception) {
             /*
-             * If database creation fails after
-             * the image was uploaded, remove the
-             * unused image from Supabase.
+             * Database failed after upload.
+             * Remove unused uploaded avatar.
              */
             if ($uploadedAvatar !== null) {
                 try {
@@ -172,8 +178,15 @@ class AuthController extends Controller
         );
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Login
+    |--------------------------------------------------------------------------
+    */
+
     /**
-     * Admins and customers use this same login endpoint.
+     * Admins and customers use
+     * this same login endpoint.
      */
     public function login(Request $request): JsonResponse
     {
@@ -217,6 +230,12 @@ class AuthController extends Controller
         );
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Current User
+    |--------------------------------------------------------------------------
+    */
+
     public function me(Request $request): JsonResponse
     {
         return response()->json([
@@ -226,6 +245,252 @@ class AuthController extends Controller
                 ),
         ]);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Update Profile
+    |--------------------------------------------------------------------------
+    |
+    | Customer can update:
+    |
+    | - Name
+    | - Email
+    | - Profile picture
+    |
+    | Password is NOT returned or displayed.
+    |
+    */
+
+    public function updateProfile(
+        Request $request
+    ): JsonResponse {
+        /** @var User|null $user */
+        $user = $request->user();
+
+        abort_if(
+            $user === null,
+            401,
+            'Unauthenticated.'
+        );
+
+        $validated = $request->validate([
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+
+                Rule::unique(
+                    'users',
+                    'email'
+                )->ignore(
+                    $user->id
+                ),
+            ],
+
+            'avatar' => [
+                'nullable',
+                'file',
+                'image',
+                'mimes:jpg,jpeg,png,webp',
+                'max:5120',
+            ],
+        ], [
+            'avatar.image' =>
+                'The profile picture must be a real image.',
+
+            'avatar.mimes' =>
+                'The profile picture must be JPG, JPEG, PNG, or WEBP.',
+
+            'avatar.max' =>
+                'The profile picture must not be larger than 5 MB.',
+        ]);
+
+        /*
+         * Keep the old avatar path.
+         *
+         * If a new avatar is uploaded
+         * successfully, we delete the old
+         * one after the database update.
+         */
+        $oldAvatarPath =
+            $user->avatar_path;
+
+        $uploadedAvatar = null;
+
+        /*
+         * Upload new avatar if the
+         * customer selected one.
+         */
+        if ($request->hasFile('avatar')) {
+            try {
+                $uploadedAvatar =
+                    $this->storage->uploadUserAvatar(
+                        $request->file('avatar')
+                    );
+            } catch (RequestException $exception) {
+                Log::error(
+                    'Supabase profile avatar update failed.',
+                    [
+                        'user_id' =>
+                            $user->id,
+
+                        'status' =>
+                            $exception->response?->status(),
+
+                        'response' =>
+                            $exception->response?->json()
+                            ?? $exception->response?->body(),
+                    ]
+                );
+
+                return response()->json([
+                    'message' =>
+                        'Unable to upload the new profile picture.',
+                ], 502);
+            } catch (Throwable $exception) {
+                Log::error(
+                    'Profile avatar update failed.',
+                    [
+                        'user_id' =>
+                            $user->id,
+
+                        'error' =>
+                            $exception->getMessage(),
+                    ]
+                );
+
+                return response()->json([
+                    'message' =>
+                        'Laravel could not upload the new profile picture.',
+                ], 500);
+            }
+        }
+
+        try {
+            /*
+             * Update name and email.
+             */
+            $user->name =
+                trim(
+                    $validated['name']
+                );
+
+            $user->email =
+                strtolower(
+                    trim(
+                        $validated['email']
+                    )
+                );
+
+            /*
+             * Only replace avatar when
+             * a new image was uploaded.
+             */
+            if ($uploadedAvatar !== null) {
+                $user->avatar_url =
+                    $uploadedAvatar['url'];
+
+                $user->avatar_path =
+                    $uploadedAvatar['path'];
+            }
+
+            $user->save();
+        } catch (Throwable $exception) {
+            /*
+             * Database save failed.
+             *
+             * Remove the newly uploaded
+             * avatar so it does not remain
+             * unused in Supabase Storage.
+             */
+            if ($uploadedAvatar !== null) {
+                try {
+                    $this->storage->delete(
+                        $uploadedAvatar['path']
+                    );
+                } catch (Throwable $cleanupException) {
+                    Log::warning(
+                        'Failed to clean up new profile avatar after update error.',
+                        [
+                            'path' =>
+                                $uploadedAvatar['path'],
+
+                            'error' =>
+                                $cleanupException->getMessage(),
+                        ]
+                    );
+                }
+            }
+
+            throw $exception;
+        }
+
+        /*
+         * Database update succeeded.
+         *
+         * Now remove the customer's
+         * previous avatar from Supabase.
+         */
+        if (
+            $uploadedAvatar !== null &&
+            $oldAvatarPath &&
+            $oldAvatarPath !==
+                $uploadedAvatar['path']
+        ) {
+            try {
+                $this->storage->delete(
+                    $oldAvatarPath
+                );
+            } catch (Throwable $exception) {
+                /*
+                 * Profile update already
+                 * succeeded, so do not fail
+                 * the request just because
+                 * old-image cleanup failed.
+                 */
+                Log::warning(
+                    'Failed to delete old profile avatar.',
+                    [
+                        'user_id' =>
+                            $user->id,
+
+                        'path' =>
+                            $oldAvatarPath,
+
+                        'error' =>
+                            $exception->getMessage(),
+                    ]
+                );
+            }
+        }
+
+        /*
+         * Refresh values from database.
+         */
+        $user->refresh();
+
+        return response()->json([
+            'message' =>
+                'Profile updated successfully.',
+
+            'user' =>
+                $this->userData(
+                    $user
+                ),
+        ]);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Logout
+    |--------------------------------------------------------------------------
+    */
 
     public function logout(Request $request): JsonResponse
     {
@@ -239,11 +504,18 @@ class AuthController extends Controller
         ]);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Authentication Payload
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * @return array<string, mixed>
      */
-    private function authPayload(User $user): array
-    {
+    private function authPayload(
+        User $user
+    ): array {
         return [
             'token' =>
                 $user
@@ -253,15 +525,27 @@ class AuthController extends Controller
                     ->plainTextToken,
 
             'user' =>
-                $this->userData($user),
+                $this->userData(
+                    $user
+                ),
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Safe User Data
+    |--------------------------------------------------------------------------
+    |
+    | Password is deliberately NOT included.
+    |
+    */
 
     /**
      * @return array<string, mixed>
      */
-    private function userData(?User $user): array
-    {
+    private function userData(
+        ?User $user
+    ): array {
         abort_if(
             $user === null,
             401,
@@ -285,4 +569,4 @@ class AuthController extends Controller
                 $user->avatar_url,
         ];
     }
-}
+}   

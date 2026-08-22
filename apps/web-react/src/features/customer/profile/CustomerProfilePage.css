@@ -1,0 +1,484 @@
+/* =========================================================
+   CUSTOMER PROFILE PAGE
+   ========================================================= */
+
+.customer-profile-page {
+  min-height: 100vh;
+  background: #f5f7fb;
+  padding: 32px 20px 60px;
+  color: #172033;
+}
+
+.customer-profile-container {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* =========================================================
+   BACK BUTTON
+   ========================================================= */
+
+.customer-profile-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  border: 0;
+  background: transparent;
+
+  color: #2563c7;
+  font-size: 14px;
+  font-weight: 700;
+
+  padding: 8px 0;
+  margin-bottom: 22px;
+
+  cursor: pointer;
+}
+
+.customer-profile-back:hover {
+  color: #174ca8;
+}
+
+/* =========================================================
+   PAGE HEADING
+   ========================================================= */
+
+.customer-profile-heading {
+  margin-bottom: 24px;
+}
+
+.customer-profile-heading h1 {
+  margin: 0 0 6px;
+
+  font-size: 28px;
+  font-weight: 800;
+
+  color: #172033;
+}
+
+.customer-profile-heading p {
+  margin: 0;
+
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* =========================================================
+   PROFILE CARD
+   ========================================================= */
+
+.customer-profile-card {
+  width: 100%;
+
+  background: #ffffff;
+
+  border: 1px solid #e4e8f0;
+  border-radius: 16px;
+
+  padding: 36px;
+
+  box-shadow:
+    0 8px 30px
+    rgba(15, 23, 42, 0.06);
+}
+
+/* =========================================================
+   PROFILE IMAGE
+   ========================================================= */
+
+.customer-profile-avatar {
+  width: 110px;
+  height: 110px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin: 0 auto 18px;
+
+  border-radius: 50%;
+
+  background: #eef4ff;
+
+  color: #245bc1;
+
+  overflow: hidden;
+
+  border: 4px solid #ffffff;
+
+  box-shadow:
+    0 0 0 2px #d9e5ff;
+}
+
+.customer-profile-avatar img {
+  width: 100%;
+  height: 100%;
+
+  object-fit: cover;
+}
+
+/* =========================================================
+   PROFILE INFO
+   ========================================================= */
+
+.customer-profile-info {
+  text-align: center;
+}
+
+.customer-profile-info h2 {
+  margin: 0 0 7px;
+
+  font-size: 24px;
+  font-weight: 800;
+
+  color: #172033;
+}
+
+.customer-profile-info p {
+  margin: 0;
+
+  color: #6b7280;
+  font-size: 14px;
+}
+
+/* =========================================================
+   PROFILE ACTIONS
+   ========================================================= */
+
+.customer-profile-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+
+  margin-top: 28px;
+}
+
+.customer-profile-actions button {
+  min-height: 42px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  border-radius: 8px;
+
+  padding: 0 18px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.customer-profile-edit-button {
+  border: 1px solid #2860c5;
+
+  background: #2860c5;
+
+  color: #ffffff;
+}
+
+.customer-profile-edit-button:hover {
+  background: #1f50ab;
+  border-color: #1f50ab;
+
+  transform: translateY(-1px);
+}
+
+.customer-profile-logout-button {
+  border: 1px solid #e5e7eb;
+
+  background: #ffffff;
+
+  color: #dc2626;
+}
+
+.customer-profile-logout-button:hover {
+  background: #fff5f5;
+
+  border-color: #fecaca;
+}
+
+/* =========================================================
+   EDIT FORM
+   ========================================================= */
+
+.customer-profile-edit-form {
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+/* =========================================================
+   AVATAR EDITOR
+   ========================================================= */
+
+.customer-profile-avatar-editor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  margin-bottom: 28px;
+}
+
+.customer-profile-avatar-editor
+.customer-profile-avatar {
+  margin-bottom: 15px;
+}
+
+.customer-profile-photo-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+
+  min-height: 38px;
+
+  padding: 0 14px;
+
+  border: 1px solid #d6dce8;
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  color: #334155;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.customer-profile-photo-button:hover {
+  background: #f8fafc;
+  border-color: #b7c2d4;
+}
+
+.customer-profile-avatar-editor small {
+  margin-top: 9px;
+
+  color: #94a3b8;
+
+  font-size: 12px;
+}
+
+/* =========================================================
+   FORM FIELDS
+   ========================================================= */
+
+.customer-profile-field {
+  margin-bottom: 20px;
+}
+
+.customer-profile-field label {
+  display: block;
+
+  margin-bottom: 7px;
+
+  color: #334155;
+
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.customer-profile-field input {
+  width: 100%;
+  height: 44px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #d8deea;
+  border-radius: 8px;
+
+  background: #ffffff;
+
+  padding: 0 13px;
+
+  font-size: 14px;
+  color: #172033;
+
+  outline: none;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.customer-profile-field input:focus {
+  border-color: #2860c5;
+
+  box-shadow:
+    0 0 0 3px
+    rgba(40, 96, 197, 0.12);
+}
+
+.customer-profile-field input:disabled {
+  background: #f3f4f6;
+
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   SECURITY NOTE
+   ========================================================= */
+
+.customer-profile-security-note {
+  margin-top: 4px;
+
+  padding: 12px 14px;
+
+  border-radius: 8px;
+
+  background: #f8fafc;
+
+  color: #64748b;
+
+  font-size: 13px;
+}
+
+/* =========================================================
+   EDIT ACTIONS
+   ========================================================= */
+
+.customer-profile-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+
+  margin-top: 28px;
+}
+
+.customer-profile-edit-actions button {
+  min-height: 42px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  border-radius: 8px;
+
+  padding: 0 18px;
+
+  font-size: 14px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.customer-profile-edit-actions
+button:first-child {
+  border: 1px solid #d6dce8;
+
+  background: #ffffff;
+
+  color: #475569;
+}
+
+.customer-profile-edit-actions
+button:first-child:hover {
+  background: #f8fafc;
+}
+
+.customer-profile-edit-actions
+button:last-child {
+  border: 1px solid #2860c5;
+
+  background: #2860c5;
+
+  color: #ffffff;
+}
+
+.customer-profile-edit-actions
+button:last-child:hover {
+  background: #1f50ab;
+}
+
+.customer-profile-edit-actions
+button:disabled {
+  opacity: 0.6;
+
+  cursor: not-allowed;
+}
+
+/* =========================================================
+   ALERTS
+   ========================================================= */
+
+.customer-profile-page .alert {
+  margin-bottom: 18px;
+
+  padding: 12px 15px;
+
+  border-radius: 8px;
+
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.customer-profile-page
+.alert.error {
+  background: #fef2f2;
+
+  color: #b91c1c;
+
+  border: 1px solid #fecaca;
+}
+
+.customer-profile-page
+.alert.success {
+  background: #f0fdf4;
+
+  color: #15803d;
+
+  border: 1px solid #bbf7d0;
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 640px) {
+  .customer-profile-page {
+    padding:
+      20px 15px
+      40px;
+  }
+
+  .customer-profile-heading h1 {
+    font-size: 24px;
+  }
+
+  .customer-profile-card {
+    padding:
+      26px 18px;
+  }
+
+  .customer-profile-avatar {
+    width: 90px;
+    height: 90px;
+  }
+
+  .customer-profile-actions {
+    flex-direction: column;
+  }
+
+  .customer-profile-actions button {
+    width: 100%;
+  }
+
+  .customer-profile-edit-actions {
+    flex-direction: column-reverse;
+  }
+
+  .customer-profile-edit-actions button {
+    width: 100%;
+  }
+}
