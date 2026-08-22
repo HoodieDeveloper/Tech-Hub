@@ -1076,9 +1076,6 @@ export function PublicStorefront({
                                 }
                               </h3>
 
-                              <div className="product-stars">
-                                ☆☆☆☆☆
-                              </div>
 
                               <div className="product-price-row">
                                 <strong>
