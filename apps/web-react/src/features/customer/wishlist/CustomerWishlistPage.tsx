@@ -44,52 +44,7 @@ export function CustomerWishlistPage({
   onRemove,
 }: Props) {
   return (
-    <div className="storefront-page customer-wishlist-page">
-      <div className="storefront-topbar">
-        <div className="storefront-container storefront-topbar-inner">
-          <span><Truck size={13} /> Free shipping on orders over $49</span>
-          <div className="topbar-links">
-            <span>Need help?</span>
-            <span>+855 12 23 23 56</span>
-            <span>Support</span>
-            <span>Track Order</span>
-            <span>English / USD</span>
-          </div>
-        </div>
-      </div>
-
-      <header className="storefront-main-header">
-        <div className="storefront-container main-header-inner">
-          <button type="button" className="store-brand" onClick={onBack}>
-            <strong>DCS Computer Shop</strong>
-          </button>
-
-          <div className="store-search">
-            <button type="button" className="category-button" aria-label="Choose category">All Categories</button>
-
-            <div className="search-input-wrap">
-              <input type="search" aria-label="Search products" placeholder="Search for product, brands or categories..." />
-              <Search size={18} />
-            </div>
-          </div>
-
-          <div className="store-header-actions" aria-label="Store actions">
-            <button type="button" className="header-icon-button" aria-label="Wishlist"><Heart size={18} /><span>Wishlist</span></button>
-            <button type="button" className="header-icon-button" aria-label="Account"><UserRound size={18} /><span>Account</span></button>
-            <button type="button" className="header-icon-button cart-header-button" aria-label="Cart"><ShoppingCart size={18} /><span>Cart</span></button>
-          </div>
-        </div>
-      </header>
-
-      <nav className="store-navigation" aria-label="Main navigation">
-        <div className="storefront-container store-navigation-inner">
-          <button type="button" className="active" onClick={onBack}>Home</button>
-          <button type="button" onClick={onBack}>Shop by Category <span>⌄</span></button>
-          <button type="button">About</button>
-          <button type="button">Partnership</button>
-        </div>
-      </nav>
-
+    <div className="customer-wishlist-page">
       <div className="storefront-container wishlist-page-content">
         <div className="wishlist-page-header">
           <button

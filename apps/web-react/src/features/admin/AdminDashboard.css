@@ -735,3 +735,58 @@
     grid-column: 2;
   }
 }
+/* =========================================================
+   FINAL ADMIN POLISH
+   ========================================================= */
+
+.admin-shell {
+  background: #f5f7fb;
+}
+
+.admin-sidebar {
+  z-index: 20;
+  box-shadow: 8px 0 28px rgba(15, 23, 42, 0.08);
+}
+
+.admin-main {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top right, rgba(219, 234, 254, 0.5), transparent 340px),
+    #f7f9fc;
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 15;
+  background: rgba(247, 249, 252, 0.94);
+  backdrop-filter: blur(12px);
+}
+
+.admin-topbar h1,
+.admin-page-heading h1 {
+  letter-spacing: -0.025em;
+}
+
+.admin-stat-card,
+.admin-analytics-card,
+.admin-info-card {
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 10px 28px rgba(15, 23, 42, 0.05);
+}
+
+.admin-sidebar button:focus-visible,
+.admin-main button:focus-visible,
+.admin-main input:focus-visible,
+.admin-main select:focus-visible,
+.admin-main textarea:focus-visible {
+  outline: 3px solid rgba(96, 165, 250, 0.28);
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  .admin-topbar {
+    min-height: 72px;
+  }
+}

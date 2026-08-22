@@ -5,25 +5,27 @@ import {
 } from 'react';
 
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock3,
   Heart,
-  PackageSearch,
   RotateCcw,
-  Search,
   ShieldCheck,
-  ShoppingCart,
   Truck,
-  UserRound,
 } from 'lucide-react';
 
 import {
   apiGet,
-  resolveMediaUrl,
   type AuthUser,
 } from '../../core/api/client';
+
+import {
+  CustomerFooter,
+} from '../customer/layout/CustomerFooter';
+
+import {
+  CustomerHeader,
+} from '../customer/layout/CustomerHeader';
 
 import {
   ProductImage,
@@ -70,6 +72,13 @@ type Props = {
 
   onViewAll?: () => void;
 
+  /*
+   * Keep this prop because App.tsx
+   * currently passes it.
+   *
+   * Logout is now handled from
+   * the Profile page.
+   */
   onLogout: () => void;
 
   onProfileClick?: () => void;
@@ -152,23 +161,16 @@ export function PublicStorefront({
   onLogin,
   onAdminDashboard,
   onProductClick,
-  onLogout,
   onViewAll,
   onWishlistClick,
   onOrdersClick,
   onProfileClick,
   cartCount = 0,
   onCartClick,
-
   wishlistCount = 0,
   isWishlisted,
   onToggleWishlist,
 }: Props) {
-  const accountAvatarUrl =
-    resolveMediaUrl(
-      user?.avatar_url,
-    );
-
   /*
    * =========================================
    * SHARED PRODUCTS
@@ -342,11 +344,13 @@ export function PublicStorefront({
         timer,
       );
     };
-  }, [sliderPaused]);
+  }, [
+    sliderPaused,
+  ]);
 
   /*
    * =========================================
-   * SEARCH PRODUCTS
+   * SEARCH NORMAL PRODUCTS
    * =========================================
    */
 
@@ -426,7 +430,7 @@ export function PublicStorefront({
 
   /*
    * =========================================
-   * BANNER CONTROLS
+   * HERO CONTROLS
    * =========================================
    */
 
@@ -480,257 +484,69 @@ export function PublicStorefront({
     <div className="storefront-page">
 
       {/* =====================================
-          STICKY HEADER
+          REUSABLE CUSTOMER HEADER
       ====================================== */}
 
-      <div className="storefront-header-stack">
+      <CustomerHeader
+        user={
+          user
+        }
 
-        {/* =====================================
-            BLUE HEADER
-        ====================================== */}
+        search={
+          search
+        }
 
-        <header className="storefront-main-header">
-          <div className="storefront-container main-header-inner">
+        onSearchChange={
+          setSearch
+        }
 
-            {/* BRAND */}
+        wishlistCount={
+          wishlistCount
+        }
 
-            <button
-              type="button"
-              className="store-brand"
-            >
-              <strong>
-                DCS Computer Shop
-              </strong>
-            </button>
+        cartCount={
+          cartCount
+        }
 
-            {/* SEARCH */}
+        onHomeClick={() => {
+          window.scrollTo({
+            top: 0,
+            left: 0,
+            behavior: 'smooth',
+          });
+        }}
 
-            <div className="store-search">
-              <div className="search-input-wrap">
-                <input
-                  type="search"
-                  placeholder="Search for product, brands or categories..."
-                  value={
-                    search
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    setSearch(
-                      event.target
-                        .value,
-                    )
-                  }
-                />
+        onViewAll={
+          onViewAll
+        }
 
-                <Search
-                  size={18}
-                />
-              </div>
-            </div>
+        onWishlistClick={
+          onWishlistClick
+        }
 
-            {/* =====================================
-                HEADER ACTIONS
-            ====================================== */}
+        onOrdersClick={
+          onOrdersClick
+        }
 
-            <div className="store-header-actions">
+        onProfileClick={
+          onProfileClick
+        }
 
-              {/* WISHLIST */}
+        onCartClick={
+          onCartClick
+        }
 
-              <button
-                type="button"
-                className="header-icon-button wishlist-header-button"
-                title="Wishlist"
-                onClick={
-                  onWishlistClick
-                }
-              >
-                <Heart
-                  size={19}
-                  fill={
-                    wishlistCount > 0
-                      ? 'currentColor'
-                      : 'none'
-                  }
-                />
+        onLogin={
+          onLogin
+        }
 
-                <span>
-                  Wishlist
-                </span>
-
-                {wishlistCount >
-                  0 && (
-                  <span className="wishlist-count">
-                    {
-                      wishlistCount
-                    }
-                  </span>
-                )}
-              </button>
-
-              {/* MY ORDERS */}
-
-              {user?.role ===
-                'customer' && (
-                <button
-                  type="button"
-                  className="header-icon-button"
-                  title="My Orders"
-                  onClick={
-                    onOrdersClick
-                  }
-                >
-                  <PackageSearch
-                    size={19}
-                  />
-
-                  <span>
-                    My Orders
-                  </span>
-                </button>
-              )}
-
-              {/* =====================================
-                  ACCOUNT
-              ====================================== */}
-
-              {user ? (
-                <button
-                  type="button"
-                  className="header-icon-button account-page-button"
-                  title="My Profile"
-                  onClick={
-                    onProfileClick
-                  }
-                >
-                  {accountAvatarUrl ? (
-                    <img
-                      src={
-                        accountAvatarUrl
-                      }
-                      alt={
-                        user.name
-                      }
-                      className="header-account-avatar"
-                    />
-                  ) : (
-                    <UserRound
-                      size={19}
-                    />
-                  )}
-
-                  <span>
-                    {
-                      user.name
-                    }
-                  </span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="header-icon-button"
-                  onClick={
-                    onLogin
-                  }
-                >
-                  <UserRound
-                    size={19}
-                  />
-
-                  <span>
-                    Account
-                  </span>
-                </button>
-              )}
-
-              {/* CART */}
-
-              <button
-                type="button"
-                className="header-icon-button cart-header-button"
-                title="Cart"
-                onClick={
-                  onCartClick
-                }
-              >
-                <ShoppingCart
-                  size={20}
-                />
-
-                <span className="cart-count">
-                  {
-                    cartCount
-                  }
-                </span>
-
-                <span>
-                  Cart
-                </span>
-              </button>
-            </div>
-          </div>
-        </header>
-
-        {/* =====================================
-            WHITE NAVBAR
-        ====================================== */}
-
-        <nav className="store-navigation">
-          <div className="storefront-container store-navigation-inner">
-
-            <button
-              type="button"
-              className="active"
-            >
-              Home
-            </button>
-
-            <button
-              type="button"
-              onClick={
-                onViewAll
-              }
-            >
-              Shop by Category
-
-              <ChevronDown
-                size={14}
-              />
-            </button>
-
-            <button
-              type="button"
-            >
-              About
-            </button>
-
-            <button
-              type="button"
-            >
-              Partnership
-            </button>
-
-            {user?.role ===
-              'admin' && (
-                <button
-                  type="button"
-                  onClick={
-                    onAdminDashboard
-                  }
-                >
-                  <ShieldCheck
-                    size={15}
-                  />
-
-                  Admin Dashboard
-                </button>
-              )}
-          </div>
-        </nav>
-      </div>
+        onAdminDashboard={
+          onAdminDashboard
+        }
+      />
 
       {/* =====================================
-          MAIN
+          MAIN CONTENT
       ====================================== */}
 
       <main className="storefront-container storefront-main">
@@ -843,6 +659,7 @@ export function PublicStorefront({
         ====================================== */}
 
         <section className="best-sales-section">
+
           <ScrollReveal>
             <div className="best-sales-heading">
               <h2>
@@ -850,6 +667,8 @@ export function PublicStorefront({
               </h2>
             </div>
           </ScrollReveal>
+
+          {/* ERROR */}
 
           {bestSellersError && (
             <ScrollReveal>
@@ -861,6 +680,8 @@ export function PublicStorefront({
             </ScrollReveal>
           )}
 
+          {/* LOADING */}
+
           {loadingBestSellers && (
             <ScrollReveal>
               <div className="loading-card">
@@ -868,6 +689,8 @@ export function PublicStorefront({
               </div>
             </ScrollReveal>
           )}
+
+          {/* EMPTY */}
 
           {!loadingBestSellers &&
             !bestSellersError &&
@@ -880,10 +703,13 @@ export function PublicStorefront({
               </ScrollReveal>
             )}
 
+          {/* PRODUCTS */}
+
           {!loadingBestSellers &&
             filteredBestSellers.length >
               0 && (
               <div className="public-product-grid">
+
                 {filteredBestSellers.map(
                   (
                     product,
@@ -904,6 +730,7 @@ export function PublicStorefront({
                         }
                       >
                         <article className="public-product-card">
+
                           <button
                             type="button"
                             className="product-click-area"
@@ -913,7 +740,10 @@ export function PublicStorefront({
                               )
                             }
                           >
+                            {/* IMAGE */}
+
                             <div className="product-image-area">
+
                               <span className="product-badge">
                                 BEST
                               </span>
@@ -928,7 +758,10 @@ export function PublicStorefront({
                               />
                             </div>
 
+                            {/* BODY */}
+
                             <div className="public-product-body">
+
                               <h3>
                                 {
                                   product.name
@@ -943,6 +776,7 @@ export function PublicStorefront({
                               </div>
 
                               <div className="product-price-row">
+
                                 <strong>
                                   $
                                   {Number(
@@ -991,6 +825,7 @@ export function PublicStorefront({
         ====================================== */}
 
         <section className="best-sales-section">
+
           <ScrollReveal>
             <div className="best-sales-heading">
               <h2>
@@ -998,6 +833,8 @@ export function PublicStorefront({
               </h2>
             </div>
           </ScrollReveal>
+
+          {/* ERROR */}
 
           {productsError && (
             <ScrollReveal>
@@ -1009,6 +846,8 @@ export function PublicStorefront({
             </ScrollReveal>
           )}
 
+          {/* LOADING */}
+
           {loadingProducts && (
             <ScrollReveal>
               <div className="loading-card">
@@ -1016,6 +855,8 @@ export function PublicStorefront({
               </div>
             </ScrollReveal>
           )}
+
+          {/* EMPTY */}
 
           {!loadingProducts &&
             filteredProducts
@@ -1027,10 +868,13 @@ export function PublicStorefront({
               </ScrollReveal>
             )}
 
+          {/* PRODUCTS */}
+
           {!loadingProducts &&
             visibleProducts.length >
               0 && (
               <div className="public-product-grid">
+
                 {visibleProducts.map(
                   (
                     product,
@@ -1051,6 +895,7 @@ export function PublicStorefront({
                         }
                       >
                         <article className="public-product-card">
+
                           <button
                             type="button"
                             className="product-click-area"
@@ -1060,7 +905,10 @@ export function PublicStorefront({
                               )
                             }
                           >
+                            {/* IMAGE */}
+
                             <div className="product-image-area">
+
                               <span className="product-badge">
                                 NEW
                               </span>
@@ -1075,15 +923,18 @@ export function PublicStorefront({
                               />
                             </div>
 
+                            {/* BODY */}
+
                             <div className="public-product-body">
+
                               <h3>
                                 {
                                   product.name
                                 }
                               </h3>
 
-
                               <div className="product-price-row">
+
                                 <strong>
                                   $
                                   {Number(
@@ -1134,6 +985,9 @@ export function PublicStorefront({
         <ScrollReveal
           className="store-benefits"
         >
+
+          {/* FREE SHIPPING */}
+
           <div className="benefit-item">
             <Truck
               size={25}
@@ -1149,6 +1003,8 @@ export function PublicStorefront({
               </span>
             </div>
           </div>
+
+          {/* SECURE PAYMENT */}
 
           <div className="benefit-item">
             <ShieldCheck
@@ -1166,6 +1022,8 @@ export function PublicStorefront({
             </div>
           </div>
 
+          {/* RETURNS */}
+
           <div className="benefit-item">
             <RotateCcw
               size={25}
@@ -1182,6 +1040,8 @@ export function PublicStorefront({
             </div>
           </div>
 
+          {/* SUPPORT */}
+
           <div className="benefit-item">
             <Clock3
               size={25}
@@ -1197,259 +1057,20 @@ export function PublicStorefront({
               </span>
             </div>
           </div>
+
         </ScrollReveal>
       </main>
 
       {/* =====================================
-          FOOTER
+          REUSABLE CUSTOMER FOOTER
       ====================================== */}
 
-      <footer className="store-footer">
-        <div className="storefront-container footer-grid">
+      <CustomerFooter
+        onViewAll={
+          onViewAll
+        }
+      />
 
-          {/* DCS */}
-
-          <div className="footer-brand">
-            <h3>
-              DCS Computer shop
-            </h3>
-
-            <p>
-              Your trusted destination
-              for the latest tech.
-            </p>
-
-            <p>
-              Great products, Better
-              experiences.
-            </p>
-
-            {/* SOCIAL */}
-
-            <div className="social-links">
-              <button
-                type="button"
-                aria-label="Instagram"
-              >
-                <img
-                  src="/images/footer/Instagram.png"
-                  alt="Instagram"
-                />
-              </button>
-
-              <button
-                type="button"
-                aria-label="Telegram"
-              >
-                <img
-                  src="/images/footer/Telegram.png"
-                  alt="Telegram"
-                />
-              </button>
-
-              <button
-                type="button"
-                aria-label="Facebook"
-                onClick={() =>
-                  window.open(
-                    'https://www.facebook.com/dcscomputershop',
-                    '_blank',
-                    'noopener,noreferrer',
-                  )
-                }
-              >
-                <img
-                  src="/images/footer/Facebook.png"
-                  alt="Facebook"
-                />
-              </button>
-
-              <button
-                type="button"
-                aria-label="X"
-              >
-                <img
-                  src="/images/footer/x.png"
-                  alt="X"
-                />
-              </button>
-            </div>
-          </div>
-
-          {/* SHOP */}
-
-          <div className="footer-column">
-            <h4>
-              Shop
-            </h4>
-
-            <button
-              type="button"
-              onClick={
-                onViewAll
-              }
-            >
-              All Categories
-            </button>
-
-            <button
-              type="button"
-            >
-              Best Sellers
-            </button>
-
-            <button
-              type="button"
-            >
-              New Arrivals
-            </button>
-
-            <button
-              type="button"
-            >
-              Deals
-            </button>
-          </div>
-
-          {/* CUSTOMER CARE */}
-
-          <div className="footer-column">
-            <h4>
-              Customer Care
-            </h4>
-
-            <button
-              type="button"
-            >
-              Contact Us
-            </button>
-
-            <button
-              type="button"
-            >
-              Track Order
-            </button>
-
-            <button
-              type="button"
-            >
-              Return & Refunds
-            </button>
-
-            <button
-              type="button"
-            >
-              Shipping Info
-            </button>
-
-            <button
-              type="button"
-            >
-              FAQ
-            </button>
-          </div>
-
-          {/* COMPANY */}
-
-          <div className="footer-column">
-            <h4>
-              Company
-            </h4>
-
-            <button
-              type="button"
-            >
-              About DCS
-            </button>
-
-            <button
-              type="button"
-            >
-              Careers
-            </button>
-
-            <button
-              type="button"
-            >
-              Press
-            </button>
-
-            <button
-              type="button"
-            >
-              DCS Rewards
-            </button>
-
-            <button
-              type="button"
-            >
-              Sustainability
-            </button>
-          </div>
-
-          {/* NEWSLETTER */}
-
-          <div className="footer-newsletter">
-            <h4>
-              Stay in the loop
-            </h4>
-
-            <p>
-              Subscribe for exclusive
-              deals and updates.
-            </p>
-
-            <div className="newsletter-form">
-              <input
-                type="email"
-                placeholder="Enter Your Email"
-              />
-
-              <button
-                type="button"
-              >
-                Subscribe
-              </button>
-            </div>
-
-            {/* PAYMENT */}
-
-            <div className="payment-methods">
-              <img
-                src="/images/footer/visa.png"
-                alt="Visa"
-              />
-
-              <img
-                src="/images/footer/MasterCard.png"
-                alt="Mastercard"
-              />
-
-              <img
-                src="/images/footer/PayPal.png"
-                alt="PayPal"
-              />
-
-              <img
-                src="/images/footer/wing.png"
-                alt="Wing Bank"
-              />
-
-              <img
-                src="/images/footer/ABA.png"
-                alt="ABA Bank"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* COPYRIGHT */}
-
-        <div className="storefront-container footer-bottom">
-          © 2026 DCS, All rights
-          reserved.
-        </div>
-      </footer>
     </div>
   );
 }

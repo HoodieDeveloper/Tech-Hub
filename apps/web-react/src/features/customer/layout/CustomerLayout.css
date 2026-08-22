@@ -1,0 +1,35 @@
+/* =========================================================
+   SHARED CUSTOMER LAYOUT
+   ========================================================= */
+
+.customer-layout-page {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f5f7fb;
+  color: #0f172a;
+}
+
+/* The storefront shell is only used to scope shared header/footer styles. */
+.customer-layout-header-shell,
+.customer-layout-footer-shell {
+  width: 100%;
+  min-height: 0 !important;
+}
+
+.customer-layout-header-shell {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.customer-layout-content {
+  width: 100%;
+  min-height: 0;
+  flex: 1 0 auto;
+}
+
+.customer-layout-footer-shell {
+  margin-top: auto;
+}
