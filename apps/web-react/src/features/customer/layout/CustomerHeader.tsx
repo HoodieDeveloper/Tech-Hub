@@ -12,6 +12,10 @@ import type {
   AuthUser,
 } from '../../../core/api/client';
 
+import {
+  resolveMediaUrl,
+} from '../../../core/api/client';
+
 type Props = {
   user: AuthUser | null;
 
@@ -57,6 +61,11 @@ export function CustomerHeader({
   onLogin,
   onAdminDashboard,
 }: Props) {
+  const accountAvatarUrl =
+    resolveMediaUrl(
+      user?.avatar_url,
+    );
+
   return (
     <div className="storefront-header-stack">
 
@@ -176,10 +185,10 @@ export function CustomerHeader({
                   onProfileClick
                 }
               >
-                {user.avatar_url ? (
+                {accountAvatarUrl ? (
                   <img
                     src={
-                      user.avatar_url
+                      accountAvatarUrl
                     }
                     alt={
                       user.name

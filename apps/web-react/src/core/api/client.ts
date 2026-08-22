@@ -6,6 +6,17 @@ export const API_URL = (
   'http://127.0.0.1:8000/api'
 ).replace(/\/$/, '');
 
+const API_ORIGIN =
+  (() => {
+    try {
+      return new URL(
+        API_URL,
+      ).origin;
+    } catch {
+      return '';
+    }
+  })();
+
 const TOKEN_KEY =
   'tech_hub_token';
 
@@ -27,6 +38,69 @@ export type AuthUser = {
     | string
     | null;
 };
+
+/*
+ * Normalize media URLs so image rendering keeps working
+ * when the backend returns full URLs, relative URLs, or
+ * hostnames without an explicit scheme.
+ */
+export function resolveMediaUrl(
+  rawUrl:
+    | string
+    | null
+    | undefined,
+) {
+  const value =
+    rawUrl?.trim();
+
+  if (!value) {
+    return null;
+  }
+
+  if (
+    /^https?:\/\//i.test(
+      value,
+    ) ||
+    value.startsWith(
+      'blob:',
+    ) ||
+    value.startsWith(
+      'data:',
+    )
+  ) {
+    return value;
+  }
+
+  if (
+    value.startsWith(
+      '//',
+    )
+  ) {
+    return `https:${value}`;
+  }
+
+  if (
+    /^[\w.-]+\.[a-z]{2,}(?:\/|$)/i.test(
+      value,
+    )
+  ) {
+    return `https://${value}`;
+  }
+
+  if (
+    value.startsWith(
+      '/',
+    )
+  ) {
+    return API_ORIGIN
+      ? `${API_ORIGIN}${value}`
+      : value;
+  }
+
+  return API_ORIGIN
+    ? `${API_ORIGIN}/${value}`
+    : value;
+}
 
 /*
  * =========================================

@@ -16,6 +16,7 @@ import {
 
 import {
   apiPostForm,
+  resolveMediaUrl,
   setStoredUser,
   type AuthUser,
 } from '../../../core/api/client';
@@ -137,6 +138,16 @@ export function CustomerProfilePage({
   ] =
     useState<AuthUser>(
       user,
+    );
+
+  const profileAvatarUrl =
+    resolveMediaUrl(
+      profileUser.avatar_url,
+    );
+
+  const previewAvatarUrl =
+    resolveMediaUrl(
+      avatarPreview,
     );
 
   /*
@@ -475,10 +486,10 @@ export function CustomerProfilePage({
             {/* AVATAR */}
 
             <div className="customer-profile-avatar">
-              {profileUser.avatar_url ? (
+              {profileAvatarUrl ? (
                 <img
                   src={
-                    profileUser.avatar_url
+                    profileAvatarUrl
                   }
                   alt={
                     profileUser.name
@@ -557,10 +568,10 @@ export function CustomerProfilePage({
 
             <div className="customer-profile-avatar-editor">
               <div className="customer-profile-avatar">
-                {avatarPreview ? (
+                {previewAvatarUrl ? (
                   <img
                     src={
-                      avatarPreview
+                      previewAvatarUrl
                     }
                     alt="Profile preview"
                   />
