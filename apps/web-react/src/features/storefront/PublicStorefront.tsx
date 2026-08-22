@@ -480,7 +480,7 @@ export function PublicStorefront({
   }
 
   return (
-    <div className="storefront-page">
+    <div className="storefront-page techhub-page-enter">
 
       {/* =====================================
           REUSABLE CUSTOMER HEADER

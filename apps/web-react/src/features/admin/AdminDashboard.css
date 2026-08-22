@@ -790,3 +790,7 @@
     min-height: 72px;
   }
 }
+
+.admin-section-enter {
+  width: 100%;
+}

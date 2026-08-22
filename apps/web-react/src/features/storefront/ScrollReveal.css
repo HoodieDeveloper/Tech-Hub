@@ -1,45 +1,26 @@
 /* =========================================================
-   TECHHUB SCROLL REVEAL
+   TECHHUB FLOAT-UP SCROLL REVEAL
    ========================================================= */
 
-/*
- * HIDDEN STATE
- *
- * Opacity handles the fade animation.
- * Visibility makes sure absolutely
- * nothing inside the section is shown
- * before it is revealed.
- */
 .scroll-reveal {
-  opacity: 1;
-  visibility: visible;
-
-  transform: none;
-
-  transition: none;
-
-  will-change: auto;
-
-  pointer-events: auto;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(30px);
+  transition:
+    opacity 0.62s ease,
+    transform 0.62s ease;
+  will-change:
+    opacity,
+    transform;
+  pointer-events: none;
 }
 
-/*
- * VISIBLE STATE
- */
 .scroll-reveal-visible {
   opacity: 1;
   visibility: visible;
-
-  transform: none;
-
-  transition: none;
-
+  transform: translateY(0);
   pointer-events: auto;
 }
-
-/* =========================================================
-   BENEFITS
-   ========================================================= */
 
 .scroll-reveal.store-benefits:not(
   .scroll-reveal-visible
@@ -48,19 +29,13 @@
   box-shadow: none !important;
 }
 
-.scroll-reveal.store-benefits.scroll-reveal-visible {
-  background: #7faaf4;
-}
-
-/* =========================================================
-   REDUCED MOTION
-   ========================================================= */
-
-@media (
-  prefers-reduced-motion: reduce
-) {
-  .scroll-reveal {
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal,
+  .scroll-reveal-visible {
+    opacity: 1;
+    visibility: visible;
     transform: none;
     transition: none;
+    pointer-events: auto;
   }
 }
