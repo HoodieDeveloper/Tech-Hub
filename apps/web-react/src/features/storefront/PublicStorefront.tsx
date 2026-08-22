@@ -1069,16 +1069,13 @@ export function PublicStorefront({
                               />
                             </div>
 
-                        <div className="public-product-body">
-                          <h3>
-                            {
-                              product.name
-                            }
-                          </h3>
+                            <div className="public-product-body">
+                              <h3>
+                                {
+                                  product.name
+                                }
+                              </h3>
 
-                          <div className="product-stars">
-                            ☆☆☆☆☆
-                          </div>
 
                               <div className="product-price-row">
                                 <strong>
