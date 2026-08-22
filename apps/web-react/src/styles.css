@@ -12,6 +12,13 @@
   background: #f5f7fb;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
+
+  /* Shared product-card sizing tokens */
+  --product-card-grid-gap: 12px;
+  --product-card-image-height: 225px;
+  --product-card-image-height-mobile: 220px;
+  --product-card-info-min-height: 96px;
+  --product-card-actions-min-height: 48px;
 }
 
 * {

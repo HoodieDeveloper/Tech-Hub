@@ -18,7 +18,7 @@
    RESET GLOBAL BUTTON STYLE
    ========================================================= */
 
-.customer-catalog-page button {
+.customer-catalog-page button:not(.customer-product-add-cart):not(.customer-product-favorite) {
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -215,10 +215,12 @@
 .catalog-product-grid {
   display: grid;
 
-  grid-template-columns:
-    repeat(4, minmax(0, 1fr));
+  --product-card-columns: 4;
 
-  gap: 12px;
+  grid-template-columns:
+    repeat(var(--product-card-columns), minmax(0, 1fr));
+
+  gap: var(--product-card-grid-gap);
 }
 
 
@@ -420,8 +422,7 @@
 
 @media (max-width: 1050px) {
   .catalog-product-grid {
-    grid-template-columns:
-      repeat(3, minmax(0, 1fr));
+    --product-card-columns: 3;
   }
 }
 
@@ -449,8 +450,7 @@
   }
 
   .catalog-product-grid {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
+    --product-card-columns: 2;
   }
 }
 
@@ -480,10 +480,6 @@
   }
 
   .catalog-product-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .catalog-product-image {
-    height: 220px;
+    --product-card-columns: 1;
   }
 }

@@ -8,11 +8,9 @@ import {
   ArrowLeft,
   Gamepad2,
   Headphones,
-  Heart,
   Laptop,
   Monitor,
   Package,
-  ShoppingCart,
   Watch,
 } from 'lucide-react';
 
@@ -21,8 +19,8 @@ import {
 } from '../../../core/api/client';
 
 import {
-  ProductImage,
-} from '../../products/ProductImage';
+  CustomerProductCard,
+} from '../layout/CustomerProductCard';
 
 import type {
   Product,
@@ -381,108 +379,16 @@ export function CustomerCatalogPage({
                   ) ?? false;
 
                 return (
-                  <article
-                    key={
-                      product.id
-                    }
-                    className="catalog-product-card"
-                  >
-                    <button
-                      type="button"
-                      className="catalog-product-main"
-                      onClick={() =>
-                        onProductClick(
-                          product,
-                        )
-                      }
-                    >
-                      <div className="catalog-product-image">
-                        <ProductImage
-                          imageUrl={
-                            product.image_url
-                          }
-                          alt={
-                            product.name
-                          }
-                        />
-                      </div>
-
-                      <div className="catalog-product-info">
-                        <h3>
-                          {
-                            product.name
-                          }
-                        </h3>
-
-                        <div className="catalog-product-bottom">
-                          <strong>
-                            $
-                            {Number(
-                              product.price,
-                            ).toFixed(
-                              2,
-                            )}
-                          </strong>
-
-                          {/* REAL WISHLIST HEART */}
-
-                          <Heart
-                            size={22}
-                            className={
-                              wishlisted
-                                ? 'catalog-heart wishlisted'
-                                : 'catalog-heart'
-                            }
-                            fill={
-                              wishlisted
-                                ? 'currentColor'
-                                : 'none'
-                            }
-                            onClick={(
-                              event,
-                            ) => {
-                              /*
-                               * Do not open
-                               * Product Details.
-                               */
-                              event.stopPropagation();
-
-                              onToggleWishlist?.(
-                                product.id,
-                              );
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </button>
-
-                    {/* =====================
-                        ADD TO CART
-                    ====================== */}
-
-                    <button
-                      type="button"
-                      className="catalog-add-cart"
-                      disabled={
-                        product.stock <=
-                        0
-                      }
-                      onClick={() =>
-                        onAddToCart?.(
-                          product,
-                        )
-                      }
-                    >
-                      <ShoppingCart
-                        size={15}
-                      />
-
-                      {product.stock >
-                      0
-                        ? 'Add to Cart'
-                        : 'Out of Stock'}
-                    </button>
-                  </article>
+                  <CustomerProductCard
+                    key={product.id}
+                    product={product}
+                    onProductClick={onProductClick}
+                    isWishlisted={wishlisted}
+                    onToggleWishlist={onToggleWishlist}
+                    onAddToCart={onAddToCart}
+                    showCategoryLabel
+                    imageHeight={225}
+                  />
                 );
               },
             )}

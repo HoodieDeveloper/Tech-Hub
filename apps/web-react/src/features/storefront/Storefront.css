@@ -618,11 +618,9 @@
 
   opacity: 0;
 
-  transition:
-    opacity 0.55s ease,
-    transform 0.65s ease;
+  transition: none;
 
-  transform: scale(1.01);
+  transform: none;
 
   pointer-events: none;
 }
@@ -630,7 +628,7 @@
 .hero-slide.active {
   opacity: 1;
 
-  transform: scale(1);
+  transform: none;
 
   pointer-events: auto;
 }
@@ -666,9 +664,7 @@
 
   opacity: 0;
 
-  transition:
-    opacity 0.2s ease,
-    background 0.2s ease;
+  transition: none;
 }
 
 .hero-slider:hover .hero-arrow {
@@ -789,157 +785,17 @@
 .public-product-grid {
   display: grid;
 
+  --product-card-columns: 4;
+
   grid-template-columns:
-    repeat(4, minmax(0, 1fr));
+    repeat(var(--product-card-columns), minmax(0, 1fr));
 
-  gap: 54px;
+  gap: var(--product-card-grid-gap);
 }
 
-
-/* =========================================================
-   PRODUCT CARD
-   ========================================================= */
-
-.public-product-card {
-  min-width: 0;
-
-  overflow: hidden;
-
-  border: 0;
-  border-radius: 8px;
-
-  background: #a9c8fa;
-
-  box-shadow: none;
-
-  transition:
-    transform 0.2s ease,
-    box-shadow 0.2s ease;
-}
-
-.public-product-card:hover {
-  transform: translateY(-3px);
-
-  box-shadow:
-    0 8px 18px
-    rgba(37, 99, 235, 0.14);
-}
-
-.product-click-area {
-  width: 100%;
-
-  border: 0;
-  background: transparent;
-
-  padding: 0;
-
-  color: inherit;
-
-  text-align: left;
-
-  cursor: pointer;
-}
-
-
-/* =========================================================
-   PRODUCT IMAGE
-   ========================================================= */
-
-.product-image-area {
-  position: relative;
-
-  height: 205px;
-
-  overflow: hidden;
-
-  border-radius: 8px 8px 34px 8px;
-
-  background: #ffffff;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.product-image-area .product-image,
-.product-image-area .product-image-placeholder {
+.storefront-product-card {
   width: 100%;
   height: 100%;
-
-  object-fit: contain;
-
-  padding: 20px;
-
-  background: #ffffff;
-}
-
-.product-badge {
-  position: absolute;
-
-  left: 13px;
-  top: 50%;
-
-  z-index: 2;
-
-  width: 35px;
-  height: 35px;
-
-  border-radius: 50%;
-
-  background: #ff9718;
-  color: #ffffff;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  font-size: 8px;
-  font-weight: 800;
-}
-
-
-/* =========================================================
-   PRODUCT CONTENT
-   ========================================================= */
-
-.public-product-body {
-  min-height: 122px;
-
-  padding: 15px 17px 16px;
-}
-
-.public-product-body h3 {
-  min-height: 32px;
-
-  margin: 0 0 5px;
-
-  color: #17458e;
-
-  font-size: 11px;
-  font-weight: 600;
-
-  line-height: 1.35;
-}
-
-.product-price-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-
-  gap: 10px;
-}
-
-.product-price-row strong {
-  color: #18b94f;
-
-  font-size: 18px;
-  font-weight: 750;
-}
-
-.product-heart {
-  color: #ff355e;
-
-  fill: transparent;
 }
 
 
@@ -1223,7 +1079,7 @@
    RESPONSIVE - TABLET
    ========================================================= */
 
-@media (max-width: 1000px) {
+@media (max-width: 1050px) {
   .main-header-inner {
     grid-template-columns:
       160px
@@ -1239,10 +1095,7 @@
   }
 
   .public-product-grid {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
-
-    gap: 25px;
+    --product-card-columns: 3;
   }
 
   .footer-grid {
@@ -1341,25 +1194,6 @@
     font-size: 17px;
   }
 
-  .public-product-grid {
-    grid-template-columns:
-      repeat(2, minmax(0, 1fr));
-
-    gap: 12px;
-  }
-
-  .product-image-area {
-    height: 155px;
-  }
-
-  .public-product-body {
-    padding: 12px;
-  }
-
-  .product-price-row strong {
-    font-size: 15px;
-  }
-
   .store-benefits {
     grid-template-columns:
       repeat(2, minmax(0, 1fr));
@@ -1390,17 +1224,19 @@
    RESPONSIVE - SMALL MOBILE
    ========================================================= */
 
-@media (max-width: 460px) {
+@media (max-width: 820px) {
+  .public-product-grid {
+    --product-card-columns: 2;
+  }
+}
+
+@media (max-width: 560px) {
   .category-button {
     display: none;
   }
 
   .public-product-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .product-image-area {
-    height: 220px;
+    --product-card-columns: 1;
   }
 
   .store-benefits {
@@ -1414,159 +1250,6 @@
   .footer-newsletter {
     grid-column: auto;
   }
-}
-
-/* =========================================================
-   FIX PRODUCT CARD TO MATCH REFERENCE
-   ========================================================= */
-
-.storefront-page .public-product-card {
-  width: 100%;
-  overflow: hidden;
-  border: 1px solid #b8d0ff;
-  border-radius: 8px;
-  background: #b5d0ff;
-}
-
-/* Important: make card vertical, NOT side-by-side */
-.storefront-page .product-click-area {
-  display: block !important;
-  width: 100%;
-  padding: 0 !important;
-  background: transparent !important;
-  color: inherit !important;
-  text-align: left;
-}
-
-/* White image area */
-.storefront-page .product-image-area {
-  position: relative;
-
-  width: 100%;
-  height: 220px;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  overflow: hidden;
-
-  border-radius: 8px 8px 34px 8px;
-
-  background: #ffffff;
-}
-
-/* Make ALL different product images fit */
-.storefront-page .product-image-area .product-image,
-.storefront-page .product-image-area .product-image-placeholder {
-  display: block;
-
-  width: 100% !important;
-  height: 100% !important;
-
-  max-width: 100%;
-  max-height: 100%;
-
-  object-fit: contain !important;
-  object-position: center !important;
-
-  padding: 18px;
-
-  background: #ffffff;
-}
-
-/* NEW badge */
-.storefront-page .product-badge {
-  position: absolute;
-
-  left: 12px;
-  top: 50%;
-
-  z-index: 3;
-
-  width: 34px;
-  height: 34px;
-
-  border-radius: 50%;
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  background: #ff9418;
-  color: #ffffff;
-
-  font-size: 8px;
-  font-weight: 800;
-}
-
-/* Blue bottom section */
-.storefront-page .public-product-body {
-  display: block;
-
-  width: 100%;
-  min-height: 115px;
-
-  padding: 14px 16px 16px;
-
-  background: #b5d0ff;
-}
-
-/* Product title */
-.storefront-page .public-product-body h3 {
-  min-height: 30px;
-
-  margin: 0 0 6px;
-
-  color: #17458e;
-
-  font-size: 11px;
-  font-weight: 600;
-
-  line-height: 1.4;
-}
-
-/* Price + heart */
-.storefront-page .product-price-row {
-  display: flex !important;
-  align-items: center;
-  justify-content: space-between;
-
-  width: 100%;
-}
-
-.storefront-page .product-price-row strong {
-  color: #22bd50;
-
-  font-size: 18px;
-  font-weight: 750;
-}
-
-.storefront-page .product-heart {
-  color: #ff174f;
-}
-
-/* =========================
-   Wishlist Heart
-========================= */
-
-.product-heart {
-  color: #ff3b5c;
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    color 0.2s ease,
-    fill 0.2s ease;
-}
-
-.product-heart:hover {
-  transform: scale(1.12);
-}
-
-.product-heart.wishlisted {
-  color: #ff3b5c !important;
-  fill: #ff3b5c !important;
-  stroke: #ff3b5c !important;
 }
 
 .wishlist-header-button svg {
@@ -1591,76 +1274,7 @@
    SCROLL REVEAL / FLOAT-UP ANIMATION
    ========================================================= */
 
-/*
- * Chrome and other modern browsers:
- *
- * Elements start slightly lower and transparent.
- * As they enter the screen while scrolling,
- * they smoothly float upward and fade in.
- */
-
-@supports (animation-timeline: view()) {
-  .hero-slider,
-  .best-sales-heading,
-  .public-product-card,
-  .store-benefits,
-  .benefit-item,
-  .footer-brand,
-  .footer-column,
-  .footer-newsletter,
-  .footer-bottom {
-    animation-name: storefront-scroll-reveal;
-    animation-duration: 1ms;
-    animation-fill-mode: both;
-    animation-timing-function: ease-out;
-
-    animation-timeline: view();
-
-    animation-range:
-      entry 0%
-      entry 35%;
-  }
-
-  /*
-   * Product cards enter slightly
-   * more smoothly.
-   */
-  .public-product-card {
-    animation-range:
-      entry 0%
-      entry 30%;
-  }
-
-  /*
-   * Footer enters a little later,
-   * giving it a softer effect.
-   */
-  .footer-brand,
-  .footer-column,
-  .footer-newsletter {
-    animation-range:
-      entry 0%
-      entry 25%;
-  }
-}
-
-@keyframes storefront-scroll-reveal {
-  from {
-    opacity: 0;
-
-    transform:
-      translateY(35px)
-      scale(0.985);
-  }
-
-  to {
-    opacity: 1;
-
-    transform:
-      translateY(0)
-      scale(1);
-  }
-}
+/* Homepage transitions are disabled to keep the storefront static. */
 
 /* =========================================================
    ACCESSIBILITY
@@ -1673,7 +1287,7 @@
 @media (prefers-reduced-motion: reduce) {
   .hero-slider,
   .best-sales-heading,
-  .public-product-card,
+  .storefront-product-card,
   .store-benefits,
   .benefit-item,
   .footer-brand,
@@ -1690,153 +1304,19 @@
    STOREFRONT HEADER ENTRANCE
    ========================================================= */
 
-/*
- * Slower, smoother entrance.
- *
- * Top bar appears first,
- * then blue header,
- * then navigation.
- */
-
-.storefront-topbar {
-  opacity: 0;
-
-  transform:
-    translateY(30px);
-
-  animation:
-    storefront-navbar-enter
-    1s
-    cubic-bezier(
-      0.22,
-      1,
-      0.36,
-      1
-    )
-    forwards;
-}
-
-.storefront-main-header {
-  opacity: 0;
-
-  transform:
-    translateY(36px);
-
-  animation:
-    storefront-navbar-enter
-    1.15s
-    cubic-bezier(
-      0.22,
-      1,
-      0.36,
-      1
-    )
-    0.18s
-    forwards;
-}
-
+/* Homepage header entry animation is disabled. */
+.storefront-topbar,
+.storefront-main-header,
 .store-navigation {
-  opacity: 0;
-
-  transform:
-    translateY(40px);
-
-  animation:
-    storefront-navbar-enter
-    1.25s
-    cubic-bezier(
-      0.22,
-      1,
-      0.36,
-      1
-    )
-    0.36s
-    forwards;
-}
-
-@keyframes storefront-navbar-enter {
-  from {
-    opacity: 0;
-
-    transform:
-      translateY(36px);
-  }
-
-  to {
-    opacity: 1;
-
-    transform:
-      translateY(0);
-  }
+  opacity: 1;
+  transform: none;
+  animation: none;
 }
 
 @media (
   prefers-reduced-motion: reduce
 ) {
   .storefront-topbar,
-  .storefront-main-header,
-  .store-navigation {
-    opacity: 1;
-
-    transform: none;
-
-    animation: none;
-  }
-}
-
-/* =========================================================
-   STOREFRONT HEADER ENTRANCE
-   ========================================================= */
-
-.storefront-main-header {
-  opacity: 0;
-  transform: translateY(36px);
-
-  animation:
-    storefront-navbar-enter
-    1.15s
-    cubic-bezier(
-      0.22,
-      1,
-      0.36,
-      1
-    )
-    0.1s
-    forwards;
-}
-
-.store-navigation {
-  opacity: 0;
-  transform: translateY(40px);
-
-  animation:
-    storefront-navbar-enter
-    1.25s
-    cubic-bezier(
-      0.22,
-      1,
-      0.36,
-      1
-    )
-    0.3s
-    forwards;
-}
-
-@keyframes storefront-navbar-enter {
-  from {
-    opacity: 0;
-    transform: translateY(36px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (
-  prefers-reduced-motion: reduce
-) {
   .storefront-main-header,
   .store-navigation {
     opacity: 1;
@@ -2287,14 +1767,12 @@
 
   cursor: pointer;
 
-  transition:
-    transform 0.18s ease,
-    opacity 0.18s ease;
+  transition: none;
 }
 
 .storefront-page .social-links button:hover {
-  transform: translateY(-2px);
-  opacity: 0.85;
+  transform: none;
+  opacity: 1;
 }
 
 .storefront-page .social-instagram {
