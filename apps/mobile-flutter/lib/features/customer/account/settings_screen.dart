@@ -14,6 +14,8 @@ class CustomerSettingsScreen extends StatefulWidget {
 }
 
 class _CustomerSettingsScreenState extends State<CustomerSettingsScreen> {
+  static const int _maxAvatarBytes = 500 * 1024;
+
   XFile? _avatar;
   Uint8List? _avatarBytes;
   bool _saving = false;
@@ -36,6 +38,16 @@ class _CustomerSettingsScreenState extends State<CustomerSettingsScreen> {
     }
     if (selected == null || !mounted) return;
     final bytes = await selected.readAsBytes();
+    if (bytes.length > _maxAvatarBytes) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture must be 500KB or smaller.'),
+          ),
+        );
+      }
+      return;
+    }
 
     setState(() {
       _avatar = selected;
@@ -50,9 +62,19 @@ class _CustomerSettingsScreenState extends State<CustomerSettingsScreen> {
     Uint8List bytes,
   ) async {
     try {
+      final user = ApiClient.currentUser ?? const <String, dynamic>{};
+      final name = (user['name'] ?? user['full_name'] ?? '').toString().trim();
+      final email = (user['email'] ?? '').toString().trim();
+
+      if (name.isEmpty || email.isEmpty) {
+        throw const ApiException(
+          'Missing profile name/email. Please update account details first.',
+        );
+      }
+
       final response = await ApiClient.postMultipart(
         '/me/profile',
-        const {},
+        {'name': name, 'email': email},
         fileBytes: bytes,
         fileName: selected.name,
       );

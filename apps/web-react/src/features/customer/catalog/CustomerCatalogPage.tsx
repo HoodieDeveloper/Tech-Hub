@@ -414,10 +414,6 @@ export function CustomerCatalogPage({
                           }
                         </h3>
 
-                        <div className="catalog-product-stars">
-                          ☆☆☆☆☆
-                        </div>
-
                         <div className="catalog-product-bottom">
                           <strong>
                             $

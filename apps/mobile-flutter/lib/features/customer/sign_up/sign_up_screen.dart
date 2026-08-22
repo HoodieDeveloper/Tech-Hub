@@ -14,6 +14,8 @@ class SignUpScreen extends StatefulWidget {
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
+  static const int _maxAvatarBytes = 500 * 1024;
+
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
@@ -33,6 +35,14 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
     if (selected != null && mounted) {
       final bytes = await selected.readAsBytes();
+      if (bytes.length > _maxAvatarBytes) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture must be 500KB or smaller.'),
+          ),
+        );
+        return;
+      }
       if (mounted) {
         setState(() {
           avatar = selected;

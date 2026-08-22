@@ -1,10 +1,24 @@
 import {
   ArrowLeft,
+  CheckCircle2,
+  Clock3,
+  Globe2,
+  Heart,
+  MessageCircle,
   Minus,
   Plus,
+  Search,
+  ShieldCheck,
   ShoppingBag,
+  ShoppingCart,
   Trash2,
+  Truck,
+  UserRound,
 } from 'lucide-react';
+
+import {
+  useState,
+} from 'react';
 
 import {
   ProductImage,
@@ -44,6 +58,8 @@ export function CustomerCartPage({
   onRemove,
   onCheckout,
 }: Props) {
+  const [discountCode, setDiscountCode] = useState('');
+
   const totalQuantity =
     cartItems.reduce(
       (total, item) =>
@@ -75,8 +91,48 @@ export function CustomerCartPage({
     deliveryFee;
 
   return (
-    <div className="customer-cart-page">
-      {/* Header */}
+    <div className="storefront-page customer-cart-page">
+      <div className="storefront-topbar">
+        <div className="storefront-container storefront-topbar-inner">
+          <span><Truck size={13} /> Free shipping on orders over $49</span>
+          <div className="topbar-links">
+          <span>Need help?</span>
+          <span>+855 12 23 23 56</span>
+          <span>Support</span>
+          <span>Track Order</span>
+          <span>English / USD</span>
+          </div>
+        </div>
+      </div>
+
+      <header className="storefront-main-header">
+        <div className="storefront-container main-header-inner">
+        <button type="button" className="store-brand" onClick={onBack}>
+          <strong>DCS Computer Shop</strong>
+        </button>
+        <div className="store-search">
+          <button type="button" className="category-button" aria-label="Choose category">All Categories</button>
+          <div className="search-input-wrap">
+            <input type="search" aria-label="Search products" placeholder="Search for product, brands or categories..." />
+            <Search size={18} />
+          </div>
+        </div>
+        <div className="store-header-actions" aria-label="Store actions">
+          <button type="button" className="header-icon-button" aria-label="Wishlist"><Heart size={18} /><span>Wishlist</span></button>
+          <button type="button" className="header-icon-button" aria-label="Account"><UserRound size={18} /><span>Account</span></button>
+          <button type="button" className="header-icon-button cart-header-button" aria-label="Cart"><ShoppingCart size={18} /><span className="cart-count">{totalQuantity}</span><span>Cart</span></button>
+        </div>
+        </div>
+      </header>
+
+      <nav className="store-navigation" aria-label="Main navigation">
+        <div className="storefront-container store-navigation-inner">
+        <button type="button" className="active" onClick={onBack}>Home</button>
+        <button type="button" onClick={onBack}>Shop by Category <span>⌄</span></button>
+        <button type="button">About</button>
+        <button type="button">Partnership</button>
+        </div>
+      </nav>
 
       <div className="cart-page-header">
         <button
@@ -304,6 +360,21 @@ export function CustomerCartPage({
 
             <div className="cart-summary-divider" />
 
+            <div className="cart-discount">
+              <strong>Discount Code</strong>
+              <div>
+                <input
+                  value={discountCode}
+                  onChange={(event) => setDiscountCode(event.target.value)}
+                  placeholder="Enter code"
+                  aria-label="Discount code"
+                />
+                <button type="button">Apply</button>
+              </div>
+            </div>
+
+            <div className="cart-summary-divider" />
+
             <div className="cart-summary-total">
               <span>
                 Estimated Total
@@ -332,9 +403,32 @@ export function CustomerCartPage({
               be checked again when
               you place the order.
             </p>
+
+            <div className="cart-trust-grid">
+              <div><ShieldCheck size={22} /><span><strong>Secure payments</strong><small>100% protected</small></span></div>
+              <div><Truck size={22} /><span><strong>Free returns</strong><small>30-day returns</small></span></div>
+              <div><Clock3 size={22} /><span><strong>24/7 Support</strong><small>We're here to help</small></span></div>
+            </div>
           </aside>
         </div>
       )}
+
+      <footer className="store-footer cart-footer">
+        <div className="storefront-container store-benefits">
+          <div className="benefit-item"><Truck size={20} /><div><strong>Free Shipping</strong><span>On orders over $49</span></div></div>
+          <div className="benefit-item"><ShieldCheck size={20} /><div><strong>Secure Payment</strong><span>100% encrypted checkout</span></div></div>
+          <div className="benefit-item"><CheckCircle2 size={20} /><div><strong>Easy Returns</strong><span>30-day return policy</span></div></div>
+          <div className="benefit-item"><Clock3 size={20} /><div><strong>24/7 Support</strong><span>We're here to help</span></div></div>
+        </div>
+        <div className="storefront-container footer-grid cart-footer-columns">
+          <div className="footer-brand"><h3>DCS Computer Shop</h3><p>Your trusted destination for the latest tech, quality products and better experiences.</p><div className="social-links"><button type="button"><Globe2 size={15} /></button><button type="button"><MessageCircle size={15} /></button><button type="button"><Heart size={15} /></button></div></div>
+          <div className="footer-column"><h4>Shop</h4><span>All Categories</span><span>Best Sellers</span><span>New Arrivals</span><span>Deals</span></div>
+          <div className="footer-column"><h4>Customer Care</h4><span>Contact Us</span><span>Track Order</span><span>Returns & Refunds</span><span>Shipping Info</span></div>
+          <div className="footer-column"><h4>Company</h4><span>About DCS</span><span>Careers</span><span>Press</span><span>Sustainability</span></div>
+          <div className="footer-newsletter"><h4>Stay in the loop</h4><p>Subscribe for exclusive deals and updates.</p><div className="newsletter-form"><input placeholder="Enter Your Email" aria-label="Email address" /><button type="button">Subscribe</button></div></div>
+        </div>
+        <div className="storefront-container footer-bottom cart-footer-bottom">© 2026 DCS, All rights reserved.</div>
+      </footer>
     </div>
   );
 }
