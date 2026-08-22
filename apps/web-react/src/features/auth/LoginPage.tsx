@@ -39,7 +39,10 @@ type AuthResponse = {
 };
 
 type Props = {
-  onSuccess: (user: AuthUser) => void;
+  onSuccess: (
+    user: AuthUser,
+  ) => void;
+
   onBack: () => void;
 };
 
@@ -56,50 +59,94 @@ export function LoginPage({
   onSuccess,
   onBack,
 }: Props) {
-  const [mode, setMode] =
-    useState<'login' | 'register'>(
+  const [
+    mode,
+    setMode,
+  ] =
+    useState<
+      'login' | 'register'
+    >(
       'login',
     );
 
-  const [name, setName] =
+  const [
+    name,
+    setName,
+  ] =
     useState('');
 
-  const [email, setEmail] =
+  const [
+    email,
+    setEmail,
+  ] =
     useState('');
 
-  const [password, setPassword] =
+  const [
+    password,
+    setPassword,
+  ] =
     useState('');
 
   const [
     passwordConfirmation,
     setPasswordConfirmation,
-  ] = useState('');
+  ] =
+    useState('');
 
   const [
     rememberMe,
     setRememberMe,
-  ] = useState(false);
+  ] =
+    useState(false);
 
-  const [avatar, setAvatar] =
-    useState<File | null>(null);
+  const [
+    avatar,
+    setAvatar,
+  ] =
+    useState<File | null>(
+      null,
+    );
 
   const [
     avatarPreview,
     setAvatarPreview,
-  ] = useState('');
+  ] =
+    useState('');
 
-  const [loading, setLoading] =
+  const [
+    loading,
+    setLoading,
+  ] =
     useState(false);
 
-  const [error, setError] =
+  const [
+    error,
+    setError,
+  ] =
+    useState('');
+
+  const [
+    successMessage,
+    setSuccessMessage,
+  ] =
     useState('');
 
   const avatarInputRef =
-    useRef<HTMLInputElement>(null);
+    useRef<HTMLInputElement>(
+      null,
+    );
+
+  /*
+   * =========================================
+   * CLEAN AVATAR PREVIEW
+   * =========================================
+   */
 
   useEffect(() => {
     return () => {
-      if (avatarPreview) {
+      if (
+        avatarPreview
+      ) {
         URL.revokeObjectURL(
           avatarPreview,
         );
@@ -107,18 +154,32 @@ export function LoginPage({
     };
   }, [avatarPreview]);
 
+  /*
+   * =========================================
+   * AVATAR
+   * =========================================
+   */
+
   function handleAvatarChange(
-    event: ChangeEvent<HTMLInputElement>,
+    event:
+      ChangeEvent<HTMLInputElement>,
   ) {
     const selectedFile =
       event.target.files?.[0] ??
       null;
 
     setError('');
+    setSuccessMessage('');
 
     if (!selectedFile) {
-      setAvatar(null);
-      setAvatarPreview('');
+      setAvatar(
+        null,
+      );
+
+      setAvatarPreview(
+        '',
+      );
+
       return;
     }
 
@@ -127,10 +188,16 @@ export function LoginPage({
         selectedFile.type,
       )
     ) {
-      event.target.value = '';
+      event.target.value =
+        '';
 
-      setAvatar(null);
-      setAvatarPreview('');
+      setAvatar(
+        null,
+      );
+
+      setAvatarPreview(
+        '',
+      );
 
       setError(
         'Profile picture must be JPG, PNG, or WEBP.',
@@ -143,10 +210,16 @@ export function LoginPage({
       selectedFile.size >
       MAX_AVATAR_SIZE
     ) {
-      event.target.value = '';
+      event.target.value =
+        '';
 
-      setAvatar(null);
-      setAvatarPreview('');
+      setAvatar(
+        null,
+      );
+
+      setAvatarPreview(
+        '',
+      );
 
       setError(
         'Profile picture must not be larger than 5 MB.',
@@ -155,13 +228,17 @@ export function LoginPage({
       return;
     }
 
-    if (avatarPreview) {
+    if (
+      avatarPreview
+    ) {
       URL.revokeObjectURL(
         avatarPreview,
       );
     }
 
-    setAvatar(selectedFile);
+    setAvatar(
+      selectedFile,
+    );
 
     setAvatarPreview(
       URL.createObjectURL(
@@ -171,129 +248,274 @@ export function LoginPage({
   }
 
   function removeAvatar() {
-    if (avatarPreview) {
+    if (
+      avatarPreview
+    ) {
       URL.revokeObjectURL(
         avatarPreview,
       );
     }
 
-    setAvatar(null);
-    setAvatarPreview('');
+    setAvatar(
+      null,
+    );
 
-    if (avatarInputRef.current) {
-      avatarInputRef.current.value =
-        '';
+    setAvatarPreview(
+      '',
+    );
+
+    if (
+      avatarInputRef.current
+    ) {
+      avatarInputRef
+        .current
+        .value = '';
     }
   }
 
+  /*
+   * =========================================
+   * SUBMIT
+   * =========================================
+   */
+
   async function handleSubmit(
-    event: FormEvent<HTMLFormElement>,
+    event:
+      FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
 
-    setLoading(true);
-    setError('');
+    setLoading(
+      true,
+    );
+
+    setError(
+      '',
+    );
+
+    setSuccessMessage(
+      '',
+    );
 
     try {
-      let data: AuthResponse;
-
-      if (mode === 'login') {
-        data =
+      /*
+       * =====================================
+       * LOGIN
+       * =====================================
+       *
+       * Only Login saves the token
+       * and enters the website.
+       */
+      if (
+        mode === 'login'
+      ) {
+        const data =
           await apiPost<AuthResponse>(
             '/login',
             {
-              email,
+              email:
+                email.trim(),
+
               password,
             },
             false,
           );
-      } else {
-        const formData =
-          new FormData();
 
-        formData.append(
-          'name',
-          name.trim(),
+        setAuthSession(
+          data.token,
+          data.user,
         );
 
-        formData.append(
-          'email',
-          email.trim(),
+        onSuccess(
+          data.user,
         );
 
-        formData.append(
-          'password',
-          password,
-        );
-
-        formData.append(
-          'password_confirmation',
-          passwordConfirmation,
-        );
-
-        if (avatar) {
-          formData.append(
-            'avatar',
-            avatar,
-          );
-        }
-
-        data =
-          await apiPostForm<AuthResponse>(
-            '/register',
-            formData,
-            false,
-          );
+        return;
       }
 
-      setAuthSession(
-        data.token,
-        data.user,
+      /*
+       * =====================================
+       * REGISTER
+       * =====================================
+       */
+
+      const formData =
+        new FormData();
+
+      formData.append(
+        'name',
+        name.trim(),
       );
 
-      onSuccess(data.user);
+      formData.append(
+        'email',
+        email.trim(),
+      );
+
+      formData.append(
+        'password',
+        password,
+      );
+
+      formData.append(
+        'password_confirmation',
+        passwordConfirmation,
+      );
+
+      if (
+        avatar
+      ) {
+        formData.append(
+          'avatar',
+          avatar,
+        );
+      }
+
+      /*
+       * Create the account.
+       *
+       * IMPORTANT:
+       * We intentionally do NOT call
+       * setAuthSession() here.
+       *
+       * We also do NOT call onSuccess().
+       *
+       * The customer must log in
+       * themselves after registration.
+       */
+      await apiPostForm<AuthResponse>(
+        '/register',
+        formData,
+        false,
+      );
+
+      /*
+       * Registration succeeded.
+       *
+       * Go back to Login mode.
+       */
+      setMode(
+        'login',
+      );
+
+      /*
+       * Keep email filled in
+       * so the customer doesn't
+       * have to type it again.
+       */
+      setEmail(
+        email.trim(),
+      );
+
+      /*
+       * Clear registration-only data.
+       */
+      setName(
+        '',
+      );
+
+      setPassword(
+        '',
+      );
+
+      setPasswordConfirmation(
+        '',
+      );
+
+      setRememberMe(
+        false,
+      );
+
+      removeAvatar();
+
+      setSuccessMessage(
+        'Account created successfully. Please log in to continue.',
+      );
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
-          : 'Authentication failed.',
+          : mode ===
+              'register'
+            ? 'Unable to create account.'
+            : 'Unable to log in.',
       );
     } finally {
-      setLoading(false);
+      setLoading(
+        false,
+      );
     }
   }
+
+  /*
+   * =========================================
+   * LOGIN / SIGN UP MODE
+   * =========================================
+   */
 
   function changeMode(
     nextMode:
       | 'login'
       | 'register',
   ) {
-    setMode(nextMode);
+    setMode(
+      nextMode,
+    );
 
-    setError('');
-    setPassword('');
-    setPasswordConfirmation('');
+    setError(
+      '',
+    );
+
+    setSuccessMessage(
+      '',
+    );
+
+    setPassword(
+      '',
+    );
+
+    setPasswordConfirmation(
+      '',
+    );
 
     removeAvatar();
   }
 
   return (
     <div className="shop-auth-page">
+
+      {/* =====================================
+          HEADER
+      ====================================== */}
+
       <header className="shop-auth-header">
         <div className="shop-auth-topbar">
           <span>
-            <Truck size={13} />
+            <Truck
+              size={13}
+            />
+
             Free shipping on orders
             over $49
           </span>
 
           <div>
-            <span>Need help?</span>
+            <span>
+              Need help?
+            </span>
+
             <span>
               +855 12 23 23 56
             </span>
-            <span>Support</span>
-            <span>Track Order</span>
+
+            <span>
+              Support
+            </span>
+
+            <span>
+              Track Order
+            </span>
+
             <span>
               English | USD
             </span>
@@ -304,7 +526,9 @@ export function LoginPage({
           <button
             type="button"
             className="shop-auth-brand"
-            onClick={onBack}
+            onClick={
+              onBack
+            }
           >
             DCS Computer Shop
           </button>
@@ -315,6 +539,7 @@ export function LoginPage({
               className="category-button"
             >
               All Categories
+
               <ChevronDown
                 size={17}
               />
@@ -326,21 +551,35 @@ export function LoginPage({
                 placeholder="Search for products, brands or categories..."
               />
 
-              <Search size={22} />
+              <Search
+                size={22}
+              />
             </label>
           </div>
 
           <div className="shop-auth-actions">
-            <button type="button">
-              <Heart size={22} />
-              <span>Wishlist</span>
+            <button
+              type="button"
+            >
+              <Heart
+                size={22}
+              />
+
+              <span>
+                Wishlist
+              </span>
             </button>
 
-            <button type="button">
+            <button
+              type="button"
+            >
               <UserRound
                 size={22}
               />
-              <span>Account</span>
+
+              <span>
+                Account
+              </span>
             </button>
 
             <button
@@ -355,7 +594,9 @@ export function LoginPage({
                 0
               </span>
 
-              <span>Cart</span>
+              <span>
+                Cart
+              </span>
             </button>
           </div>
         </div>
@@ -363,41 +604,63 @@ export function LoginPage({
         <nav className="shop-auth-nav">
           <button
             type="button"
-            onClick={onBack}
+            onClick={
+              onBack
+            }
           >
             Home
           </button>
 
-          <button type="button">
+          <button
+            type="button"
+          >
             Shop by Category
+
             <ChevronDown
               size={16}
             />
           </button>
 
-          <button type="button">
+          <button
+            type="button"
+          >
             Deals
           </button>
 
-          <button type="button">
+          <button
+            type="button"
+          >
             New Arrivals
           </button>
 
-          <button type="button">
+          <button
+            type="button"
+          >
             Best Sellers
           </button>
 
-          <button type="button">
+          <button
+            type="button"
+          >
             Brands
           </button>
 
-          <button type="button">
+          <button
+            type="button"
+          >
             TechHub Rewards
           </button>
         </nav>
       </header>
 
+      {/* =====================================
+          CONTENT
+      ====================================== */}
+
       <main className="shop-auth-content">
+
+        {/* VISUAL */}
+
         <section className="shop-auth-visual">
           <img
             src="/images/sci_fi_laptop.png"
@@ -408,12 +671,15 @@ export function LoginPage({
             <button
               type="button"
               className={
-                mode === 'login'
+                mode ===
+                'login'
                   ? 'active'
                   : ''
               }
               onClick={() =>
-                changeMode('login')
+                changeMode(
+                  'login',
+                )
               }
             >
               Login
@@ -422,7 +688,8 @@ export function LoginPage({
             <button
               type="button"
               className={
-                mode === 'register'
+                mode ===
+                'register'
                   ? 'active'
                   : ''
               }
@@ -437,19 +704,27 @@ export function LoginPage({
           </div>
         </section>
 
+        {/* FORM */}
+
         <section className="shop-auth-form-section">
           <button
             type="button"
             className="shop-auth-back"
-            onClick={onBack}
+            onClick={
+              onBack
+            }
           >
             <ArrowLeft
               size={17}
             />
+
             Back to products
           </button>
 
           <div className="shop-auth-form-container">
+
+            {/* USER IMAGE */}
+
             <div className="shop-auth-user-icon">
               {mode ===
                 'register' &&
@@ -471,11 +746,24 @@ export function LoginPage({
               )}
             </div>
 
+            {/* TITLE */}
+
             <h1>
-              {mode === 'login'
+              {mode ===
+              'login'
                 ? 'Login to your account'
                 : 'Create New Account'}
             </h1>
+
+            {/* REGISTER SUCCESS MESSAGE */}
+
+            {successMessage && (
+              <div className="alert success">
+                {
+                  successMessage
+                }
+              </div>
+            )}
 
             <form
               className="shop-auth-form"
@@ -483,6 +771,9 @@ export function LoginPage({
                 handleSubmit
               }
             >
+
+              {/* PROFILE PICTURE */}
+
               {mode ===
                 'register' && (
                 <div className="shop-auth-avatar-field">
@@ -528,6 +819,8 @@ export function LoginPage({
                 </div>
               )}
 
+              {/* USERNAME */}
+
               {mode ===
                 'register' && (
                 <label className="shop-auth-input">
@@ -537,12 +830,15 @@ export function LoginPage({
 
                   <input
                     type="text"
-                    value={name}
+                    value={
+                      name
+                    }
                     onChange={(
                       event,
                     ) =>
                       setName(
-                        event.target
+                        event
+                          .target
                           .value,
                       )
                     }
@@ -552,17 +848,24 @@ export function LoginPage({
                 </label>
               )}
 
+              {/* EMAIL */}
+
               <label className="shop-auth-input">
-                <Mail size={27} />
+                <Mail
+                  size={27}
+                />
 
                 <input
                   type="email"
-                  value={email}
+                  value={
+                    email
+                  }
                   onChange={(
                     event,
                   ) =>
                     setEmail(
-                      event.target
+                      event
+                        .target
                         .value,
                     )
                   }
@@ -571,6 +874,8 @@ export function LoginPage({
                 />
               </label>
 
+              {/* PASSWORD */}
+
               <label className="shop-auth-input">
                 <LockKeyhole
                   size={27}
@@ -578,12 +883,15 @@ export function LoginPage({
 
                 <input
                   type="password"
-                  value={password}
+                  value={
+                    password
+                  }
                   onChange={(
                     event,
                   ) =>
                     setPassword(
-                      event.target
+                      event
+                        .target
                         .value,
                     )
                   }
@@ -592,6 +900,8 @@ export function LoginPage({
                   required
                 />
               </label>
+
+              {/* CONFIRM PASSWORD */}
 
               {mode ===
                 'register' && (
@@ -609,7 +919,8 @@ export function LoginPage({
                       event,
                     ) =>
                       setPasswordConfirmation(
-                        event.target
+                        event
+                          .target
                           .value,
                       )
                     }
@@ -619,6 +930,8 @@ export function LoginPage({
                   />
                 </label>
               )}
+
+              {/* OPTIONS */}
 
               <div className="shop-auth-options">
                 <label className="remember-option">
@@ -631,7 +944,8 @@ export function LoginPage({
                       event,
                     ) =>
                       setRememberMe(
-                        event.target
+                        event
+                          .target
                           .checked,
                       )
                     }
@@ -653,11 +967,17 @@ export function LoginPage({
                 )}
               </div>
 
+              {/* ERROR */}
+
               {error && (
                 <div className="alert error">
-                  {error}
+                  {
+                    error
+                  }
                 </div>
               )}
+
+              {/* SUBMIT */}
 
               <button
                 type="submit"
@@ -683,6 +1003,8 @@ export function LoginPage({
               </button>
             </form>
 
+            {/* SOCIAL LOGIN */}
+
             {mode ===
               'login' && (
               <div className="shop-auth-social-section">
@@ -697,7 +1019,9 @@ export function LoginPage({
                 </div>
 
                 <div className="social-login-grid">
-                  <button type="button">
+                  <button
+                    type="button"
+                  >
                     <strong className="google-logo">
                       G
                     </strong>
@@ -707,7 +1031,9 @@ export function LoginPage({
                     </span>
                   </button>
 
-                  <button type="button">
+                  <button
+                    type="button"
+                  >
                     <strong className="apple-logo">
                       ●
                     </strong>
@@ -717,7 +1043,9 @@ export function LoginPage({
                     </span>
                   </button>
 
-                  <button type="button">
+                  <button
+                    type="button"
+                  >
                     <strong className="facebook-logo">
                       f
                     </strong>
@@ -730,10 +1058,13 @@ export function LoginPage({
               </div>
             )}
 
+            {/* HELP */}
+
             <div className="shop-auth-help">
               <Headphones
                 size={17}
               />
+
               Need assistance?
               Contact our support
               team.

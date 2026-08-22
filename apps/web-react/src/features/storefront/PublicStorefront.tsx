@@ -9,10 +9,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
-  Globe2,
   Heart,
-  LogOut,
-  MessageCircle,
   PackageSearch,
   RotateCcw,
   Search,
@@ -23,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import {
+  apiGet,
   type AuthUser,
 } from '../../core/api/client';
 
@@ -48,6 +46,12 @@ import banner3 from './assets/banner-3.png';
 
 import './Storefront.css';
 
+/*
+ * =========================================
+ * PROPS
+ * =========================================
+ */
+
 type Props = {
   user: AuthUser | null;
 
@@ -66,6 +70,8 @@ type Props = {
   onViewAll?: () => void;
 
   onLogout: () => void;
+
+  onProfileClick?: () => void;
 
   /*
    * Cart
@@ -88,11 +94,57 @@ type Props = {
   ) => void;
 };
 
+/*
+ * =========================================
+ * HERO BANNERS
+ * =========================================
+ */
+
 const banners = [
   banner1,
   banner2,
   banner3,
 ];
+
+/*
+ * =========================================
+ * BEST SELLERS
+ * =========================================
+ */
+
+type BestSellerProduct =
+  Product & {
+    sold_quantity: number;
+  };
+
+const BEST_SELLERS_CACHE_KEY =
+  'techhub_best_sellers_cache';
+
+function readBestSellersCache():
+  BestSellerProduct[] {
+  try {
+    const raw =
+      sessionStorage.getItem(
+        BEST_SELLERS_CACHE_KEY,
+      );
+
+    if (!raw) {
+      return [];
+    }
+
+    return JSON.parse(
+      raw,
+    ) as BestSellerProduct[];
+  } catch {
+    return [];
+  }
+}
+
+/*
+ * =========================================
+ * PUBLIC STOREFRONT
+ * =========================================
+ */
 
 export function PublicStorefront({
   user,
@@ -103,6 +155,7 @@ export function PublicStorefront({
   onViewAll,
   onWishlistClick,
   onOrdersClick,
+  onProfileClick,
   cartCount = 0,
   onCartClick,
 
@@ -112,27 +165,59 @@ export function PublicStorefront({
 }: Props) {
   /*
    * =========================================
-   * SHARED PRODUCT CACHE
+   * SHARED PRODUCTS
    * =========================================
-   *
-   * Important:
-   *
-   * We keep OUR product system.
-   *
-   * Home → Cart → Home
-   * will NOT fetch products again.
    */
+
   const {
     products,
     loadingProducts,
     productsError,
   } = useProducts();
 
+  /*
+   * =========================================
+   * BEST SELLERS
+   * =========================================
+   */
+
+  const [
+    bestSellers,
+    setBestSellers,
+  ] =
+    useState<BestSellerProduct[]>(
+      readBestSellersCache,
+    );
+
+  const [
+    loadingBestSellers,
+    setLoadingBestSellers,
+  ] =
+    useState(false);
+
+  const [
+    bestSellersError,
+    setBestSellersError,
+  ] =
+    useState('');
+
+  /*
+   * =========================================
+   * SEARCH
+   * =========================================
+   */
+
   const [
     search,
     setSearch,
   ] =
     useState('');
+
+  /*
+   * =========================================
+   * HERO SLIDER
+   * =========================================
+   */
 
   const [
     currentBanner,
@@ -148,9 +233,10 @@ export function PublicStorefront({
 
   /*
    * =========================================
-   * HOME START POSITION
+   * START HOME AT TOP
    * =========================================
    */
+
   useEffect(() => {
     window.scrollTo({
       top: 0,
@@ -161,11 +247,73 @@ export function PublicStorefront({
 
   /*
    * =========================================
-   * HERO SLIDER
+   * LOAD BEST SELLERS
    * =========================================
    */
+
   useEffect(() => {
-    if (sliderPaused) {
+    const cached =
+      readBestSellersCache();
+
+    if (
+      cached.length > 0
+    ) {
+      setBestSellers(
+        cached,
+      );
+
+      return;
+    }
+
+    setLoadingBestSellers(
+      true,
+    );
+
+    setBestSellersError(
+      '',
+    );
+
+    apiGet<BestSellerProduct[]>(
+      '/products/best-sellers',
+    )
+      .then((data) => {
+        setBestSellers(
+          data,
+        );
+
+        sessionStorage.setItem(
+          BEST_SELLERS_CACHE_KEY,
+          JSON.stringify(
+            data,
+          ),
+        );
+      })
+      .catch(
+        (err: unknown) => {
+          setBestSellersError(
+            err instanceof Error
+              ? err.message
+              : 'Unable to load best sellers.',
+          );
+        },
+      )
+      .finally(() => {
+        setLoadingBestSellers(
+          false,
+        );
+      });
+  }, []);
+
+  /*
+   * =========================================
+   * HERO AUTO SLIDER
+   * =========================================
+   */
+
+  useEffect(() => {
+    if (
+      sliderPaused
+    ) {
       return;
     }
 
@@ -192,9 +340,10 @@ export function PublicStorefront({
 
   /*
    * =========================================
-   * SEARCH
+   * SEARCH PRODUCTS
    * =========================================
    */
+
   const filteredProducts =
     useMemo(() => {
       const keyword =
@@ -224,14 +373,56 @@ export function PublicStorefront({
     ]);
 
   /*
-   * Friend's UI shows
-   * four Best Sales products.
+   * =========================================
+   * SEARCH BEST SELLERS
+   * =========================================
    */
+
+  const filteredBestSellers =
+    useMemo(() => {
+      const keyword =
+        search
+          .trim()
+          .toLowerCase();
+
+      if (!keyword) {
+        return bestSellers;
+      }
+
+      return bestSellers.filter(
+        (product) =>
+          product.name
+            .toLowerCase()
+            .includes(keyword) ||
+          (
+            product.description ??
+            ''
+          )
+            .toLowerCase()
+            .includes(keyword),
+      );
+    }, [
+      bestSellers,
+      search,
+    ]);
+
+  /*
+   * =========================================
+   * NEWEST 4 PRODUCTS
+   * =========================================
+   */
+
   const visibleProducts =
     filteredProducts.slice(
       0,
       4,
     );
+
+  /*
+   * =========================================
+   * BANNER CONTROLS
+   * =========================================
+   */
 
   function previousBanner() {
     setCurrentBanner(
@@ -252,6 +443,12 @@ export function PublicStorefront({
     );
   }
 
+  /*
+   * =========================================
+   * WISHLIST
+   * =========================================
+   */
+
   function handleWishlistClick(
     productId: number,
   ) {
@@ -262,7 +459,8 @@ export function PublicStorefront({
     }
 
     if (
-      user.role !== 'customer'
+      user.role !==
+      'customer'
     ) {
       return;
     }
@@ -274,17 +472,20 @@ export function PublicStorefront({
 
   return (
     <div className="storefront-page">
+
       {/* =====================================
-          FRIEND'S STICKY HEADER UI
+          STICKY HEADER
       ====================================== */}
 
       <div className="storefront-header-stack">
-        {/* =========================
-            BLUE MAIN HEADER
-        ========================== */}
+
+        {/* =====================================
+            BLUE HEADER
+        ====================================== */}
 
         <header className="storefront-main-header">
           <div className="storefront-container main-header-inner">
+
             {/* BRAND */}
 
             <button
@@ -303,7 +504,9 @@ export function PublicStorefront({
                 <input
                   type="search"
                   placeholder="Search for product, brands or categories..."
-                  value={search}
+                  value={
+                    search
+                  }
                   onChange={(
                     event,
                   ) =>
@@ -320,9 +523,12 @@ export function PublicStorefront({
               </div>
             </div>
 
-            {/* HEADER ACTIONS */}
+            {/* =====================================
+                HEADER ACTIONS
+            ====================================== */}
 
             <div className="store-header-actions">
+
               {/* WISHLIST */}
 
               <button
@@ -346,7 +552,8 @@ export function PublicStorefront({
                   Wishlist
                 </span>
 
-                {wishlistCount > 0 && (
+                {wishlistCount >
+                  0 && (
                   <span className="wishlist-count">
                     {
                       wishlistCount
@@ -377,22 +584,39 @@ export function PublicStorefront({
                 </button>
               )}
 
-              {/* ACCOUNT */}
+              {/* =====================================
+                  ACCOUNT
+              ====================================== */}
 
               {user ? (
                 <button
                   type="button"
-                  className="header-icon-button"
-                  title={
-                    user.name
+                  className="header-icon-button account-page-button"
+                  title="My Profile"
+                  onClick={
+                    onProfileClick
                   }
                 >
-                  <UserRound
-                    size={19}
-                  />
+                  {user.avatar_url ? (
+                    <img
+                      src={
+                        user.avatar_url
+                      }
+                      alt={
+                        user.name
+                      }
+                      className="header-account-avatar"
+                    />
+                  ) : (
+                    <UserRound
+                      size={19}
+                    />
+                  )}
 
                   <span>
-                    {user.name}
+                    {
+                      user.name
+                    }
                   </span>
                 </button>
               ) : (
@@ -428,7 +652,9 @@ export function PublicStorefront({
                 />
 
                 <span className="cart-count">
-                  {cartCount}
+                  {
+                    cartCount
+                  }
                 </span>
 
                 <span>
@@ -439,12 +665,13 @@ export function PublicStorefront({
           </div>
         </header>
 
-        {/* =========================
-            NAVIGATION
-        ========================== */}
+        {/* =====================================
+            WHITE NAVBAR
+        ====================================== */}
 
         <nav className="store-navigation">
           <div className="storefront-container store-navigation-inner">
+
             <button
               type="button"
               className="active"
@@ -479,47 +706,32 @@ export function PublicStorefront({
 
             {user?.role ===
               'admin' && (
-              <button
-                type="button"
-                onClick={
-                  onAdminDashboard
-                }
-              >
-                <ShieldCheck
-                  size={15}
-                />
+                <button
+                  type="button"
+                  onClick={
+                    onAdminDashboard
+                  }
+                >
+                  <ShieldCheck
+                    size={15}
+                  />
 
-                Admin Dashboard
-              </button>
-            )}
-
-            {user && (
-              <button
-                type="button"
-                className="nav-logout"
-                onClick={
-                  onLogout
-                }
-              >
-                <LogOut
-                  size={15}
-                />
-
-                Logout
-              </button>
-            )}
+                  Admin Dashboard
+                </button>
+              )}
           </div>
         </nav>
       </div>
 
       {/* =====================================
-          MAIN CONTENT
+          MAIN
       ====================================== */}
 
       <main className="storefront-container storefront-main">
-        {/* =========================
+
+        {/* =====================================
             HERO
-        ========================== */}
+        ====================================== */}
 
         <ScrollReveal>
           <section
@@ -620,9 +832,157 @@ export function PublicStorefront({
           </section>
         </ScrollReveal>
 
-        {/* =========================
-            BEST SALES
-        ========================== */}
+        {/* =====================================
+            BEST SELLERS
+        ====================================== */}
+
+        <section className="best-sales-section">
+          <ScrollReveal>
+            <div className="best-sales-heading">
+              <h2>
+                Best Sellers
+              </h2>
+            </div>
+          </ScrollReveal>
+
+          {bestSellersError && (
+            <ScrollReveal>
+              <div className="alert error">
+                {
+                  bestSellersError
+                }
+              </div>
+            </ScrollReveal>
+          )}
+
+          {loadingBestSellers && (
+            <ScrollReveal>
+              <div className="loading-card">
+                Loading best sellers...
+              </div>
+            </ScrollReveal>
+          )}
+
+          {!loadingBestSellers &&
+            !bestSellersError &&
+            filteredBestSellers
+              .length === 0 && (
+              <ScrollReveal>
+                <div className="empty-state">
+                  No best sellers found.
+                </div>
+              </ScrollReveal>
+            )}
+
+          {!loadingBestSellers &&
+            filteredBestSellers.length >
+              0 && (
+              <div className="public-product-grid">
+                {filteredBestSellers.map(
+                  (
+                    product,
+                    index,
+                  ) => {
+                    const wishlisted =
+                      isWishlisted?.(
+                        product.id,
+                      ) ?? false;
+
+                    return (
+                      <ScrollReveal
+                        key={
+                          product.id
+                        }
+                        delay={
+                          index * 120
+                        }
+                      >
+                        <article className="public-product-card">
+                          <button
+                            type="button"
+                            className="product-click-area"
+                            onClick={() =>
+                              onProductClick(
+                                product,
+                              )
+                            }
+                          >
+                            <div className="product-image-area">
+                              <span className="product-badge">
+                                BEST
+                              </span>
+
+                              <ProductImage
+                                imageUrl={
+                                  product.image_url
+                                }
+                                alt={
+                                  product.name
+                                }
+                              />
+                            </div>
+
+                            <div className="public-product-body">
+                              <h3>
+                                {
+                                  product.name
+                                }
+                              </h3>
+
+                              <div className="product-stars">
+                                {
+                                  product.sold_quantity
+                                }{' '}
+                                sold
+                              </div>
+
+                              <div className="product-price-row">
+                                <strong>
+                                  $
+                                  {Number(
+                                    product.price,
+                                  ).toFixed(
+                                    2,
+                                  )}
+                                </strong>
+
+                                <Heart
+                                  size={20}
+                                  className={
+                                    wishlisted
+                                      ? 'product-heart wishlisted'
+                                      : 'product-heart'
+                                  }
+                                  fill={
+                                    wishlisted
+                                      ? 'currentColor'
+                                      : 'none'
+                                  }
+                                  onClick={(
+                                    event,
+                                  ) => {
+                                    event.stopPropagation();
+
+                                    handleWishlistClick(
+                                      product.id,
+                                    );
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </button>
+                        </article>
+                      </ScrollReveal>
+                    );
+                  },
+                )}
+              </div>
+            )}
+        </section>
+
+        {/* =====================================
+            NEW PRODUCTS
+        ====================================== */}
 
         <section className="best-sales-section">
           <ScrollReveal>
@@ -632,8 +992,6 @@ export function PublicStorefront({
               </h2>
             </div>
           </ScrollReveal>
-
-          {/* ERROR */}
 
           {productsError && (
             <ScrollReveal>
@@ -645,8 +1003,6 @@ export function PublicStorefront({
             </ScrollReveal>
           )}
 
-          {/* LOADING */}
-
           {loadingProducts && (
             <ScrollReveal>
               <div className="loading-card">
@@ -654,8 +1010,6 @@ export function PublicStorefront({
               </div>
             </ScrollReveal>
           )}
-
-          {/* EMPTY */}
 
           {!loadingProducts &&
             filteredProducts
@@ -667,110 +1021,112 @@ export function PublicStorefront({
               </ScrollReveal>
             )}
 
-          {/* PRODUCTS */}
+          {!loadingProducts &&
+            visibleProducts.length >
+              0 && (
+              <div className="public-product-grid">
+                {visibleProducts.map(
+                  (
+                    product,
+                    index,
+                  ) => {
+                    const wishlisted =
+                      isWishlisted?.(
+                        product.id,
+                      ) ?? false;
 
-          <div className="public-product-grid">
-            {visibleProducts.map(
-              (
-                product,
-                index,
-              ) => {
-                const wishlisted =
-                  isWishlisted?.(
-                    product.id,
-                  ) ?? false;
-
-                return (
-                  <ScrollReveal
-                    key={
-                      product.id
-                    }
-                    delay={
-                      index * 120
-                    }
-                  >
-                    <article className="public-product-card">
-                      <button
-                        type="button"
-                        className="product-click-area"
-                        onClick={() =>
-                          onProductClick(
-                            product,
-                          )
+                    return (
+                      <ScrollReveal
+                        key={
+                          product.id
+                        }
+                        delay={
+                          index * 120
                         }
                       >
-                        <div className="product-image-area">
-                          <span className="product-badge">
-                            NEW
-                          </span>
-
-                          <ProductImage
-                            imageUrl={
-                              product.image_url
+                        <article className="public-product-card">
+                          <button
+                            type="button"
+                            className="product-click-area"
+                            onClick={() =>
+                              onProductClick(
+                                product,
+                              )
                             }
-                            alt={
-                              product.name
-                            }
-                          />
-                        </div>
+                          >
+                            <div className="product-image-area">
+                              <span className="product-badge">
+                                NEW
+                              </span>
 
-                        <div className="public-product-body">
-                          <h3>
-                            {
-                              product.name
-                            }
-                          </h3>
+                              <ProductImage
+                                imageUrl={
+                                  product.image_url
+                                }
+                                alt={
+                                  product.name
+                                }
+                              />
+                            </div>
 
-                          <div className="product-stars">
-                            ☆☆☆☆☆
-                          </div>
+                            <div className="public-product-body">
+                              <h3>
+                                {
+                                  product.name
+                                }
+                              </h3>
 
-                          <div className="product-price-row">
-                            <strong>
-                              $
-                              {Number(
-                                product.price,
-                              ).toFixed(
-                                2,
-                              )}
-                            </strong>
+                              <div className="product-stars">
+                                ☆☆☆☆☆
+                              </div>
 
-                            <Heart
-                              size={20}
-                              className={
-                                wishlisted
-                                  ? 'product-heart wishlisted'
-                                  : 'product-heart'
-                              }
-                              fill={
-                                wishlisted
-                                  ? 'currentColor'
-                                  : 'none'
-                              }
-                              onClick={(
-                                event,
-                              ) => {
-                                event.stopPropagation();
+                              <div className="product-price-row">
+                                <strong>
+                                  $
+                                  {Number(
+                                    product.price,
+                                  ).toFixed(
+                                    2,
+                                  )}
+                                </strong>
 
-                                handleWishlistClick(
-                                  product.id,
-                                );
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </button>
-                    </article>
-                  </ScrollReveal>
-                );
-              },
+                                <Heart
+                                  size={20}
+                                  className={
+                                    wishlisted
+                                      ? 'product-heart wishlisted'
+                                      : 'product-heart'
+                                  }
+                                  fill={
+                                    wishlisted
+                                      ? 'currentColor'
+                                      : 'none'
+                                  }
+                                  onClick={(
+                                    event,
+                                  ) => {
+                                    event.stopPropagation();
+
+                                    handleWishlistClick(
+                                      product.id,
+                                    );
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          </button>
+                        </article>
+                      </ScrollReveal>
+                    );
+                  },
+                )}
+              </div>
             )}
-          </div>
         </section>
 
-        {/* =========================
+        {/* =====================================
             BENEFITS
-        ========================== */}
+        ====================================== */}
 
         <ScrollReveal
           className="store-benefits"
@@ -847,43 +1203,79 @@ export function PublicStorefront({
 
       <footer className="store-footer">
         <div className="storefront-container footer-grid">
-          <ScrollReveal
-            className="footer-brand"
-          >
+
+          {/* DCS */}
+
+          <div className="footer-brand">
             <h3>
-              DCS Computer Shop
+              DCS Computer shop
             </h3>
 
             <p>
               Your trusted destination
-              for the latest tech,
-              quality products and
-              better experiences.
+              for the latest tech.
             </p>
+
+            <p>
+              Great products, Better
+              experiences.
+            </p>
+
+            {/* SOCIAL */}
 
             <div className="social-links">
               <button
                 type="button"
+                aria-label="Instagram"
               >
-                <Globe2
-                  size={17}
+                <img
+                  src="/images/footer/Instagram.png"
+                  alt="Instagram"
                 />
               </button>
 
               <button
                 type="button"
+                aria-label="Telegram"
               >
-                <MessageCircle
-                  size={17}
+                <img
+                  src="/images/footer/Telegram.png"
+                  alt="Telegram"
+                />
+              </button>
+
+              <button
+                type="button"
+                aria-label="Facebook"
+                onClick={() =>
+                  window.open(
+                    'https://www.facebook.com/dcscomputershop',
+                    '_blank',
+                    'noopener,noreferrer',
+                  )
+                }
+              >
+                <img
+                  src="/images/footer/Facebook.png"
+                  alt="Facebook"
+                />
+              </button>
+
+              <button
+                type="button"
+                aria-label="X"
+              >
+                <img
+                  src="/images/footer/x.png"
+                  alt="X"
                 />
               </button>
             </div>
-          </ScrollReveal>
+          </div>
 
-          <ScrollReveal
-            delay={80}
-            className="footer-column"
-          >
+          {/* SHOP */}
+
+          <div className="footer-column">
             <h4>
               Shop
             </h4>
@@ -914,12 +1306,11 @@ export function PublicStorefront({
             >
               Deals
             </button>
-          </ScrollReveal>
+          </div>
 
-          <ScrollReveal
-            delay={160}
-            className="footer-column"
-          >
+          {/* CUSTOMER CARE */}
+
+          <div className="footer-column">
             <h4>
               Customer Care
             </h4>
@@ -953,12 +1344,11 @@ export function PublicStorefront({
             >
               FAQ
             </button>
-          </ScrollReveal>
+          </div>
 
-          <ScrollReveal
-            delay={240}
-            className="footer-column"
-          >
+          {/* COMPANY */}
+
+          <div className="footer-column">
             <h4>
               Company
             </h4>
@@ -966,7 +1356,7 @@ export function PublicStorefront({
             <button
               type="button"
             >
-              About TechHub
+              About DCS
             </button>
 
             <button
@@ -984,14 +1374,19 @@ export function PublicStorefront({
             <button
               type="button"
             >
-              TechHub Rewards
+              DCS Rewards
             </button>
-          </ScrollReveal>
 
-          <ScrollReveal
-            delay={320}
-            className="footer-newsletter"
-          >
+            <button
+              type="button"
+            >
+              Sustainability
+            </button>
+          </div>
+
+          {/* NEWSLETTER */}
+
+          <div className="footer-newsletter">
             <h4>
               Stay in the loop
             </h4>
@@ -1014,28 +1409,43 @@ export function PublicStorefront({
               </button>
             </div>
 
+            {/* PAYMENT */}
+
             <div className="payment-methods">
-              <span>
-                VISA
-              </span>
+              <img
+                src="/images/footer/visa.png"
+                alt="Visa"
+              />
 
-              <span>
-                Mastercard
-              </span>
+              <img
+                src="/images/footer/MasterCard.png"
+                alt="Mastercard"
+              />
 
-              <span>
-                PayPal
-              </span>
+              <img
+                src="/images/footer/PayPal.png"
+                alt="PayPal"
+              />
+
+              <img
+                src="/images/footer/wing.png"
+                alt="Wing Bank"
+              />
+
+              <img
+                src="/images/footer/ABA.png"
+                alt="ABA Bank"
+              />
             </div>
-          </ScrollReveal>
+          </div>
         </div>
 
-        <ScrollReveal
-          className="storefront-container footer-bottom"
-        >
-          © 2026 TechHub. All rights
+        {/* COPYRIGHT */}
+
+        <div className="storefront-container footer-bottom">
+          © 2026 DCS, All rights
           reserved.
-        </ScrollReveal>
+        </div>
       </footer>
     </div>
   );
