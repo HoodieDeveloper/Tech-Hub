@@ -47,6 +47,14 @@ import {
 } from './features/customer/orders/CustomerOrdersPage';
 
 import {
+  CustomerOrderSuccessPage,
+} from './features/customer/orders/CustomerOrderSuccessPage';
+
+import type {
+  CustomerOrderResult,
+} from './features/customer/orders/types';
+
+import {
   CustomerProfilePage,
 } from './features/customer/profile/CustomerProfilePage';
 
@@ -70,6 +78,10 @@ import type {
   Product,
 } from './features/products/types';
 
+import {
+  showToast,
+} from './features/shared/toast';
+
 /*
  * =========================================
  * APP VIEWS
@@ -81,6 +93,7 @@ type View =
   | 'catalog'
   | 'cart'
   | 'checkout'
+  | 'order-success'
   | 'wishlist'
   | 'orders'
   | 'profile'
@@ -147,6 +160,14 @@ export default function App() {
     setBuyNowItems,
   ] =
     useState<CartItem[] | null>(
+      null,
+    );
+
+  const [
+    lastOrder,
+    setLastOrder,
+  ] =
+    useState<CustomerOrderResult | null>(
       null,
     );
 
@@ -239,6 +260,10 @@ export default function App() {
     if (
       product.stock <= 0
     ) {
+      showToast(
+        'This product is out of stock.',
+        'error',
+      );
       return;
     }
 
@@ -265,10 +290,23 @@ export default function App() {
       return;
     }
 
-    await addToCart(
-      product,
-      quantity,
-    );
+    const added =
+      await addToCart(
+        product,
+        quantity,
+      );
+
+    if (added) {
+      showToast(
+        `${product.name} added to cart.`,
+        'success',
+      );
+    } else {
+      showToast(
+        'Unable to add this product to the cart.',
+        'error',
+      );
+    }
   }
 
   /*
@@ -412,9 +450,29 @@ export default function App() {
       return;
     }
 
-    await toggleWishlist(
-      productId,
-    );
+    const wasWishlisted =
+      isWishlisted(
+        productId,
+      );
+
+    const updated =
+      await toggleWishlist(
+        productId,
+      );
+
+    if (updated) {
+      showToast(
+        wasWishlisted
+          ? 'Removed from wishlist.'
+          : 'Added to wishlist.',
+        'success',
+      );
+    } else {
+      showToast(
+        'Unable to update the wishlist.',
+        'error',
+      );
+    }
   }
 
   function handleOpenWishlist() {
@@ -647,7 +705,9 @@ export default function App() {
         }}
         onAdminDashboard={() => setView('admin')}
       >
-        {content}
+        <div className="techhub-page-enter">
+          {content}
+        </div>
       </CustomerLayout>
     );
   }
@@ -726,6 +786,31 @@ export default function App() {
           setUser(updatedUser);
         }}
         onLogout={() => void handleLogout()}
+      />,
+    );
+  }
+
+  /*
+   * =========================================
+   * ORDER SUCCESS
+   * =========================================
+   */
+
+  if (
+    view === 'order-success' &&
+    user?.role === 'customer' &&
+    lastOrder
+  ) {
+    return renderCustomerLayout(
+      <CustomerOrderSuccessPage
+        order={lastOrder}
+        onViewOrders={() =>
+          setView('orders')
+        }
+        onContinueShopping={() => {
+          setLastOrder(null);
+          setView('storefront');
+        }}
       />,
     );
   }
@@ -822,17 +907,25 @@ export default function App() {
           setView('cart');
         }}
         onOrderSuccess={(order) => {
+          setLastOrder(
+            order,
+          );
+
           if (buyNowItems) {
             setBuyNowItems(null);
           } else {
             void clearCart();
           }
 
-          window.alert(
-            `Order ${order.order_number} placed successfully!`,
+          showToast(
+            `Order ${order.order_number} placed successfully.`,
+            'success',
+            3400,
           );
 
-          setView('storefront');
+          setView(
+            'order-success',
+          );
         }}
       />,
     );

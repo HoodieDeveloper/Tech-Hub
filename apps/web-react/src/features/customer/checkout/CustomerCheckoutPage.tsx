@@ -1,6 +1,7 @@
 import './CustomerCheckoutPage.css';
 import {
   FormEvent,
+  useEffect,
   useMemo,
   useState,
 } from 'react';
@@ -9,6 +10,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   CreditCard,
+  LocateFixed,
   MapPin,
   Phone,
   ShoppingBag,
@@ -16,6 +18,7 @@ import {
 } from 'lucide-react';
 
 import {
+  apiGet,
   apiPost,
   type AuthUser,
 } from '../../../core/api/client';
@@ -24,30 +27,26 @@ import type {
   CartItem,
 } from '../cart/types';
 
-type OrderItem = {
-  id: number;
-  product_id: number | null;
-  product_name: string;
-  unit_price: string;
-  quantity: number;
-  line_total: string;
-};
-
-type Order = {
-  id: number;
-  order_number: string;
-  status: string;
-  payment_status: string;
-  subtotal: string;
-  delivery_fee: string;
-  total: string;
-  currency: string;
-  items: OrderItem[];
-};
+import type {
+  CustomerOrderResult,
+} from '../orders/types';
 
 type OrderResponse = {
   message: string;
-  order: Order;
+  order: CustomerOrderResult;
+};
+
+type SavedCard = {
+  id: number;
+  brand: string;
+  last_four: string;
+  cardholder_name: string;
+  expiry_month: number;
+  expiry_year: number;
+};
+
+type SavedCardResponse = {
+  saved_card: SavedCard | null;
 };
 
 type Props = {
@@ -57,9 +56,16 @@ type Props = {
   onBack: () => void;
 
   onOrderSuccess: (
-    order: Order,
+    order: CustomerOrderResult,
   ) => void;
 };
+
+const DEMO_CARD_NUMBER =
+  '4242 4242 4242 4242';
+const DEMO_CARD_EXPIRY =
+  '12/34';
+const DEMO_CARD_CVV =
+  '123';
 
 export function CustomerCheckoutPage({
   user,
@@ -88,29 +94,76 @@ export function CustomerCheckoutPage({
   ] = useState('');
 
   const [
+    latitude,
+    setLatitude,
+  ] = useState<number | null>(
+    null,
+  );
+
+  const [
+    longitude,
+    setLongitude,
+  ] = useState<number | null>(
+    null,
+  );
+
+  const [
+    locating,
+    setLocating,
+  ] = useState(false);
+
+  const [
+    locationError,
+    setLocationError,
+  ] = useState('');
+
+  const [
     paymentMethod,
     setPaymentMethod,
-  ] = useState('bank_transfer');
+  ] = useState('fake_card');
+
+  const [
+    savedCard,
+    setSavedCard,
+  ] = useState<SavedCard | null>(
+    null,
+  );
+
+  const [
+    loadingSavedCard,
+    setLoadingSavedCard,
+  ] = useState(true);
+
+  const [
+    useSavedCard,
+    setUseSavedCard,
+  ] = useState(false);
 
   const [
     cardNumber,
     setCardNumber,
-  ] = useState('');
+  ] = useState(
+    DEMO_CARD_NUMBER,
+  );
 
   const [
     cardName,
     setCardName,
-  ] = useState('');
+  ] = useState(user.name);
 
   const [
     cardExpiry,
     setCardExpiry,
-  ] = useState('');
+  ] = useState(
+    DEMO_CARD_EXPIRY,
+  );
 
   const [
     cardCvv,
     setCardCvv,
-  ] = useState('');
+  ] = useState(
+    DEMO_CARD_CVV,
+  );
 
   const [
     notes,
@@ -126,6 +179,49 @@ export function CustomerCheckoutPage({
     error,
     setError,
   ] = useState('');
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiGet<SavedCardResponse>(
+      '/payments/saved-card',
+    )
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+
+        setSavedCard(
+          response.saved_card,
+        );
+
+        if (
+          response.saved_card
+        ) {
+          setUseSavedCard(
+            true,
+          );
+        }
+      })
+      .catch(() => {
+        /*
+         * The page still works with
+         * the built-in demo card when
+         * no saved card can be loaded.
+         */
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingSavedCard(
+            false,
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const subtotal =
     useMemo(
@@ -154,22 +250,61 @@ export function CustomerCheckoutPage({
       [cartItems],
     );
 
+  const mapUrl =
+    latitude !== null &&
+    longitude !== null
+      ? `https://www.google.com/maps?q=${latitude},${longitude}&z=18&output=embed`
+      : null;
+
+  const mapsOpenUrl =
+    latitude !== null &&
+    longitude !== null
+      ? `https://www.google.com/maps?q=${latitude},${longitude}`
+      : null;
+
   function handlePaymentMethodChange(
     nextPaymentMethod: string,
   ) {
     setPaymentMethod(
       nextPaymentMethod,
     );
+  }
 
+  function useCurrentLocation() {
     if (
-      nextPaymentMethod ===
-      'cash_on_delivery'
+      !navigator.geolocation
     ) {
-      setCardNumber('');
-      setCardName('');
-      setCardExpiry('');
-      setCardCvv('');
+      setLocationError(
+        'This browser cannot read your location.',
+      );
+      return;
     }
+
+    setLocating(true);
+    setLocationError('');
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLatitude(
+          position.coords.latitude,
+        );
+        setLongitude(
+          position.coords.longitude,
+        );
+        setLocating(false);
+      },
+      () => {
+        setLocationError(
+          'Location permission was denied or your location could not be found. You can still type your address manually.',
+        );
+        setLocating(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 12000,
+        maximumAge: 30000,
+      },
+    );
   }
 
   async function handleSubmit(
@@ -183,13 +318,13 @@ export function CustomerCheckoutPage({
       setError(
         'Your cart is empty.',
       );
-
       return;
     }
 
     if (
       paymentMethod ===
-      'bank_transfer'
+        'fake_card' &&
+      !useSavedCard
     ) {
       const normalizedCardNumber =
         cardNumber.replace(
@@ -198,14 +333,12 @@ export function CustomerCheckoutPage({
         );
 
       if (
-        !/^\d{16}$/.test(
-          normalizedCardNumber,
-        )
+        normalizedCardNumber !==
+        '4242424242424242'
       ) {
         setError(
-          'Card number must be exactly 16 digits.',
+          'This project only accepts the demo card 4242 4242 4242 4242. Do not enter a real card.',
         );
-
         return;
       }
 
@@ -215,49 +348,30 @@ export function CustomerCheckoutPage({
           .length < 2
       ) {
         setError(
-          'Please enter the cardholder name.',
+          'Please enter the demo cardholder name.',
         );
-
         return;
       }
-
-      const expiryMatch =
-        cardExpiry.match(
-          /^(\d{2})\/(\d{2})$/,
-        );
-
-      if (!expiryMatch) {
-        setError(
-          'Expiry date must be in MM/YY format.',
-        );
-
-        return;
-      }
-
-      const expiryMonth = Number(
-        expiryMatch[1],
-      );
 
       if (
-        expiryMonth < 1 ||
-        expiryMonth > 12
+        !/^(0[1-9]|1[0-2])\/\d{2}$/.test(
+          cardExpiry,
+        )
       ) {
         setError(
-          'Expiry month must be between 01 and 12.',
+          'Demo expiry date must be in MM/YY format.',
         );
-
         return;
       }
 
       if (
-        !/^\d{3,4}$/.test(
+        !/^\d{3}$/.test(
           cardCvv,
         )
       ) {
         setError(
-          'CVV must be 3 or 4 digits.',
+          'Demo CVV must be 3 digits.',
         );
-
         return;
       }
     }
@@ -282,8 +396,50 @@ export function CustomerCheckoutPage({
             shipping_address:
               shippingAddress,
 
+            shipping_latitude:
+              latitude,
+
+            shipping_longitude:
+              longitude,
+
             payment_method:
               paymentMethod,
+
+            use_saved_card:
+              paymentMethod ===
+                'fake_card' &&
+              useSavedCard,
+
+            card_number:
+              paymentMethod ===
+                  'fake_card' &&
+                !useSavedCard
+                ? cardNumber.replace(
+                    /\s+/g,
+                    '',
+                  )
+                : null,
+
+            cardholder_name:
+              paymentMethod ===
+                  'fake_card' &&
+                !useSavedCard
+                ? cardName
+                : null,
+
+            card_expiry:
+              paymentMethod ===
+                  'fake_card' &&
+                !useSavedCard
+                ? cardExpiry
+                : null,
+
+            card_cvv:
+              paymentMethod ===
+                  'fake_card' &&
+                !useSavedCard
+                ? cardCvv
+                : null,
 
             notes:
               notes.trim() ||
@@ -333,8 +489,7 @@ export function CustomerCheckoutPage({
           </h1>
 
           <p>
-            Complete your order
-            information.
+            Complete your order information.
           </p>
         </div>
       </div>
@@ -350,8 +505,6 @@ export function CustomerCheckoutPage({
         className="checkout-layout"
       >
         <div className="checkout-main">
-          {/* Customer Information */}
-
           <section className="checkout-card">
             <div className="checkout-card-title">
               <UserRound size={21} />
@@ -362,8 +515,7 @@ export function CustomerCheckoutPage({
                 </h2>
 
                 <p>
-                  Enter the information
-                  used for this order.
+                  Enter the information used for this order.
                 </p>
               </div>
             </div>
@@ -376,9 +528,7 @@ export function CustomerCheckoutPage({
 
                 <input
                   type="text"
-                  value={
-                    customerName
-                  }
+                  value={customerName}
                   onChange={(event) =>
                     setCustomerName(
                       event.target.value,
@@ -395,9 +545,7 @@ export function CustomerCheckoutPage({
 
                 <input
                   type="email"
-                  value={
-                    customerEmail
-                  }
+                  value={customerEmail}
                   onChange={(event) =>
                     setCustomerEmail(
                       event.target.value,
@@ -417,9 +565,7 @@ export function CustomerCheckoutPage({
 
                   <input
                     type="tel"
-                    value={
-                      customerPhone
-                    }
+                    value={customerPhone}
                     onChange={(event) =>
                       setCustomerPhone(
                         event.target.value,
@@ -433,8 +579,6 @@ export function CustomerCheckoutPage({
             </div>
           </section>
 
-          {/* Delivery */}
-
           <section className="checkout-card">
             <div className="checkout-card-title">
               <MapPin size={21} />
@@ -445,8 +589,7 @@ export function CustomerCheckoutPage({
                 </h2>
 
                 <p>
-                  Where should we
-                  deliver your order?
+                  Type your address and optionally pin your real current location on Google Maps.
                 </p>
               </div>
             </div>
@@ -457,9 +600,7 @@ export function CustomerCheckoutPage({
               </span>
 
               <textarea
-                value={
-                  shippingAddress
-                }
+                value={shippingAddress}
                 onChange={(event) =>
                   setShippingAddress(
                     event.target.value,
@@ -470,9 +611,59 @@ export function CustomerCheckoutPage({
                 required
               />
             </label>
-          </section>
 
-          {/* Payment */}
+            <div className="checkout-map-actions">
+              <button
+                type="button"
+                className="checkout-location-button"
+                onClick={useCurrentLocation}
+                disabled={locating}
+              >
+                <LocateFixed size={18} />
+                {locating
+                  ? 'Finding location...'
+                  : latitude !== null
+                    ? 'Update My Pin'
+                    : 'Use My Current Location'}
+              </button>
+
+              {mapsOpenUrl && (
+                <a
+                  href={mapsOpenUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open in Google Maps
+                </a>
+              )}
+            </div>
+
+            {locationError && (
+              <p className="checkout-location-error">
+                {locationError}
+              </p>
+            )}
+
+            {mapUrl && (
+              <div className="checkout-google-map">
+                <iframe
+                  title="Delivery location"
+                  src={mapUrl}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                />
+
+                <div className="checkout-coordinate-row">
+                  <span>
+                    Latitude: {latitude?.toFixed(6)}
+                  </span>
+                  <span>
+                    Longitude: {longitude?.toFixed(6)}
+                  </span>
+                </div>
+              </div>
+            )}
+          </section>
 
           <section className="checkout-card">
             <div className="checkout-card-title">
@@ -480,12 +671,11 @@ export function CustomerCheckoutPage({
 
               <div>
                 <h2>
-                  Payment Method
+                  Demo Payment
                 </h2>
 
                 <p>
-                  Choose how you want
-                  to pay.
+                  This project uses a fake card only. Real card numbers are rejected.
                 </p>
               </div>
             </div>
@@ -495,10 +685,10 @@ export function CustomerCheckoutPage({
                 <input
                   type="radio"
                   name="payment"
-                  value="bank_transfer"
+                  value="fake_card"
                   checked={
                     paymentMethod ===
-                    'bank_transfer'
+                    'fake_card'
                   }
                   onChange={(event) =>
                     handlePaymentMethodChange(
@@ -509,12 +699,11 @@ export function CustomerCheckoutPage({
 
                 <div>
                   <strong>
-                    Credit / Debit Card
+                    Demo Card
                   </strong>
 
                   <span>
-                    Pay securely
-                    with your card.
+                    Instant fake payment for testing the shop.
                   </span>
                 </div>
               </label>
@@ -541,157 +730,169 @@ export function CustomerCheckoutPage({
                   </strong>
 
                   <span>
-                    Pay when your
-                    order arrives.
+                    Keep COD available for testing unpaid orders.
                   </span>
                 </div>
               </label>
             </div>
 
             {paymentMethod ===
-              'bank_transfer' && (
+              'fake_card' && (
               <div className="checkout-card-form">
-                <label>
-                  <span>
-                    Card Number
-                  </span>
+                {loadingSavedCard ? (
+                  <div className="checkout-saved-card-loading">
+                    Checking saved demo card...
+                  </div>
+                ) : savedCard &&
+                  useSavedCard ? (
+                  <div className="checkout-saved-card">
+                    <div className="checkout-saved-card-icon">
+                      <CreditCard size={24} />
+                    </div>
 
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    autoComplete="cc-number"
-                    value={
-                      cardNumber
-                    }
-                    onChange={(event) => {
-                      const digits =
-                        event.target.value
-                          .replace(
-                            /\D/g,
-                            '',
-                          )
-                          .slice(
-                            0,
-                            16,
-                          );
+                    <div>
+                      <span>
+                        Saved demo card
+                      </span>
+                      <strong>
+                        {savedCard.brand} •••• {savedCard.last_four}
+                      </strong>
+                      <small>
+                        {savedCard.cardholder_name} · Expires {String(savedCard.expiry_month).padStart(2, '0')}/{String(savedCard.expiry_year).slice(-2)}
+                      </small>
+                    </div>
 
-                      const grouped =
-                        digits.replace(
-                          /(\d{4})(?=\d)/g,
-                          '$1 ',
-                        );
-
-                      setCardNumber(
-                        grouped,
-                      );
-                    }}
-                    placeholder="1234 5678 9012 3456"
-                    required
-                  />
-                </label>
-
-                <label>
-                  <span>
-                    Name on Card
-                  </span>
-
-                  <input
-                    type="text"
-                    autoComplete="cc-name"
-                    value={
-                      cardName
-                    }
-                    onChange={(event) =>
-                      setCardName(
-                        event.target.value,
-                      )
-                    }
-                    placeholder="Cardholder name"
-                    required
-                  />
-                </label>
-
-                <div className="checkout-card-form-row">
-                  <label>
-                    <span>
-                      Expiry Date
-                    </span>
-
-                    <input
-                      type="text"
-                      autoComplete="cc-exp"
-                      inputMode="numeric"
-                      value={
-                        cardExpiry
-                      }
-                      onChange={(event) => {
-                        const digits =
-                          event.target.value
-                            .replace(
-                              /\D/g,
-                              '',
-                            )
-                            .slice(
-                              0,
-                              4,
-                            );
-
-                        const formattedExpiry =
-                          digits.length >
-                          2
-                            ? `${digits.slice(0, 2)}/${digits.slice(2)}`
-                            : digits;
-
-                        setCardExpiry(
-                          formattedExpiry,
-                        );
-                      }}
-                      maxLength={5}
-                      placeholder="MM/YY"
-                      required
-                    />
-                  </label>
-
-                  <label>
-                    <span>
-                      CVV
-                    </span>
-
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      autoComplete="cc-csc"
-                      value={cardCvv}
-                      onChange={(event) =>
-                        setCardCvv(
-                          event.target.value
-                            .replace(
-                              /\D/g,
-                              '',
-                            )
-                            .slice(
-                              0,
-                              4,
-                            ),
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setUseSavedCard(
+                          false,
                         )
                       }
-                      placeholder="123"
-                      required
-                    />
-                  </label>
-                </div>
+                    >
+                      Use demo card fields
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    {savedCard && (
+                      <button
+                        type="button"
+                        className="checkout-use-saved-card"
+                        onClick={() =>
+                          setUseSavedCard(
+                            true,
+                          )
+                        }
+                      >
+                        Use saved demo card •••• {savedCard.last_four}
+                      </button>
+                    )}
+
+                    <div className="checkout-demo-note">
+                      <strong>
+                        Demo card only
+                      </strong>
+                      <span>
+                        Number: 4242 4242 4242 4242 · Expiry: 12/34 · CVV: 123
+                      </span>
+                    </div>
+
+                    <label>
+                      <span>
+                        Demo Card Number
+                      </span>
+
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={cardNumber}
+                        onChange={(event) => {
+                          const digits =
+                            event.target.value
+                              .replace(/\D/g, '')
+                              .slice(0, 16);
+
+                          setCardNumber(
+                            digits.replace(
+                              /(\d{4})(?=\d)/g,
+                              '$1 ',
+                            ),
+                          );
+                        }}
+                        required
+                      />
+                    </label>
+
+                    <label>
+                      <span>
+                        Demo Cardholder Name
+                      </span>
+
+                      <input
+                        type="text"
+                        value={cardName}
+                        onChange={(event) =>
+                          setCardName(
+                            event.target.value,
+                          )
+                        }
+                        required
+                      />
+                    </label>
+
+                    <div className="checkout-card-form-row">
+                      <label>
+                        <span>
+                          Demo Expiry
+                        </span>
+
+                        <input
+                          type="text"
+                          value={cardExpiry}
+                          onChange={(event) =>
+                            setCardExpiry(
+                              event.target.value
+                                .replace(/[^\d/]/g, '')
+                                .slice(0, 5),
+                            )
+                          }
+                          maxLength={5}
+                          required
+                        />
+                      </label>
+
+                      <label>
+                        <span>
+                          Demo CVV
+                        </span>
+
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={cardCvv}
+                          onChange={(event) =>
+                            setCardCvv(
+                              event.target.value
+                                .replace(/\D/g, '')
+                                .slice(0, 3),
+                            )
+                          }
+                          maxLength={3}
+                          required
+                        />
+                      </label>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </section>
 
-          {/* Note */}
-
           <section className="checkout-card">
             <label>
               <span>
-                Order Note
-                {' '}
-                (Optional)
+                Order Note (Optional)
               </span>
 
               <textarea
@@ -708,8 +909,6 @@ export function CustomerCheckoutPage({
           </section>
         </div>
 
-        {/* Order Summary */}
-
         <aside className="checkout-summary">
           <div className="checkout-summary-title">
             <ShoppingBag size={20} />
@@ -722,33 +921,23 @@ export function CustomerCheckoutPage({
             {cartItems.map(
               (item) => (
                 <div
-                  key={
-                    item.product.id
-                  }
+                  key={item.product.id}
                   className="checkout-summary-item"
                 >
                   <div>
                     <strong>
-                      {
-                        item.product
-                          .name
-                      }
+                      {item.product.name}
                     </strong>
 
                     <span>
-                      Qty:{' '}
-                      {
-                        item.quantity
-                      }
+                      Qty: {item.quantity}
                     </span>
                   </div>
 
                   <strong>
-                    $
-                    {(
+                    ${(
                       Number(
-                        item.product
-                          .price,
+                        item.product.price,
                       ) *
                       item.quantity
                     ).toFixed(2)}
@@ -760,16 +949,11 @@ export function CustomerCheckoutPage({
 
           <div className="checkout-summary-row">
             <span>
-              Subtotal (
-              {totalQuantity}{' '}
-              items)
+              Subtotal ({totalQuantity} items)
             </span>
 
             <strong>
-              $
-              {subtotal.toFixed(
-                2,
-              )}
+              ${subtotal.toFixed(2)}
             </strong>
           </div>
 
@@ -789,10 +973,7 @@ export function CustomerCheckoutPage({
             </span>
 
             <strong>
-              $
-              {subtotal.toFixed(
-                2,
-              )}
+              ${subtotal.toFixed(2)}
             </strong>
           </div>
 
@@ -804,20 +985,19 @@ export function CustomerCheckoutPage({
               cartItems.length === 0
             }
           >
-            <CheckCircle2
-              size={19}
-            />
+            <CheckCircle2 size={19} />
 
             {submitting
               ? 'Placing Order...'
-              : 'Place Order'}
+              : paymentMethod === 'fake_card'
+                ? savedCard && useSavedCard
+                  ? 'Buy with Saved Demo Card'
+                  : 'Pay with Demo Card'
+                : 'Place COD Order'}
           </button>
 
           <p>
-            Laravel will verify
-            prices and stock again
-            before creating the
-            order.
+            Demo card payment is fake and stores only safe test metadata (brand, last four digits and expiry). CVV and full card number are never saved.
           </p>
         </aside>
       </form>

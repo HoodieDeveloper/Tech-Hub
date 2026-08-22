@@ -482,7 +482,7 @@ export function LoginPage({
   }
 
   return (
-    <div className="shop-auth-page">
+    <div className="shop-auth-page techhub-page-enter">
 
       {/* =====================================
           HEADER

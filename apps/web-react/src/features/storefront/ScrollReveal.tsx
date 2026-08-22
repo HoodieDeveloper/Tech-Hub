@@ -28,60 +28,21 @@ export function ScrollReveal({
     setVisible,
   ] = useState(false);
 
-  const [
-    scrollingStarted,
-    setScrollingStarted,
-  ] = useState(false);
-
-  /*
-   * =========================================
-   * WAIT FOR REAL PAGE SCROLL
-   * =========================================
-   */
   useEffect(() => {
-    function handleScroll() {
-      if (
-        window.scrollY >= 30
-      ) {
-        setScrollingStarted(
-          true,
-        );
-      }
-    }
-
-    window.addEventListener(
-      'scroll',
-      handleScroll,
-      {
-        passive: true,
-      },
-    );
-
-    return () => {
-      window.removeEventListener(
-        'scroll',
-        handleScroll,
-      );
-    };
-  }, []);
-
-  /*
-   * =========================================
-   * REVEAL WHEN ELEMENT ENTERS
-   * THE VIEWPORT
-   * =========================================
-   */
-  useEffect(() => {
-    if (
-      !scrollingStarted
-    ) {
-      return;
-    }
-
     const element =
       elementRef.current;
 
     if (!element) {
+      return;
+    }
+
+    if (
+      !(
+        'IntersectionObserver' in
+        window
+      )
+    ) {
+      setVisible(true);
       return;
     }
 
@@ -94,63 +55,41 @@ export function ScrollReveal({
           if (
             entry.isIntersecting
           ) {
-            setVisible(
-              true,
-            );
-
-            /*
-             * Only animate once.
-             */
+            setVisible(true);
             observer.unobserve(
               element,
             );
           }
         },
         {
-          threshold: 0.05,
-
-          /*
-           * Reveal when the element
-           * enters about the bottom
-           * 85% of the screen.
-           *
-           * This also allows the
-           * Benefits and Footer to
-           * appear near the end of
-           * the page.
-           */
+          threshold: 0.08,
           rootMargin:
-            '0px 0px -15% 0px',
+            '0px 0px -8% 0px',
         },
       );
 
-    observer.observe(
-      element,
-    );
+    observer.observe(element);
 
     return () => {
       observer.disconnect();
     };
-  }, [
-    scrollingStarted,
-  ]);
+  }, []);
 
   return (
     <div
       ref={elementRef}
       className={[
         'scroll-reveal',
-
         visible
           ? 'scroll-reveal-visible'
           : '',
-
         className,
       ]
         .filter(Boolean)
         .join(' ')}
       style={{
-        transitionDelay: '0ms',
+        transitionDelay:
+          `${delay}ms`,
       }}
     >
       {children}

@@ -552,50 +552,55 @@ export function AdminDashboard({
           </div>
         )}
 
-        {section ===
-          'dashboard' && (
-          <DashboardHome
-            stats={stats}
-            loading={
-              dashboardLoading
-            }
-          />
-        )}
+        <div
+          key={section}
+          className="techhub-page-enter admin-section-enter"
+        >
+          {section ===
+            'dashboard' && (
+            <DashboardHome
+              stats={stats}
+              loading={
+                dashboardLoading
+              }
+            />
+          )}
 
-        {section ===
-          'products' && (
-          <AdminProductsPage />
-        )}
+          {section ===
+            'products' && (
+            <AdminProductsPage />
+          )}
 
-        {section ===
-          'orders' && (
-          <AdminOrdersPage />
-        )}
+          {section ===
+            'orders' && (
+            <AdminOrdersPage />
+          )}
 
-        {section ===
-          'vendors' && (
-          <AdminVendorsPage />
-        )}
+          {section ===
+            'vendors' && (
+            <AdminVendorsPage />
+          )}
 
-        {section ===
-          'users' && (
-          <AdminUsersPage />
-        )}
+          {section ===
+            'users' && (
+            <AdminUsersPage />
+          )}
 
-        {section ===
-          'reports' && (
-          <AdminReportsPage />
-        )}
+          {section ===
+            'reports' && (
+            <AdminReportsPage />
+          )}
 
-        {section ===
-          'ratings' && (
-          <AdminRatingsPage />
-        )}
+          {section ===
+            'ratings' && (
+            <AdminRatingsPage />
+          )}
 
-        {section ===
-          'settings' && (
-          <AdminSettingsPage />
-        )}
+          {section ===
+            'settings' && (
+            <AdminSettingsPage />
+          )}
+        </div>
       </main>
     </div>
   );
