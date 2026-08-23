@@ -22,8 +22,13 @@ class OrderController extends Controller
     public function index(Request $request): JsonResponse
     {
         $orders = Order::query()
-            ->where('user_id', $request->user()->id)
-            ->with('items.product:id,image_url')
+            ->where(
+                'user_id',
+                $request->user()->id
+            )
+            ->with(
+                'items.product:id,image_url'
+            )
             ->latest()
             ->get();
 
@@ -39,11 +44,19 @@ class OrderController extends Controller
         Request $request,
         Order $order
     ): JsonResponse {
-        if ($order->user_id !== $request->user()->id) {
-            abort(403, 'You cannot view this order.');
+        if (
+            $order->user_id !==
+            $request->user()->id
+        ) {
+            abort(
+                403,
+                'You cannot view this order.'
+            );
         }
 
-        $order->load('items.product:id,image_url');
+        $order->load(
+            'items.product:id,image_url'
+        );
 
         return response()->json([
             'order' => $order,
@@ -53,103 +66,134 @@ class OrderController extends Controller
     /**
      * Customer places a new order.
      *
-     * Fake card rules:
-     * - Only the built-in demo card 4242 4242 4242 4242 is accepted.
-     * - A returning customer can reuse the latest successful saved demo card.
-     * - Full card number and CVV are NEVER written to the database.
+     * DEMO PAYMENT ONLY:
+     *
+     * - Accepts any 4-19 digit demo card number.
+     * - Does NOT connect to a real bank.
+     * - Full card number is NEVER stored.
+     * - CVV is NEVER stored.
+     * - Only the last 4 digits are saved.
+     * - Returning customers can reuse
+     *   their latest saved demo card.
      */
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'customer_name' => [
-                'required',
-                'string',
-                'max:255',
-            ],
-            'customer_email' => [
-                'required',
-                'email',
-                'max:255',
-            ],
-            'customer_phone' => [
-                'required',
-                'string',
-                'max:50',
-            ],
-            'shipping_address' => [
-                'required',
-                'string',
-                'max:2000',
-            ],
-            'shipping_latitude' => [
-                'nullable',
-                'numeric',
-                'between:-90,90',
-            ],
-            'shipping_longitude' => [
-                'nullable',
-                'numeric',
-                'between:-180,180',
-            ],
-            'payment_method' => [
-                'required',
-                Rule::in([
-                    'fake_card',
-                    'cash_on_delivery',
-                ]),
-            ],
-            'use_saved_card' => [
-                'sometimes',
-                'boolean',
-            ],
-            'card_number' => [
-                'nullable',
-                'string',
-                'max:32',
-            ],
-            'cardholder_name' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-            'card_expiry' => [
-                'nullable',
-                'string',
-                'max:5',
-            ],
-            'card_cvv' => [
-                'nullable',
-                'string',
-                'max:4',
-            ],
-            'notes' => [
-                'nullable',
-                'string',
-                'max:2000',
-            ],
-            'items' => [
-                'required',
-                'array',
-                'min:1',
-            ],
-            'items.*.product_id' => [
-                'required',
-                'integer',
-                'exists:products,id',
-            ],
-            'items.*.quantity' => [
-                'required',
-                'integer',
-                'min:1',
-                'max:999',
-            ],
-        ]);
+    public function store(
+        Request $request
+    ): JsonResponse {
+        $validated =
+            $request->validate([
+                'customer_name' => [
+                    'required',
+                    'string',
+                    'max:255',
+                ],
 
-        $paymentProfile = $this->resolvePaymentProfile(
-            $request,
-            $validated
-        );
+                'customer_email' => [
+                    'required',
+                    'email',
+                    'max:255',
+                ],
 
+                'customer_phone' => [
+                    'required',
+                    'string',
+                    'max:50',
+                ],
+
+                'shipping_address' => [
+                    'required',
+                    'string',
+                    'max:2000',
+                ],
+
+                'shipping_latitude' => [
+                    'nullable',
+                    'numeric',
+                    'between:-90,90',
+                ],
+
+                'shipping_longitude' => [
+                    'nullable',
+                    'numeric',
+                    'between:-180,180',
+                ],
+
+                'payment_method' => [
+                    'required',
+
+                    Rule::in([
+                        'fake_card',
+                        'cash_on_delivery',
+                    ]),
+                ],
+
+                'use_saved_card' => [
+                    'sometimes',
+                    'boolean',
+                ],
+
+                'card_number' => [
+                    'nullable',
+                    'string',
+                    'max:32',
+                ],
+
+                'cardholder_name' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                ],
+
+                'card_expiry' => [
+                    'nullable',
+                    'string',
+                    'max:5',
+                ],
+
+                'card_cvv' => [
+                    'nullable',
+                    'string',
+                    'max:4',
+                ],
+
+                'notes' => [
+                    'nullable',
+                    'string',
+                    'max:2000',
+                ],
+
+                'items' => [
+                    'required',
+                    'array',
+                    'min:1',
+                ],
+
+                'items.*.product_id' => [
+                    'required',
+                    'integer',
+                    'exists:products,id',
+                ],
+
+                'items.*.quantity' => [
+                    'required',
+                    'integer',
+                    'min:1',
+                    'max:999',
+                ],
+            ]);
+
+        /*
+         * Resolve safe demo-card metadata.
+         */
+        $paymentProfile =
+            $this->resolvePaymentProfile(
+                $request,
+                $validated
+            );
+
+        /*
+         * Order + payment + stock update
+         * happen in one database transaction.
+         */
         $order = DB::transaction(
             function () use (
                 $request,
@@ -157,21 +201,39 @@ class OrderController extends Controller
                 $paymentProfile
             ): Order {
                 $subtotal = 0;
+
                 $preparedItems = [];
 
                 /*
-                 * Lock every product while checking stock.
-                 * This prevents two customers from buying
-                 * the same final item at the same time.
+                 * Check every product and lock
+                 * its row while the order is created.
                  */
-                foreach ($validated['items'] as $item) {
-                    $product = Product::query()
-                        ->lockForUpdate()
-                        ->findOrFail($item['product_id']);
+                foreach (
+                    $validated['items']
+                    as $item
+                ) {
+                    $product =
+                        Product::query()
+                            ->lockForUpdate()
+                            ->findOrFail(
+                                $item[
+                                    'product_id'
+                                ]
+                            );
 
-                    $quantity = (int) $item['quantity'];
+                    $quantity =
+                        (int) $item[
+                            'quantity'
+                        ];
 
-                    if ($product->stock < $quantity) {
+                    /*
+                     * Prevent ordering more than
+                     * current stock.
+                     */
+                    if (
+                        $product->stock <
+                        $quantity
+                    ) {
                         throw ValidationException::withMessages([
                             'items' => [
                                 sprintf(
@@ -183,127 +245,318 @@ class OrderController extends Controller
                         ]);
                     }
 
-                    $unitPrice = (float) $product->price;
+                    /*
+                     * Always use price from
+                     * the database.
+                     */
+                    $unitPrice =
+                        (float) $product->price;
 
-                    $lineTotal = round(
-                        $unitPrice * $quantity,
-                        2
-                    );
+                    $lineTotal =
+                        round(
+                            $unitPrice *
+                                $quantity,
+                            2
+                        );
 
-                    $subtotal += $lineTotal;
+                    $subtotal +=
+                        $lineTotal;
 
                     $preparedItems[] = [
-                        'product' => $product,
-                        'quantity' => $quantity,
-                        'unit_price' => $unitPrice,
-                        'line_total' => $lineTotal,
+                        'product' =>
+                            $product,
+
+                        'quantity' =>
+                            $quantity,
+
+                        'unit_price' =>
+                            $unitPrice,
+
+                        'line_total' =>
+                            $lineTotal,
                     ];
                 }
 
-                $subtotal = round($subtotal, 2);
-                $deliveryFee = 0;
-                $total = round($subtotal + $deliveryFee, 2);
+                $subtotal =
+                    round(
+                        $subtotal,
+                        2
+                    );
 
-                $currency = SiteSetting::query()
-                    ->value('currency')
+                /*
+                 * Delivery is free for now.
+                 */
+                $deliveryFee = 0;
+
+                $total =
+                    round(
+                        $subtotal +
+                            $deliveryFee,
+                        2
+                    );
+
+                /*
+                 * Get shop currency.
+                 */
+                $currency =
+                    SiteSetting::query()
+                        ->value(
+                            'currency'
+                        )
                     ?? 'USD';
 
                 $isFakeCard =
-                    $validated['payment_method'] === 'fake_card';
-
-                $order = Order::query()->create([
-                    'order_number' => $this->generateOrderNumber(),
-                    'user_id' => $request->user()->id,
-                    'customer_name' => $validated['customer_name'],
-                    'customer_email' => $validated['customer_email'],
-                    'customer_phone' => $validated['customer_phone'],
-                    'shipping_address' => $validated['shipping_address'],
-                    'status' => Order::STATUS_PENDING,
-                    'payment_status' => $isFakeCard
-                        ? Order::PAYMENT_PAID
-                        : Order::PAYMENT_UNPAID,
-                    'payment_method' => $validated['payment_method'],
-                    'subtotal' => $subtotal,
-                    'delivery_fee' => $deliveryFee,
-                    'total' => $total,
-                    'currency' => $currency,
-                    'notes' => $validated['notes'] ?? null,
-                ]);
+                    $validated[
+                        'payment_method'
+                    ] === 'fake_card';
 
                 /*
-                 * Direct assignment is intentional so this patch
-                 * does not require changing Order::$fillable.
+                 * Create the order.
+                 */
+                $order =
+                    Order::query()
+                        ->create([
+                            'order_number' =>
+                                $this
+                                    ->generateOrderNumber(),
+
+                            'user_id' =>
+                                $request
+                                    ->user()
+                                    ->id,
+
+                            'customer_name' =>
+                                $validated[
+                                    'customer_name'
+                                ],
+
+                            'customer_email' =>
+                                $validated[
+                                    'customer_email'
+                                ],
+
+                            'customer_phone' =>
+                                $validated[
+                                    'customer_phone'
+                                ],
+
+                            'shipping_address' =>
+                                $validated[
+                                    'shipping_address'
+                                ],
+
+                            'status' =>
+                                Order::STATUS_PENDING,
+
+                            /*
+                             * Demo card acts like
+                             * successful payment.
+                             */
+                            'payment_status' =>
+                                $isFakeCard
+                                    ? Order::PAYMENT_PAID
+                                    : Order::PAYMENT_UNPAID,
+
+                            'payment_method' =>
+                                $validated[
+                                    'payment_method'
+                                ],
+
+                            'subtotal' =>
+                                $subtotal,
+
+                            'delivery_fee' =>
+                                $deliveryFee,
+
+                            'total' =>
+                                $total,
+
+                            'currency' =>
+                                $currency,
+
+                            'notes' =>
+                                $validated[
+                                    'notes'
+                                ] ?? null,
+                        ]);
+
+                /*
+                 * Save map coordinates.
+                 *
+                 * Direct assignment avoids requiring
+                 * changes to Order::$fillable.
                  */
                 $order->shipping_latitude =
-                    $validated['shipping_latitude'] ?? null;
+                    $validated[
+                        'shipping_latitude'
+                    ] ?? null;
 
                 $order->shipping_longitude =
-                    $validated['shipping_longitude'] ?? null;
+                    $validated[
+                        'shipping_longitude'
+                    ] ?? null;
 
                 $order->save();
 
-                foreach ($preparedItems as $item) {
+                /*
+                 * Create order items and
+                 * decrease real shop stock.
+                 */
+                foreach (
+                    $preparedItems
+                    as $item
+                ) {
                     /** @var Product $product */
-                    $product = $item['product'];
+                    $product =
+                        $item[
+                            'product'
+                        ];
 
-                    $order->items()->create([
-                        'product_id' => $product->id,
-                        'product_name' => $product->name,
-                        'unit_price' => $item['unit_price'],
-                        'quantity' => $item['quantity'],
-                        'line_total' => $item['line_total'],
-                    ]);
+                    $order
+                        ->items()
+                        ->create([
+                            'product_id' =>
+                                $product->id,
+
+                            'product_name' =>
+                                $product->name,
+
+                            'unit_price' =>
+                                $item[
+                                    'unit_price'
+                                ],
+
+                            'quantity' =>
+                                $item[
+                                    'quantity'
+                                ],
+
+                            'line_total' =>
+                                $item[
+                                    'line_total'
+                                ],
+                        ]);
 
                     /*
-                     * Real inventory update:
-                     * stock is reduced as soon as the order is created.
+                     * Update inventory.
                      */
                     $product->decrement(
                         'stock',
-                        $item['quantity']
+                        $item[
+                            'quantity'
+                        ]
                     );
                 }
 
-                Payment::query()->create([
-                    'order_id' => $order->id,
-                    'user_id' => $request->user()->id,
-                    'method' => $validated['payment_method'],
-                    'provider' => $isFakeCard
-                        ? 'techhub_demo'
-                        : 'cash_on_delivery',
-                    'transaction_ref' => $isFakeCard
-                        ? 'DEMO-' . strtoupper(Str::random(14))
-                        : 'COD-' . strtoupper(Str::random(14)),
-                    'amount' => $total,
-                    'currency' => $currency,
-                    'status' => $isFakeCard
-                        ? 'paid'
-                        : 'pending',
-                    'card_brand' => $paymentProfile['card_brand'],
-                    'card_last_four' => $paymentProfile['card_last_four'],
-                    'cardholder_name' => $paymentProfile['cardholder_name'],
-                    'expiry_month' => $paymentProfile['expiry_month'],
-                    'expiry_year' => $paymentProfile['expiry_year'],
-                    'paid_at' => $isFakeCard
-                        ? now()
-                        : null,
-                ]);
+                /*
+                 * Create one payment row
+                 * for every order.
+                 */
+                Payment::query()
+                    ->create([
+                        'order_id' =>
+                            $order->id,
+
+                        'user_id' =>
+                            $request
+                                ->user()
+                                ->id,
+
+                        'method' =>
+                            $validated[
+                                'payment_method'
+                            ],
+
+                        'provider' =>
+                            $isFakeCard
+                                ? 'techhub_demo'
+                                : 'cash_on_delivery',
+
+                        'transaction_ref' =>
+                            $isFakeCard
+                                ? 'DEMO-' .
+                                    strtoupper(
+                                        Str::random(
+                                            14
+                                        )
+                                    )
+                                : 'COD-' .
+                                    strtoupper(
+                                        Str::random(
+                                            14
+                                        )
+                                    ),
+
+                        'amount' =>
+                            $total,
+
+                        'currency' =>
+                            $currency,
+
+                        'status' =>
+                            $isFakeCard
+                                ? 'paid'
+                                : 'pending',
+
+                        /*
+                         * Safe metadata only.
+                         */
+                        'card_brand' =>
+                            $paymentProfile[
+                                'card_brand'
+                            ],
+
+                        'card_last_four' =>
+                            $paymentProfile[
+                                'card_last_four'
+                            ],
+
+                        'cardholder_name' =>
+                            $paymentProfile[
+                                'cardholder_name'
+                            ],
+
+                        'expiry_month' =>
+                            $paymentProfile[
+                                'expiry_month'
+                            ],
+
+                        'expiry_year' =>
+                            $paymentProfile[
+                                'expiry_year'
+                            ],
+
+                        'paid_at' =>
+                            $isFakeCard
+                                ? now()
+                                : null,
+                    ]);
 
                 return $order;
             }
         );
 
-        $order->load('items.product:id,image_url');
+        /*
+         * Return product images too.
+         */
+        $order->load(
+            'items.product:id,image_url'
+        );
 
         return response()->json([
-            'message' => 'Order placed successfully.',
-            'order' => $order,
+            'message' =>
+                'Order placed successfully.',
+
+            'order' =>
+                $order,
         ], 201);
     }
 
     /**
-     * Resolve safe payment metadata for either a new fake card
-     * or an already-saved fake card.
+     * Resolve demo card metadata.
+     *
+     * Full number and CVV are NOT returned
+     * from this method and are NOT saved.
      *
      * @param array<string, mixed> $validated
      * @return array<string, mixed>
@@ -312,68 +565,177 @@ class OrderController extends Controller
         Request $request,
         array $validated
     ): array {
-        if ($validated['payment_method'] !== 'fake_card') {
+        /*
+         * Cash on delivery has
+         * no card information.
+         */
+        if (
+            $validated[
+                'payment_method'
+            ] !== 'fake_card'
+        ) {
             return [
-                'card_brand' => null,
-                'card_last_four' => null,
-                'cardholder_name' => null,
-                'expiry_month' => null,
-                'expiry_year' => null,
+                'card_brand' =>
+                    null,
+
+                'card_last_four' =>
+                    null,
+
+                'cardholder_name' =>
+                    null,
+
+                'expiry_month' =>
+                    null,
+
+                'expiry_year' =>
+                    null,
             ];
         }
 
-        $useSavedCard = (bool) ($validated['use_saved_card'] ?? false);
+        /*
+         * =========================================
+         * SAVED DEMO CARD
+         * =========================================
+         */
 
-        if ($useSavedCard) {
-            $savedPayment = Payment::query()
-                ->where('user_id', $request->user()->id)
-                ->where('method', 'fake_card')
-                ->where('status', 'paid')
-                ->whereNotNull('card_last_four')
-                ->latest('paid_at')
-                ->latest('id')
-                ->first();
+        $useSavedCard =
+            (bool) (
+                $validated[
+                    'use_saved_card'
+                ] ?? false
+            );
 
-            if ($savedPayment === null) {
+        if (
+            $useSavedCard
+        ) {
+            $savedPayment =
+                Payment::query()
+                    ->where(
+                        'user_id',
+                        $request
+                            ->user()
+                            ->id
+                    )
+                    ->where(
+                        'method',
+                        'fake_card'
+                    )
+                    ->where(
+                        'status',
+                        'paid'
+                    )
+                    ->whereNotNull(
+                        'card_last_four'
+                    )
+                    ->latest(
+                        'paid_at'
+                    )
+                    ->latest(
+                        'id'
+                    )
+                    ->first();
+
+            if (
+                $savedPayment ===
+                null
+            ) {
                 throw ValidationException::withMessages([
                     'payment_method' => [
-                        'No saved demo card was found. Please use the demo card fields once.',
+                        'No saved demo card was found. Please enter a demo card first.',
                     ],
                 ]);
             }
 
             return [
-                'card_brand' => $savedPayment->card_brand ?? 'Demo Visa',
-                'card_last_four' => $savedPayment->card_last_four,
-                'cardholder_name' => $savedPayment->cardholder_name,
-                'expiry_month' => $savedPayment->expiry_month,
-                'expiry_year' => $savedPayment->expiry_year,
+                'card_brand' =>
+                    $savedPayment
+                        ->card_brand
+                    ?? 'Demo Card',
+
+                'card_last_four' =>
+                    $savedPayment
+                        ->card_last_four,
+
+                'cardholder_name' =>
+                    $savedPayment
+                        ->cardholder_name,
+
+                'expiry_month' =>
+                    $savedPayment
+                        ->expiry_month,
+
+                'expiry_year' =>
+                    $savedPayment
+                        ->expiry_year,
             ];
         }
 
-        $cardNumber = preg_replace(
-            '/\D+/',
-            '',
-            (string) ($validated['card_number'] ?? '')
-        );
+        /*
+         * =========================================
+         * NEW DEMO CARD
+         * =========================================
+         */
 
         /*
-         * Reject everything except the project's fixed DEMO number.
-         * This intentionally prevents users from entering a real card.
+         * Remove spaces, dashes, letters,
+         * and everything except digits.
+         *
+         * Example:
+         * 1234 5678 9999 1111
+         *
+         * becomes:
+         * 1234567899991111
          */
-        if ($cardNumber !== '4242424242424242') {
+        $cardNumber =
+            preg_replace(
+                '/\D+/',
+                '',
+                (string) (
+                    $validated[
+                        'card_number'
+                    ] ?? ''
+                )
+            );
+
+        /*
+         * Demo system:
+         *
+         * Accept any 4-19 digit number.
+         *
+         * We DO NOT check against a bank.
+         */
+        if (
+            strlen(
+                $cardNumber
+            ) < 4 ||
+            strlen(
+                $cardNumber
+            ) > 19
+        ) {
             throw ValidationException::withMessages([
                 'card_number' => [
-                    'Only the demo card 4242 4242 4242 4242 is accepted. Do not use a real card.',
+                    'Please enter a demo card number between 4 and 19 digits.',
                 ],
             ]);
         }
 
-        $cardholderName = trim(
-            (string) ($validated['cardholder_name'] ?? '')
-        );
+        /*
+         * Cardholder name.
+         */
+        $cardholderName =
+            trim(
+                (string) (
+                    $validated[
+                        'cardholder_name'
+                    ] ?? ''
+                )
+            );
 
-        if (mb_strlen($cardholderName) < 2) {
+        if (
+            mb_strlen(
+                $cardholderName
+            ) < 2
+        ) {
             throw ValidationException::withMessages([
                 'cardholder_name' => [
                     'Please enter the demo cardholder name.',
@@ -381,9 +743,29 @@ class OrderController extends Controller
             ]);
         }
 
-        $expiry = (string) ($validated['card_expiry'] ?? '');
+        /*
+         * Expiry must still be MM/YY.
+         *
+         * Examples:
+         *
+         * 12/34
+         * 08/30
+         * 01/29
+         */
+        $expiry =
+            (string) (
+                $validated[
+                    'card_expiry'
+                ] ?? ''
+            );
 
-        if (!preg_match('/^(0[1-9]|1[0-2])\/(\d{2})$/', $expiry, $matches)) {
+        if (
+            !preg_match(
+                '/^(0[1-9]|1[0-2])\/(\d{2})$/',
+                $expiry,
+                $matches
+            )
+        ) {
             throw ValidationException::withMessages([
                 'card_expiry' => [
                     'Demo expiry must use MM/YY format.',
@@ -391,40 +773,87 @@ class OrderController extends Controller
             ]);
         }
 
-        $cvv = (string) ($validated['card_cvv'] ?? '');
+        /*
+         * For now we still use demo CVV 123.
+         *
+         * It is checked here but NEVER saved.
+         */
+        $cvv =
+            (string) (
+                $validated[
+                    'card_cvv'
+                ] ?? ''
+            );
 
-        if ($cvv !== '123') {
+        if (
+            $cvv !== '123'
+        ) {
             throw ValidationException::withMessages([
                 'card_cvv' => [
-                    'Use the demo CVV 123. Do not enter a real CVV.',
+                    'Use the demo CVV 123.',
                 ],
             ]);
         }
 
+        /*
+         * IMPORTANT:
+         *
+         * We only return the LAST FOUR
+         * digits of the demo card.
+         *
+         * Full number is discarded.
+         */
         return [
-            'card_brand' => 'Demo Visa',
-            'card_last_four' => '4242',
-            'cardholder_name' => $cardholderName,
-            'expiry_month' => (int) $matches[1],
-            'expiry_year' => 2000 + (int) $matches[2],
+            'card_brand' =>
+                'Demo Card',
+
+            'card_last_four' =>
+                substr(
+                    $cardNumber,
+                    -4
+                ),
+
+            'cardholder_name' =>
+                $cardholderName,
+
+            'expiry_month' =>
+                (int) $matches[1],
+
+            'expiry_year' =>
+                2000 +
+                (int) $matches[2],
         ];
     }
 
     /**
-     * Generate a readable unique order number.
-     * Example: TH-20260814-A1B2C3
+     * Generate readable unique
+     * order number.
+     *
+     * Example:
+     *
+     * TH-20260823-A1B2C3
      */
     private function generateOrderNumber(): string
     {
         do {
-            $orderNumber = sprintf(
-                'TH-%s-%s',
-                now()->format('Ymd'),
-                strtoupper(Str::random(6))
-            );
+            $orderNumber =
+                sprintf(
+                    'TH-%s-%s',
+                    now()->format(
+                        'Ymd'
+                    ),
+                    strtoupper(
+                        Str::random(
+                            6
+                        )
+                    )
+                );
         } while (
             Order::query()
-                ->where('order_number', $orderNumber)
+                ->where(
+                    'order_number',
+                    $orderNumber
+                )
                 ->exists()
         );
 
