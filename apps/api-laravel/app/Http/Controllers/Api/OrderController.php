@@ -38,7 +38,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Show one order belonging to the logged-in customer.
+     * Show one customer order.
      */
     public function show(
         Request $request,
@@ -64,23 +64,28 @@ class OrderController extends Controller
     }
 
     /**
-     * Customer places a new order.
+     * Create customer order.
      *
-     * DEMO PAYMENT ONLY:
+     * DEMO CARD:
      *
-     * - Accepts any 4-19 digit demo card number.
-     * - Does NOT connect to a real bank.
-     * - Full card number is NEVER stored.
-     * - CVV is NEVER stored.
-     * - Only the last 4 digits are saved.
-     * - Returning customers can reuse
-     *   their latest saved demo card.
+     * No real payment gateway.
+     * No real card validation.
+     * No Luhn check.
+     * No fixed card number.
+     * No expiry validation.
+     * No CVV validation.
+     *
+     * Full card number and CVV
+     * are NEVER stored.
      */
     public function store(
         Request $request
     ): JsonResponse {
         $validated =
             $request->validate([
+                /*
+                 * Customer information.
+                 */
                 'customer_name' => [
                     'required',
                     'string',
@@ -99,6 +104,9 @@ class OrderController extends Controller
                     'max:50',
                 ],
 
+                /*
+                 * Delivery.
+                 */
                 'shipping_address' => [
                     'required',
                     'string',
@@ -117,6 +125,9 @@ class OrderController extends Controller
                     'between:-180,180',
                 ],
 
+                /*
+                 * Payment method.
+                 */
                 'payment_method' => [
                     'required',
 
@@ -131,10 +142,19 @@ class OrderController extends Controller
                     'boolean',
                 ],
 
+                /*
+                 * =================================
+                 * DEMO CARD FIELDS
+                 * =================================
+                 *
+                 * No card-format validation.
+                 *
+                 * Any text can be entered.
+                 */
                 'card_number' => [
                     'nullable',
                     'string',
-                    'max:32',
+                    'max:255',
                 ],
 
                 'cardholder_name' => [
@@ -146,21 +166,27 @@ class OrderController extends Controller
                 'card_expiry' => [
                     'nullable',
                     'string',
-                    'max:5',
+                    'max:255',
                 ],
 
                 'card_cvv' => [
                     'nullable',
                     'string',
-                    'max:4',
+                    'max:255',
                 ],
 
+                /*
+                 * Order note.
+                 */
                 'notes' => [
                     'nullable',
                     'string',
                     'max:2000',
                 ],
 
+                /*
+                 * Products.
+                 */
                 'items' => [
                     'required',
                     'array',
@@ -182,7 +208,7 @@ class OrderController extends Controller
             ]);
 
         /*
-         * Resolve safe demo-card metadata.
+         * Prepare safe demo-card metadata.
          */
         $paymentProfile =
             $this->resolvePaymentProfile(
@@ -191,8 +217,13 @@ class OrderController extends Controller
             );
 
         /*
-         * Order + payment + stock update
-         * happen in one database transaction.
+         * Everything happens in one
+         * database transaction:
+         *
+         * order
+         * order items
+         * stock
+         * payment
          */
         $order = DB::transaction(
             function () use (
@@ -205,9 +236,11 @@ class OrderController extends Controller
                 $preparedItems = [];
 
                 /*
-                 * Check every product and lock
-                 * its row while the order is created.
+                 * =================================
+                 * CHECK PRODUCTS + STOCK
+                 * =================================
                  */
+
                 foreach (
                     $validated['items']
                     as $item
@@ -226,10 +259,6 @@ class OrderController extends Controller
                             'quantity'
                         ];
 
-                    /*
-                     * Prevent ordering more than
-                     * current stock.
-                     */
                     if (
                         $product->stock <
                         $quantity
@@ -246,8 +275,10 @@ class OrderController extends Controller
                     }
 
                     /*
-                     * Always use price from
-                     * the database.
+                     * Never trust a price
+                     * sent by React.
+                     *
+                     * Price comes from DB.
                      */
                     $unitPrice =
                         (float) $product->price;
@@ -284,7 +315,7 @@ class OrderController extends Controller
                     );
 
                 /*
-                 * Delivery is free for now.
+                 * Free shipping for now.
                  */
                 $deliveryFee = 0;
 
@@ -296,7 +327,7 @@ class OrderController extends Controller
                     );
 
                 /*
-                 * Get shop currency.
+                 * Shop currency.
                  */
                 $currency =
                     SiteSetting::query()
@@ -311,8 +342,11 @@ class OrderController extends Controller
                     ] === 'fake_card';
 
                 /*
-                 * Create the order.
+                 * =================================
+                 * CREATE ORDER
+                 * =================================
                  */
+
                 $order =
                     Order::query()
                         ->create([
@@ -349,8 +383,8 @@ class OrderController extends Controller
                                 Order::STATUS_PENDING,
 
                             /*
-                             * Demo card acts like
-                             * successful payment.
+                             * Fake/demo card is treated
+                             * as paid immediately.
                              */
                             'payment_status' =>
                                 $isFakeCard
@@ -381,11 +415,11 @@ class OrderController extends Controller
                         ]);
 
                 /*
-                 * Save map coordinates.
-                 *
-                 * Direct assignment avoids requiring
-                 * changes to Order::$fillable.
+                 * =================================
+                 * SAVE GOOGLE MAPS PIN
+                 * =================================
                  */
+
                 $order->shipping_latitude =
                     $validated[
                         'shipping_latitude'
@@ -399,9 +433,11 @@ class OrderController extends Controller
                 $order->save();
 
                 /*
-                 * Create order items and
-                 * decrease real shop stock.
+                 * =================================
+                 * ORDER ITEMS + STOCK
+                 * =================================
                  */
+
                 foreach (
                     $preparedItems
                     as $item
@@ -438,7 +474,7 @@ class OrderController extends Controller
                         ]);
 
                     /*
-                     * Update inventory.
+                     * Real inventory update.
                      */
                     $product->decrement(
                         'stock',
@@ -449,9 +485,11 @@ class OrderController extends Controller
                 }
 
                 /*
-                 * Create one payment row
-                 * for every order.
+                 * =================================
+                 * PAYMENT RECORD
+                 * =================================
                  */
+
                 Payment::query()
                     ->create([
                         'order_id' =>
@@ -500,6 +538,9 @@ class OrderController extends Controller
 
                         /*
                          * Safe metadata only.
+                         *
+                         * No full number.
+                         * No CVV.
                          */
                         'card_brand' =>
                             $paymentProfile[
@@ -537,7 +578,8 @@ class OrderController extends Controller
         );
 
         /*
-         * Return product images too.
+         * Return product image with
+         * order success response.
          */
         $order->load(
             'items.product:id,image_url'
@@ -553,10 +595,12 @@ class OrderController extends Controller
     }
 
     /**
-     * Resolve demo card metadata.
+     * Build safe payment metadata.
      *
-     * Full number and CVV are NOT returned
-     * from this method and are NOT saved.
+     * IMPORTANT:
+     *
+     * Full card number and CVV
+     * are never returned from here.
      *
      * @param array<string, mixed> $validated
      * @return array<string, mixed>
@@ -566,9 +610,11 @@ class OrderController extends Controller
         array $validated
     ): array {
         /*
-         * Cash on delivery has
-         * no card information.
+         * =================================
+         * CASH ON DELIVERY
+         * =================================
          */
+
         if (
             $validated[
                 'payment_method'
@@ -593,9 +639,9 @@ class OrderController extends Controller
         }
 
         /*
-         * =========================================
+         * =================================
          * SAVED DEMO CARD
-         * =========================================
+         * =================================
          */
 
         $useSavedCard =
@@ -635,15 +681,35 @@ class OrderController extends Controller
                     )
                     ->first();
 
+            /*
+             * If somehow the saved card
+             * disappeared, just continue
+             * with generic demo metadata.
+             *
+             * No payment validation.
+             */
             if (
                 $savedPayment ===
                 null
             ) {
-                throw ValidationException::withMessages([
-                    'payment_method' => [
-                        'No saved demo card was found. Please enter a demo card first.',
-                    ],
-                ]);
+                return [
+                    'card_brand' =>
+                        'Demo Card',
+
+                    'card_last_four' =>
+                        'DEMO',
+
+                    'cardholder_name' =>
+                        $request
+                            ->user()
+                            ->name,
+
+                    'expiry_month' =>
+                        null,
+
+                    'expiry_year' =>
+                        null,
+                ];
             }
 
             return [
@@ -671,25 +737,15 @@ class OrderController extends Controller
         }
 
         /*
-         * =========================================
+         * =================================
          * NEW DEMO CARD
-         * =========================================
+         * =================================
+         *
+         * NO CARD VALIDATION.
          */
 
-        /*
-         * Remove spaces, dashes, letters,
-         * and everything except digits.
-         *
-         * Example:
-         * 1234 5678 9999 1111
-         *
-         * becomes:
-         * 1234567899991111
-         */
         $cardNumber =
-            preg_replace(
-                '/\D+/',
-                '',
+            trim(
                 (string) (
                     $validated[
                         'card_number'
@@ -697,31 +753,6 @@ class OrderController extends Controller
                 )
             );
 
-        /*
-         * Demo system:
-         *
-         * Accept any 4-19 digit number.
-         *
-         * We DO NOT check against a bank.
-         */
-        if (
-            strlen(
-                $cardNumber
-            ) < 4 ||
-            strlen(
-                $cardNumber
-            ) > 19
-        ) {
-            throw ValidationException::withMessages([
-                'card_number' => [
-                    'Please enter a demo card number between 4 and 19 digits.',
-                ],
-            ]);
-        }
-
-        /*
-         * Cardholder name.
-         */
         $cardholderName =
             trim(
                 (string) (
@@ -731,52 +762,20 @@ class OrderController extends Controller
                 )
             );
 
-        if (
-            mb_strlen(
-                $cardholderName
-            ) < 2
-        ) {
-            throw ValidationException::withMessages([
-                'cardholder_name' => [
-                    'Please enter the demo cardholder name.',
-                ],
-            ]);
-        }
-
-        /*
-         * Expiry must still be MM/YY.
-         *
-         * Examples:
-         *
-         * 12/34
-         * 08/30
-         * 01/29
-         */
         $expiry =
-            (string) (
-                $validated[
-                    'card_expiry'
-                ] ?? ''
+            trim(
+                (string) (
+                    $validated[
+                        'card_expiry'
+                    ] ?? ''
+                )
             );
 
-        if (
-            !preg_match(
-                '/^(0[1-9]|1[0-2])\/(\d{2})$/',
-                $expiry,
-                $matches
-            )
-        ) {
-            throw ValidationException::withMessages([
-                'card_expiry' => [
-                    'Demo expiry must use MM/YY format.',
-                ],
-            ]);
-        }
-
         /*
-         * For now we still use demo CVV 123.
+         * CVV is intentionally read
+         * but NEVER stored.
          *
-         * It is checked here but NEVER saved.
+         * No validation occurs.
          */
         $cvv =
             (string) (
@@ -785,53 +784,127 @@ class OrderController extends Controller
                 ] ?? ''
             );
 
+        /*
+         * Immediately discard it.
+         */
+        unset($cvv);
+
+        /*
+         * =================================
+         * LAST FOUR ONLY
+         * =================================
+         *
+         * Remove spaces just to make
+         * the display cleaner.
+         *
+         * No card-number validation.
+         */
+        $cleanCardNumber =
+            preg_replace(
+                '/\s+/',
+                '',
+                $cardNumber
+            );
+
         if (
-            $cvv !== '123'
+            $cleanCardNumber ===
+            ''
         ) {
-            throw ValidationException::withMessages([
-                'card_cvv' => [
-                    'Use the demo CVV 123.',
-                ],
-            ]);
+            $lastFour =
+                'DEMO';
+        } else {
+            /*
+             * Last four characters only.
+             *
+             * Example:
+             *
+             * hello-card-9999
+             * becomes 9999
+             */
+            $lastFour =
+                substr(
+                    $cleanCardNumber,
+                    -4
+                );
+
+            /*
+             * Database column has
+             * maximum length 4.
+             */
+            $lastFour =
+                str_pad(
+                    $lastFour,
+                    4,
+                    '0',
+                    STR_PAD_LEFT
+                );
         }
 
         /*
-         * IMPORTANT:
+         * =================================
+         * OPTIONAL EXPIRY PARSING
+         * =================================
          *
-         * We only return the LAST FOUR
-         * digits of the demo card.
+         * We do NOT reject bad expiry.
          *
-         * Full number is discarded.
+         * If it looks like MM/YY,
+         * save the month/year.
+         *
+         * Otherwise simply store null.
          */
+
+        $expiryMonth = null;
+        $expiryYear = null;
+
+        if (
+            preg_match(
+                '/^(0?[1-9]|1[0-2])\/(\d{2,4})$/',
+                $expiry,
+                $matches
+            )
+        ) {
+            $expiryMonth =
+                (int) $matches[1];
+
+            $year =
+                (int) $matches[2];
+
+            $expiryYear =
+                $year < 100
+                    ? 2000 + $year
+                    : $year;
+        }
+
+        /*
+         * =================================
+         * RETURN SAFE DATA ONLY
+         * =================================
+         */
+
         return [
             'card_brand' =>
                 'Demo Card',
 
             'card_last_four' =>
-                substr(
-                    $cardNumber,
-                    -4
-                ),
+                $lastFour,
 
             'cardholder_name' =>
-                $cardholderName,
+                $cardholderName !==
+                ''
+                    ? $cardholderName
+                    : 'Demo Customer',
 
             'expiry_month' =>
-                (int) $matches[1],
+                $expiryMonth,
 
             'expiry_year' =>
-                2000 +
-                (int) $matches[2],
+                $expiryYear,
         ];
     }
 
     /**
      * Generate readable unique
-     * order number.
-     *
-     * Example:
-     *
-     * TH-20260823-A1B2C3
+     * TechHub order number.
      */
     private function generateOrderNumber(): string
     {
