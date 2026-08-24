@@ -176,15 +176,13 @@
 
 .shop-auth-visual {
   position: relative;
-  min-height: 760px;
+  min-height: auto;
   overflow: hidden;
   background: #173d8f;
 }
 
 .shop-auth-visual > img {
-  width: 100%;
-  height: 100%;
-  min-height: 760px;
+  min-height: auto;
   display: block;
   object-fit: cover;
   object-position: center;

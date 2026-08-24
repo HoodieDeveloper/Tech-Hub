@@ -42,7 +42,7 @@ type Props = {
   onSuccess: (
     user: AuthUser,
   ) => void;
-
+  onViewAll?: () => void;
   onBack: () => void;
 };
 
@@ -489,39 +489,6 @@ export function LoginPage({
       ====================================== */}
 
       <header className="shop-auth-header">
-        <div className="shop-auth-topbar">
-          <span>
-            <Truck
-              size={13}
-            />
-
-            Free shipping on orders
-            over $49
-          </span>
-
-          <div>
-            <span>
-              Need help?
-            </span>
-
-            <span>
-              +855 12 23 23 56
-            </span>
-
-            <span>
-              Support
-            </span>
-
-            <span>
-              Track Order
-            </span>
-
-            <span>
-              English | USD
-            </span>
-          </div>
-        </div>
-
         <div className="shop-auth-mainbar">
           <button
             type="button"
@@ -613,42 +580,15 @@ export function LoginPage({
 
           <button
             type="button"
+              onClick={
+              onBack
+            }
           >
             Shop by Category
 
             <ChevronDown
               size={16}
             />
-          </button>
-
-          <button
-            type="button"
-          >
-            Deals
-          </button>
-
-          <button
-            type="button"
-          >
-            New Arrivals
-          </button>
-
-          <button
-            type="button"
-          >
-            Best Sellers
-          </button>
-
-          <button
-            type="button"
-          >
-            Brands
-          </button>
-
-          <button
-            type="button"
-          >
-            TechHub Rewards
           </button>
         </nav>
       </header>
