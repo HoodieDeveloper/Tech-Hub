@@ -279,17 +279,6 @@ export function CustomerHeader({
             />
           </button>
 
-          <button
-            type="button"
-          >
-            About
-          </button>
-
-          <button
-            type="button"
-          >
-            Partnership
-          </button>
 
           {user?.role ===
             'admin' && (
