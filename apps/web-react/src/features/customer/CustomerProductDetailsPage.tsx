@@ -169,41 +169,7 @@ export function CustomerProductDetailsPage({
                 ${Number(product.price).toFixed(2)}
               </div>
 
-              <div className="product-option-group">
-                <div className="product-option-label">Color</div>
-
-                <div className="color-row">
-                  {colorOptions.map((color, index) => (
-                    <button
-                      key={`${color}-${index}`}
-                      type="button"
-                      className={
-                        index === 2 ? 'color-swatch active' : 'color-swatch'
-                      }
-                      style={{ background: color }}
-                      aria-label={`Select color ${index + 1}`}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="product-option-group">
-                <div className="product-option-label">Storage</div>
-
-                <div className="storage-row">
-                  {storageOptions.map((option, index) => (
-                    <button
-                      key={option}
-                      type="button"
-                      className={
-                        index === 0 ? 'storage-option active' : 'storage-option'
-                      }
-                    >
-                      {option}
-                    </button>
-                  ))}
-                </div>
-              </div>
+  
 
               <div className="product-option-group quantity-group">
                 <div className="product-option-label">Quantity</div>

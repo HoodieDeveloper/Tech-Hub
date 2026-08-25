@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Models\SavedCard;
 use App\Models\Product;
 use App\Models\SiteSetting;
 use Illuminate\Http\JsonResponse;
@@ -655,29 +656,12 @@ class OrderController extends Controller
             $useSavedCard
         ) {
             $savedPayment =
-                Payment::query()
+                SavedCard::query()
                     ->where(
                         'user_id',
                         $request
                             ->user()
                             ->id
-                    )
-                    ->where(
-                        'method',
-                        'fake_card'
-                    )
-                    ->where(
-                        'status',
-                        'paid'
-                    )
-                    ->whereNotNull(
-                        'card_last_four'
-                    )
-                    ->latest(
-                        'paid_at'
-                    )
-                    ->latest(
-                        'id'
                     )
                     ->first();
 

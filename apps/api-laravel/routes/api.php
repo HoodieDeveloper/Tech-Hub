@@ -160,6 +160,11 @@ Route::middleware('auth:sanctum')
             'savedCard',
         ]);
 
+        Route::post('/payments/saved-card', [
+            PaymentController::class,
+            'storeSavedCard',
+        ]);
+
         /*
         |--------------------------------------------------------------------------
         | Customer Wishlist
