@@ -35,10 +35,14 @@ class PaymentCard {
       id: json['id']?.toString(),
       cardNumber: json['card_number'] ?? '',
       cardholderName: json['cardholder_name'] ?? '',
-      expiryDate: json['expiry_date'] ?? '',
+      expiryDate:
+          json['expiry_date'] ??
+          (json['expiry_month'] != null && json['expiry_year'] != null
+              ? '${json['expiry_month']}/${json['expiry_year']}'
+              : ''),
       cvv: json['cvv'] ?? '',
-      cardType: json['card_type'] ?? 'unknown',
-      last4: json['last4'] ?? '0000',
+      cardType: json['card_type'] ?? json['brand'] ?? 'Demo Card',
+      last4: json['last4'] ?? json['last_four'] ?? '0000',
     );
   }
 }
@@ -72,13 +76,28 @@ class PaymentService {
         throw Exception('User not authenticated');
       }
 
-      final response = await ApiClient.post('/user/cards', card.toJson());
-      final data = response is Map ? response['data'] ?? response : response;
+      final response = await ApiClient.post(
+        '/payments/saved-card',
+        card.toJson(),
+      );
+      final data = response is Map
+          ? response['saved_card'] ?? response['data'] ?? response
+          : response;
       if (data is! Map) throw Exception('Invalid card response');
       return PaymentCard.fromJson(Map<String, dynamic>.from(data));
     } catch (e) {
       throw Exception('Error saving card: $e');
     }
+  }
+
+  static Future<PaymentCard?> getSavedCard() async {
+    if (!ApiClient.isLoggedIn) return null;
+
+    final response = await ApiClient.get('/payments/saved-card');
+    if (response is! Map || response['saved_card'] is! Map) return null;
+    return PaymentCard.fromJson(
+      Map<String, dynamic>.from(response['saved_card'] as Map),
+    );
   }
 
   static Future<void> deleteCard(String cardId) async {
