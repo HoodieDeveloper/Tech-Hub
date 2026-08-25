@@ -44,6 +44,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   bool useBillingAddress = true;
   bool showAddNewCard = true; // Show card form by default
   bool submitting = false;
+  bool useSavedCard = false;
+  PaymentCard? savedCard;
 
   // Card form fields
   String? cardNumber;
@@ -71,6 +73,21 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       0,
       (sum, item) => sum + (item.product.price * item.quantity),
     );
+    _loadSavedCard();
+  }
+
+  Future<void> _loadSavedCard() async {
+    try {
+      final card = await PaymentService.getSavedCard();
+      if (!mounted) return;
+      setState(() {
+        savedCard = card;
+        useSavedCard = card != null;
+        showAddNewCard = card == null;
+      });
+    } catch (_) {
+      // Checkout remains usable when no saved card is available.
+    }
   }
 
   double get total => subtotal + shippingCost;
@@ -631,6 +648,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       onPressed = () {
         final validCard =
             selectedPaymentMethod != 'card' ||
+            useSavedCard ||
             (_cardFormKey.currentState != null &&
                 _cardFormKey.currentState!.validate());
 
@@ -671,7 +689,20 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         'shipping_address': '${address!.trim()}, ${city!.trim()}',
         'payment_method': selectedPaymentMethod == 'cashondelivery'
             ? 'cash_on_delivery'
-            : selectedPaymentMethod,
+            : 'fake_card',
+        'use_saved_card': selectedPaymentMethod == 'card' && useSavedCard,
+        'card_number': selectedPaymentMethod == 'card' && !useSavedCard
+            ? cardNumber
+            : null,
+        'cardholder_name': selectedPaymentMethod == 'card' && !useSavedCard
+            ? cardholderName
+            : null,
+        'card_expiry': selectedPaymentMethod == 'card' && !useSavedCard
+            ? expiryDate
+            : null,
+        'card_cvv': selectedPaymentMethod == 'card' && !useSavedCard
+            ? cvv
+            : null,
         'items': widget.cartItems
             .map(
               (item) => {
@@ -760,13 +791,63 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         const SizedBox(height: 24),
         // Content based on selected payment method
         if (selectedPaymentMethod == 'card') ...[
-          _buildAddNewCardSection(),
+          if (savedCard != null) _buildSavedCardOption(),
+          if (savedCard != null) const SizedBox(height: 12),
+          if (!useSavedCard) _buildAddNewCardSection(),
           const SizedBox(height: 16),
           _buildBillingAddressToggle(),
         ] else if (selectedPaymentMethod == 'cashondelivery') ...[
           _buildCashOnDeliveryInfo(),
         ],
       ],
+    );
+  }
+
+  Widget _buildSavedCardOption() {
+    final card = savedCard!;
+    final selected = useSavedCard;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => setState(() {
+        useSavedCard = true;
+        showAddNewCard = false;
+      }),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFE8F0FF) : Colors.white,
+          border: Border.all(
+            color: selected ? const Color(0xFF1F57F7) : Colors.grey[300]!,
+            width: selected ? 2 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              selected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: const Color(0xFF1F57F7),
+            ),
+            const SizedBox(width: 12),
+            const Icon(Icons.credit_card, color: Color(0xFF1F57F7)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '${card.cardType} ending in ${card.last4}\n${card.cardholderName}',
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+            TextButton(
+              onPressed: () => setState(() {
+                useSavedCard = false;
+                showAddNewCard = true;
+              }),
+              child: const Text('Use new'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -873,9 +954,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             validator: (value) {
               if (value == null || value.isEmpty) {
                 return 'Card number is required';
-              }
-              if (!PaymentService.isValidCardNumber(value)) {
-                return 'Invalid card number';
               }
               return null;
             },
@@ -1019,7 +1097,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         );
 
         // Save to API
-        await PaymentService.saveCard(card);
+        final saved = await PaymentService.saveCard(card);
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -1033,6 +1111,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           // Clear form
           _cardFormKey.currentState!.reset();
           setState(() {
+            savedCard = saved;
+            useSavedCard = true;
+            showAddNewCard = false;
             cardNumber = null;
             cardholderName = null;
             expiryDate = null;
